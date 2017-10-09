@@ -1,0 +1,160 @@
+#include <net/inet4>
+#include <plugins/nacl.hpp>
+{{#has_nats}}
+#include <net/nat/napt.hpp>
+{{/has_nats}}
+{{#has_gateways}}
+#include <net/router.hpp>
+{{/has_gateways}}
+
+using namespace net;
+using namespace nacl;
+
+{{#has_gateways}}
+std::unique_ptr<Router<IP4>> router;
+{{/has_gateways}}
+std::shared_ptr<Conntrack> ct;
+{{#has_nats}}
+std::unique_ptr<nat::NAPT> natty;
+{{/has_nats}}
+
+{{#filters}}
+class {{title}} : public Filter {
+public:
+	Filter_verdict operator()(IP4::IP_packet& pckt, Inet<IP4>& stack, Conntrack::Entry_ptr ct_entry) {	
+		{{{content}}}
+	}
+};
+
+{{/filters}}
+{{#nats}}
+class {{title}} : public Filter {
+public:
+	Filter_verdict operator()(IP4::IP_packet& pckt, Inet<IP4>& stack, Conntrack::Entry_ptr ct_entry) {
+		if (not stack.is_valid_source(pckt.ip_dst()))	// this is not for me
+			return Filter_verdict::ACCEPT;
+
+		{{{content}}}
+
+		// At the end of a Nat we want to accept the packet that hasn't been DNATed or SNATed
+		return Filter_verdict::ACCEPT
+	}
+};
+
+{{/nats}}
+
+void register_plugin_nacl() {
+	INFO("NaCl", "Registering NaCl plugin");
+
+	{{#ifaces}}
+	{{#config_is_static}}
+	auto& {{name}} = Inet4::stack<{{index}}>();
+	{{name}}.network_config({{address}}, {{netmask}}, {{gateway}}{{#dns}}, {{.}}{{/dns}});
+	{{/config_is_static}}
+	{{#config_is_dhcp}}
+	auto& {{name}} = Inet4::stack<{{index}}>();
+	Inet4::ifconfig<{{index}}>(10.0, [&{{name}}] (bool timedout) {
+		if (timedout) {
+			INFO("NaCl plugin interface {{name}}", "DHCP request timed out. Nothing to do.");
+			return;
+		}
+		INFO("NaCl plugin interface {{name}}", "IP address updated: %s", {{name}}.ip_addr().str().c_str());
+	});
+	{{/config_is_dhcp}}
+	{{#config_is_dhcp_fallback}}
+	auto& {{name}} = Inet4::stack<{{index}}>();
+	Inet4::ifconfig<{{index}}>(10.0, [&{{name}}] (bool timedout) {
+		if (timedout) {
+			INFO("NaCl plugin interface {{name}}", "DHCP timeout (%s) - falling back to static configuration", {{name}}.ifname().c_str());
+			{{name}}.network_config({{address}}, {{netmask}}, {{gateway}}{{#dns}}, {{.}}{{/dns}});
+		}
+	});
+	{{/config_is_dhcp_fallback}}
+	{{/ifaces}}
+
+	{{#vlans}}
+	auto& nic = {{iface}}.nic();
+	auto& vif = VLAN_manager::get().add(nic, {{index}});
+	auto& vif_stack = Super_stack::inet().create<IP4>(vif, {{iface_index}}, {{index}});
+	vif_stack.network_config({{address}}, {{netmask}}, {{gateway}});
+	{{/vlans}}
+	
+	{{#filters}}
+	{{title}} {{name}};
+	{{/filters}}
+	{{#nats}}
+	{{title}} {{name}};
+	{{/nats}}
+	
+	/*
+	{{#pushes}}
+	{{iface}}.ip_obj().{{chain}}_chain().chain = { {{#function_names}}{{function_name}}{{#comma}}, {{/comma}}{{/function_names}} };
+	{{/pushes}}
+	*/
+	{{#pushes}}
+	{{#function_names}}
+	{{iface}}.ip_obj().{{chain}}_chain().chain.push_back({{function_name}});
+	{{/function_names}}
+	{{/pushes}}
+
+	{{#has_gateways}}
+	// Router
+
+	INFO("NaCl", "Setup routing");
+
+	Router<IP4>::Routing_table routing_table {
+		{{#gateways}}
+		{{#routes}}
+		{ {{#net}}{{.}}{{/net}}{{#host}}{{.}}{{/host}}, {{#netmask}}{{.}}, {{/netmask}}{{#nexthop}}{{.}}{{/nexthop}}{{^nexthop}}{0}{{/nexthop}}{{#iface}}, {{.}}{{/iface}}{{#cost}}, {{.}}{{/cost}}{{^cost}}, 1{{/cost}} }{{#comma}},{{/comma}}
+		{{/routes}}
+		{{/gateways}}
+	};
+
+	router = std::make_unique<Router<IP4>>(Super_stack::inet().ip4_stacks(), routing_table);
+
+	// Set ip forwarding on every iface mentioned in routing_table
+	{{#ip_forward_ifaces}}
+	{{iface}}.set_forward_delg(router->forward_delg());
+	{{/ip_forward_ifaces}}
+	{{/has_gateways}}
+
+	// Ct
+
+	ct = std::make_shared<Conntrack>();
+
+	// Enable conntrack on all ifaces created by default
+	{{#ifaces}}
+	INFO("NaCl", "Enable Conntrack on {{name}}");
+	{{name}}.enable_conntrack(ct);
+	{{/ifaces}}
+
+	/* If not enable on all by default:
+	{{#ct_ifaces}}
+	INFO("NaCl", "Enable Conntrack on {{iface}}");
+	{{iface}}.enable_conntrack(ct);
+	{{/ct_ifaces}}
+	*/
+
+	{{#has_nats}}
+	// NAT (Masquerade)
+
+	natty = std::make_unique<nat::NAPT>(ct);
+
+	{{#has_masquerades}}
+	auto masq = [](IP4::IP_packet& pckt, Inet<IP4>& stack, Conntrack::Entry_ptr entry)->auto {
+		natty->masquerade(pckt, stack, entry);
+		return Filter_verdict::ACCEPT;
+	};
+	auto demasq = [](IP4::IP_packet& pckt, Inet<IP4>& stack, Conntrack::Entry_ptr entry)->auto {
+		natty->demasquerade(pckt, stack, entry);
+		return Filter_verdict::ACCEPT;
+	};
+
+	{{#masquerades}}
+	INFO("NaCl", "Enable MASQUERADE on {{iface}}");
+	{{iface}}.ip_obj().prerouting_chain().chain.push_back(demasq);
+	{{iface}}.ip_obj().postrouting_chain().chain.push_back(masq);
+	{{/masquerades}}
+	{{/has_masquerades}}
+	{{/has_nats}}
+}
