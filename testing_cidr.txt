@@ -1,0 +1,25 @@
+Iface eth0 {
+  address: 10.0.0.50,
+  netmask: 255.255.255.0,
+  gateway: 10.0.0.1,
+  index: 0
+}
+
+my_cidrs: [
+  143.23.5.12/24,
+  120.32.34.102/32,
+  34.53.42.40/24
+]
+
+my_addresses: [
+  my_cidrs,
+  10.0.0.20
+]
+
+Filter::IP my_filter {
+  if (ip.saddr in my_addresses) { log("Accepting") accept }
+  log("Dropping")
+  drop
+}
+
+eth0.input: my_filter
