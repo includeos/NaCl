@@ -1,0 +1,89 @@
+Iface something dhcp
+something.index: 1
+
+Iface something_else {
+	config: dhcp,
+	index: 2
+}
+
+some_other.address: 10.0.0.50
+Iface some_other dhcp-with-fallback
+some_other.netmask: 255.255.255.0
+some_other.gateway: 10.0.0.1
+some_other.index: 0
+
+Iface s {
+	config: dhcp-with-fallback,
+	index: 3,
+	address: 10.0.0.60,
+	netmask: 255.255.255.0,
+	gateway: 10.0.0.1
+}
+
+Iface eth0 {
+	address: 	10.0.0.42,
+	netmask: 	255.255.255.0,
+	gateway:	10.0.0.1,
+	dns:		8.8.8.8,
+	index: 		4
+}
+
+Vlan my_vlan {
+	address: 10.0.0.45,
+	netmask: 255.255.255.0,
+	index: 3 				// == vlan id
+}
+
+Vlan my_other_vlan {
+	address: 10.0.0.50,
+	netmask: 255.255.255.0,
+	index: 4				// == id (vlan id)
+}
+
+whitelist: [
+	10.0.0.1,	# my gateway
+	10.0.0.2,
+	130.10.20.10 - 130.10.20.30,
+	140.0.0.0/24
+]
+
+whitelist_ports: [
+	10,
+	20,
+	30,
+	40-50,
+	60
+]
+
+Filter::IP my_filter {
+	Filter::ICMP {
+		if (ip.saddr in whitelist) {
+			if (icmp.type == echo-request) {
+				accept
+			}
+
+			if (icmp.type == destination-unreachable) {
+				drop
+			}
+		}
+	}
+
+	Filter::TCP {
+		if (tcp.sport in whitelist_ports) { drop }
+
+		if (tcp.dport == http) {
+			if (ip.saddr in whitelist) {
+				# accept / drop
+				accept
+			}
+		}
+
+		if (tcp.dport == 40) {
+			drop
+		}
+	}
+
+	drop
+}
+
+eth0.input: my_filter

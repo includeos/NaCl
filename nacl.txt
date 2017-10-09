@@ -1,0 +1,507 @@
+Iface eth0 {
+	index: 4,
+	address: 		eth0_ip,
+	netmask: 		eth0_netmask,
+	gateway: 		eth0_gateway,
+	dns: 			eth0_dns,
+	postrouting: 	main_icmp_filter
+}
+
+Iface eth1 {
+	index: 5,
+	address: 10.0.0.80,
+	netmask: 255.255.255.0,
+	gateway: 10.0.0.1
+}
+
+Iface eth2 dhcp
+eth2.index: 6
+
+eth0_ip: 		10.0.0.40
+eth0_netmask:	255.255.255.0
+eth0_gateway:	10.0.0.1
+eth0_dns: 		8.8.8.8
+legal_port: 	77
+localhost_port: 8080
+
+testing_out_port_map: {
+	e1: 40,
+	e2: https,
+	e3: 77-90,
+	e4: {
+		e4-1: 44,
+		e4-2: 99-101,
+		e4-3: {
+			e4-3-1: 100,
+			e4-3-2: 2800
+		}
+	}
+}
+
+/* Not allowed:
+testing_out_port_map.e1: 30
+*/
+
+/* Not allowed:
+testing_out_port_map.e4.e4-3: {
+	e4-3-1: 33,
+	e4-3-2: 44,
+	e4-3-3: 55
+}
+*/
+
+// Allowed:
+testing_out_port_map.e4.e4-4: {
+	e4-4-1: 33,
+	e4-4-2: 44,
+	e4-4-3: 55
+}
+
+some_val: 21
+some_other_val: 12
+
+// Allowed:
+some_map.e2: some_other_val
+some_map: {
+	e1: some_val
+}
+
+ACKLIMIT: 	88
+TTL_RANGE:	10-201
+
+Filter::TCP main_tcp_filter {
+	if (ip.daddr == eth3.address or ip.daddr == eth1.address or ip.daddr == eth4.address or tcp.sport == testing_out_port_map.e4.e4-3.e4-3-2) {
+		accept
+	}
+
+	if (tcp.dport == testing_out_port_map.e4.e4-4.e4-4-3) {
+		accept
+	}
+
+	ip_filter_equals()
+	tcp_filter()
+
+	# Possible, but redundant:
+	Filter::IP {
+		if (ip.version == 4) {
+			accept
+		}
+	}
+
+	if (tcp.ackseq <= ACKLIMIT) {
+		if (tcp.sport in testing_out_port_map or tcp.dport == http) {
+			accept
+		} else {
+			if (ip.ttl in TTL_RANGE or ((ip.ttl > 30 and ip.checksum > 33) or (tcp.dport in 20-30 or ip.saddr == eth0_ip))) {
+				drop
+			} else {
+				ip_filter_not_equals()
+				accept
+			}
+		}
+	}
+
+	drop
+}
+
+Gateway gateway {
+	r10: {
+		net: 150.20.23.3,
+		netmask: 255.255.255.0,
+		iface: eth0
+	},
+
+	r1: {
+		net: 		140.50.100.0,
+		netmask: 	255.255.255.0,
+		nexthop: 	140.50.100.1,
+		iface: 		eth0,
+		cost: 		100
+	},
+
+	r2: {
+		net: 		140.50.200.0,
+		netmask: 	255.255.255.0,
+		iface: 		eth1
+	},
+
+	r3: {
+		net: 		140.50.210.0,
+		netmask: 	255.255.255.0,
+		nexthop: 	140.50.210.1,
+		iface: 		eth2,
+		cost: 		100
+	},
+
+	r4: {
+		net: 		140.50.240.0,
+		netmask: 	255.255.255.0,
+		iface: 		eth3
+	}
+}
+
+// Allowed:
+gateway.r2.nexthop: 140.50.200.55
+// Not allowed (already set):
+// gateway.r4.iface: eth2
+
+/* Not allowed (already set):
+eth1.index: 10
+*/
+
+eth0.input: [
+	main_ip_filter,
+	main_tcp_filter
+]
+
+p: [ 80, 90, 1080 ]
+
+/*
+This is also supported, but it is only allowed to create ONE Gateway
+Make it possible to create several gateways?
+
+Gateway my_other_gateway [
+	{
+		net: 140.50.200.0,
+		netmask: 255.255.255.0,
+		nexthop: 140.50.200.1,
+		iface: eth1,
+		cost: 100
+	},
+	{
+		net: 140.50.100.0,
+		netmask: 255.255.255.0,
+		nexthop: 140.50.100.1,
+		iface: eth1,
+		cost: 1
+	}
+]
+*/
+
+legal_daddrs: [
+	eth0_ip,
+	120.30.20.0/24,
+	140.20.10.13,
+	140.20.10.20-140.20.10.100
+]
+
+russianKGB: [
+	10.0.0.1,
+	190.50.20.0/24,
+	180.20.30.0-180.20.30.50,
+	180.20.30.100-180.20.30.150,
+	180.20.30.155
+]
+
+legal_udp_dports: [
+	50,
+	dns,
+	legal_port,
+	8080-8090,
+	46,
+	99,
+	65-68,
+	102
+]
+
+legal_ds: [ eth0_ip, 120.30.20.0/24, 140.20.10.13, 140.20.10.20-140.20.10.100 ]
+
+saddr_range: 126.21.28.44-126.21.29.10
+
+exists: true
+
+Filter::IP an_ip_filter {
+	if (ip.daddr == 10.0.0.55) {
+		drop
+	}
+}
+
+Filter::UDP an_udp_filter {
+	if (udp.sport == http) {
+		accept
+	}
+}
+
+Filter::IP hierarchy_test {
+	icmp_filter
+
+	Filter::ICMP {
+		if (ip.version < 6 and icmp.type == echo-request) {
+			accept
+		}
+	}
+
+	udp_filter
+
+	Filter::UDP {
+		if (ip.version < 6 and udp.sport == 80) {
+			accept
+		}
+	}
+
+	tcp_filter
+
+	Filter::TCP {
+		if (ip.saddr in 10.10.20.14-10.10.20.60 and tcp.ackseq > 33) {
+			accept
+		}
+	}
+
+	an_ip_filter
+
+	Filter::IP {
+		if (ip.checksum > 400) {
+			drop
+		}
+	}
+}
+
+Filter::UDP hierarchy_test_2 {
+	an_ip_filter
+
+	udp_filter
+}
+
+Filter::ICMP hierarchy_test_3 {
+	an_ip_filter
+
+	Filter::ICMP {
+		icmp_filter
+		accept
+	}
+
+	icmp_filter
+
+	Filter::ICMP {
+		if (icmp.type == timestamp-request) {
+			accept
+		}
+	}
+	Filter::ICMP ic2 {
+		accept
+	}
+
+	accept
+}
+
+# Testing out Iface functionality:
+
+eth_test_1.address: 10.0.0.130
+eth_test_1.dns: 9.9.9.9
+eth_test_1.prerouting: [
+	eth_test_filter,
+	tcp_filter,
+	main_icmp_filter
+]
+
+Filter::IP eth_test_filter {
+	if (ip.saddr == eth_test_2.address or ip.saddr == eth_test_2.dns or ip.saddr == eth_test_2.netmask or ip.saddr == eth_test_2.gateway) {
+		accept
+	}
+
+	drop
+}
+
+eth_test_2.dns: 10.10.10.10
+
+Iface eth_test_1 {
+	index: 0,
+	gateway: 10.0.0.1,
+	netmask: 255.255.255.0,
+	input: [
+		eth_test_filter,
+		tcp_filter,
+		main_icmp_filter,
+		main_ip_filter,
+		icmp_filter,
+		ip_filter_equals,
+		ip_filter_not_equals,
+		hierarchy_test_3,
+		hierarchy_test_2,
+		hierarchy_test,
+		an_udp_filter,
+		an_ip_filter,
+		main_tcp_filter
+	]
+}
+
+Iface eth_test_2 {
+	index: 1,
+	address: 10.0.0.99,
+	netmask: 255.255.255.0,
+	gateway: 10.0.0.1
+}
+
+# < Testing out Iface functionality
+
+Filter::TCP tcp_filter {
+	if (ip.saddr in 10.10.20.3-10.10.20.55 and tcp.ackseq > 30) {
+		accept
+	}
+}
+
+cidr_test: 244.20.10.0/24
+
+Filter::ICMP main_icmp_filter {
+	if (NOT (icmp.type == timestamp-request and not ip.saddr in saddr_range) and not ip.ttl > 30) {
+		drop
+	}
+
+	if (ct.state != established) {
+		drop
+	}
+
+	accept
+}
+
+Filter::IP main_ip_filter {
+	if ((!((ip.saddr == gateway.r2.nexthop or ip.saddr == gateway.r2.netmask) and ip.daddr < 10.0.0.45 and ip.saddr < 10.0.0.45) and (ip.checksum < 400 or (exists and ip.ttl > 50)))) {
+		
+		Filter::TCP {
+			if (tcp.sport == dns) {
+				drop
+			}
+
+			Filter::IP {
+				if (ip.daddr == 132.23.30.5) {
+					drop
+				}
+			}
+
+			if (ip.daddr == 132.23.30.5) {
+				drop
+			}
+
+			if (tcp.dport == http) {
+				if (ip.version == 6) {
+					drop
+				} else {
+					accept
+				}
+			} else {
+				accept
+			}
+
+			an_ip_filter
+
+			drop
+		}
+
+		Filter::ICMP {
+			if (ip.daddr == 120.30.20.10) {
+				accept
+			}
+
+			an_ip_filter
+		}
+
+		Filter::UDP {
+			if (udp.dport == https) {
+				accept
+			} else {
+				udp_filter
+			}
+		}
+
+		icmp_filter
+	}
+
+	Filter::TCP {
+		if (ip.daddr == eth0_ip and tcp.dport == http) {
+			accept
+		}
+	}
+
+	ip_filter_equals
+
+	Filter::TCP {
+		if (tcp.dport == localhost_port) {
+			accept
+		}
+
+		if (ip.daddr == eth0_ip and tcp.dport == http) {
+			accept
+		}
+	}
+
+	accept
+	drop
+}
+
+Filter::ICMP icmp_filter {
+	if (ip.ttl > 33 and icmp.type != destination-unreachable) {
+		drop
+	}
+
+	accept
+}
+
+Filter::IP drop {
+	drop
+}
+
+Filter::IP ip_filter_equals {
+	if (ip.daddr in legal_daddrs) {
+		if (ip.saddr in saddr_range) {
+			drop
+		} else {
+			accept
+		}
+	}
+}
+
+Filter::IP ip_filter_not_equals {
+	if (not ip.daddr in legal_daddrs) {
+		drop
+	}
+
+	if (not ip.daddr in 120.20.30.0/24) {
+		drop
+	}
+
+	if (not ip.daddr in 10.20.30.1-10.20.30.40) {
+		drop
+	}
+
+	if (not ip.saddr in russianKGB) {
+		accept
+	}
+}
+
+Filter::UDP udp_filter {
+	if (udp.dport in legal_udp_dports and ip.checksum > 4040) {
+		accept
+	}
+}
+
+SERVER2: 10.0.0.3
+
+Nat::TCP rdp_forwards_to_server2 {
+	if (tcp.dport == 3389) {
+		dnat(SERVER2)
+	}
+
+	if (tcp.dport == 8933) {
+		dnat(SERVER2, 3389)
+	}
+
+	if (tcp.sport == 33) {
+		snat(10.0.0.42, 80)
+	}
+}
+
+Iface eth3 {
+	index: 2,
+	address: 10.0.0.102,
+	netmask: 255.255.255.0,
+	gateway: 10.0.0.1
+}
+
+Iface eth4 {
+	index: 3,
+	gateway: 10.0.0.1,
+	netmask: 255.255.255.0,
+	address: 10.0.0.203
+}
+
+eth3.masquerade: true
