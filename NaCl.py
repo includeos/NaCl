@@ -16,7 +16,7 @@ LANGUAGE = CPP # CPP is defined in shared_constants.py, imported in cpp_template
 
 # Pystache keys
 TEMPLATE_KEY_IFACES 			= "ifaces"
-TEMPLATE_KEY_VLANS 				= "vlans"
+TEMPLATE_KEY_IFACES_WITH_VLANS	= "ifaces_with_vlans"
 TEMPLATE_KEY_FILTERS 			= "filters"
 TEMPLATE_KEY_NATS 				= "nats"
 TEMPLATE_KEY_REWRITES 			= "rewrites"
@@ -29,11 +29,12 @@ TEMPLATE_KEY_MASQUERADES 		= "masquerades"
 TEMPLATE_KEY_HAS_GATEWAYS 		= "has_gateways"
 TEMPLATE_KEY_HAS_NATS 			= "has_nats"
 TEMPLATE_KEY_HAS_MASQUERADES 	= "has_masquerades"
+TEMPLATE_KEY_HAS_VLANS 			= "has_vlans"
 
 # Data to be sent to pystache renderer
 # Each list are to contain objects consisting of key value pairs
 ifaces 				= []
-vlans 				= []
+ifaces_with_vlans 	= []
 filters 			= []
 rewrites 			= []
 nats 				= []
@@ -56,13 +57,14 @@ TEMPLATE_KEY_CONFIG_IS_DHCP 			= "config_is_dhcp"
 TEMPLATE_KEY_CONFIG_IS_DHCP_FALLBACK 	= "config_is_dhcp_fallback"
 TEMPLATE_KEY_CONFIG_IS_STATIC 			= "config_is_static"
 TEMPLATE_KEY_INDEX 			= "index"
-TEMPLATE_KEY_VLAN 			= "vlan"
 TEMPLATE_KEY_ADDRESS 		= "address"
 TEMPLATE_KEY_NETMASK 		= "netmask"
 TEMPLATE_KEY_GATEWAY 		= "gateway"
 TEMPLATE_KEY_DNS 			= "dns"
 TEMPLATE_KEY_ROUTES 		= "routes"
 TEMPLATE_KEY_CONTENT		= "content"
+TEMPLATE_KEY_IFACE_INDEX 	= "iface_index"
+TEMPLATE_KEY_VLANS 			= "vlans"
 
 def transpile_function(language, type_t, subtype, ctx):
 	if language == CPP:
@@ -247,23 +249,26 @@ class Iface(Typed):
 			# Then process
 			
 			pushes_to_add = {}
-			value = self.ctx.value()
 
+			# ---------- Handle the Iface's value ctx object: Fill self.members dictionary ----------
+
+			value = self.ctx.value()
 			if value.obj() is not None:
 				for pair in value.obj().key_value_list().key_value_pair():
 					orig_key 	= pair.key().getText()
 					key 		= orig_key.lower()
 					pair_value 	= pair.value()
 
-					if self.members.get(key) is not None:
-						sys.exit("Error (" + self.name + "): Member " + key + " has already been set")
-
 					if key not in predefined_iface_keys:
 						sys.exit("Error (" + self.name + "): Invalid member (" + orig_key + ") inside Iface object")
 
+					if self.members.get(key) is not None:
+						sys.exit("Error (" + self.name + "): Member " + key + " has already been set")
+
 					if key in chains:
-						functions = []
+						# Handle pushes
 						
+						functions = []
 						if pair_value.list_t() is not None:
 							# More than one function pushed onto chain
 							for list_value in pair_value.list_t().value_list().value():
@@ -294,8 +299,9 @@ class Iface(Typed):
 				sys.exit("Error (" + self.name + "): An Iface has to contain key value pairs, or be set to a configuration type (" + \
 					", ".join(predefined_config_types) + ")")
 
-			# Loop through assignments
-			# Find assignments (f.ex. eth0.index: <value>) that refers to this Iface
+			# ---------- Loop through elements that are assignments ----------
+			# Find assignments (f.ex. eth0.index: <value>) related to this Iface
+
 			for i, key in enumerate(elements):
 				if key.startswith(self.name + DOT):
 					# Then we know we have to do with a value_name
@@ -305,34 +311,15 @@ class Iface(Typed):
 					iface_member = orig_iface_member.lower()
 
 					if len(name_parts) != 2:
-						sys.exit("Error (" + element.name + "): Invalid Iface property " + key)
+						sys.exit("Error (" + element.name + "): Invalid Iface member " + key)
 
 					if iface_member not in predefined_iface_keys:
 						sys.exit("Error (" + element.name + "): Invalid member (" + orig_iface_member + ") of Iface object")
 					
 					found_element_value = element.ctx.value()
-
-					# ? eth0.vlan: [ my_vlan, my_other_vlan ]
-
 					if iface_member in chains:
-						# Not allowed to edit already set property
-						# if pushes_to_add.get(iface_member) is None or i > self.idx:
-						# 	functions = []
-
-						# 	if found_element_value.list_t() is not None:
-						# 		# More than one function pushed onto chain
-						# 		for list_value in found_element_value.list_t().value_list().value():
-						# 			if list_value.value_name() is None:
-						# 				sys.exit("Error (" + element.name + "): This is not supported: " + element.ctx.getText())
-						# 			functions.append(list_value.value_name().getText())
-						# 	elif found_element_value.value_name() is not None:
-						# 		# Only one function pushed onto chain
-						# 		functions = [found_element_value.value_name().getText()]
-						# 	else:
-						# 		sys.exit("Error (" + element.name + "): This is not supported: " + element.ctx.getText())
-
-						# 	pushes_to_add[iface_member] = functions
-						# Therefore:
+						# Handle pushes
+						
 						if pushes_to_add.get(iface_member) is None:
 							functions = []
 
@@ -353,10 +340,6 @@ class Iface(Typed):
 							sys.exit("Error (" + element.name + "): Iface chain " + iface_member + " has already been set")
 					else:
 						if iface_member != IFACE_KEY_MASQUERADE:
-							# Not allowed to edit already set property
-							# if self.members.get(iface_member) is None or i > self.idx:
-							# 	self.members[iface_member] = found_element_value
-							# Therefore:
 							if self.members.get(iface_member) is None:
 								self.members[iface_member] = found_element_value
 							else:
@@ -368,6 +351,8 @@ class Iface(Typed):
 							if not self.masquerade or i > self.idx:
 								if masq_val == TRUE:
 									self.masquerade = True
+
+			# ---------- Validate values given, add pushes to pystache pushes list and add vlans to pystache vlans list ----------
 
 			if self.members.get(IFACE_KEY_INDEX) is None:
 				sys.exit("Error (" + self.name + "): An index needs to be specified for all Ifaces")
@@ -384,28 +369,53 @@ class Iface(Typed):
 					"configuration hasn't been set to " + DHCP_CONFIG)
 
 			# Add pushes (pushes of functions onto the Iface's chains):
+			
 			for push_key, functions in pushes_to_add.iteritems():
 				self.add_push(push_key, functions)
+
+			# Masquerade
 
 			if self.masquerade:
 				masquerades.append({TEMPLATE_KEY_IFACE: self.name})
 
-			if self.members.get(IFACE_KEY_VLAN) is not None:
-				print "VLAN specified for Iface", self.name
-				print self.members.get(IFACE_KEY_VLAN)
-				
-				# TODO
-				# vlans.append()
+			# Vlans
 
-				# Resolve value
-				# Could be: a list_t or an obj
-				# And each element in the list_t or obj could be the name of an Iface (if obj, the key is the vlan's id or index),
-				# or an obj again containing Iface key value pairs
-				
-				# Also TODO:
-				# If this is not a top level Iface, but an Iface that is part of another Iface's vlan,
-				# it should not be appended to ifaces list ?
-				# Set a member that says that this is a vlan interface
+			vlans = []
+			if self.members.get(IFACE_KEY_VLAN) is not None:
+				vlan_ctx = self.members.get(IFACE_KEY_VLAN)
+
+				if vlan_ctx.obj() is not None:
+					# Add each Vlan in obj to the vlans list
+					# Each element in the obj needs to be a valid Vlan
+					for pair in vlan_ctx.obj().key_value_list().key_value_pair():
+						# Key: Name of Vlan
+						# Value: Actual Vlan object/value (containing address, netmask, gateway, index)
+						vlan_name = pair.key().getText()
+						vlan_value = pair.value()
+						vlan_element = Vlan(0, vlan_name, vlan_value, BASE_TYPE_TYPED_INIT, TYPE_VLAN)
+
+						vlans.append(vlan_element)
+				elif vlan_ctx.list_t() is not None:
+					# Add each Vlan in list_t to the vlans list
+					# Each element in the list_t needs to be a valid Vlan
+					for i, v in enumerate(vlan_ctx.list_t().value_list().value()):
+						vlan_element = None
+
+						if v.value_name() is not None:
+							vlan_name = v.value_name().getText()
+							vlan_element = elements.get(vlan_name)
+							if vlan_element is None or not hasattr(vlan_element, 'type_t') or vlan_element.type_t.lower() != TYPE_VLAN:
+								sys.exit("Error (" + self.name + "): Undefined Vlan element " + vlan_name)
+						elif v.obj() is not None:
+							vlan_element = Vlan(0, "", v, BASE_TYPE_TYPED_INIT, TYPE_VLAN)
+						else:
+							sys.exit("Error (" + self.name + "): A Vlan list must either contain names of vlans or defined Vlan objects")
+
+						vlans.append(vlan_element)
+				else:
+					sys.exit("Error (" + self.name + "): An Iface's Vlan needs to be a list of Vlans")
+
+			# ---------- Loop through self.members and resolve the values ----------
 
 			# Note: If a member's value is None, the new value will be "" here:
 			for key, member in self.members.iteritems():
@@ -426,6 +436,12 @@ class Iface(Typed):
 			else:
 				self.config_is_static = True
 
+			# ---------- Process and add vlans found
+
+			self.add_iface_vlans(vlans)
+
+			# ---------- Append iface object to pystache ifaces list ----------
+
 			# Create object containing key value pairs with the data we have collected
 			# Append this object to the ifaces list
 			# Is to be sent to pystache renderer in handle_input function
@@ -437,9 +453,6 @@ class Iface(Typed):
 				TEMPLATE_KEY_CONFIG_IS_STATIC: 			self.config_is_static,
 				TEMPLATE_KEY_CONFIG_IS_DHCP: 			self.config_is_dhcp,
 				TEMPLATE_KEY_CONFIG_IS_DHCP_FALLBACK: 	self.config_is_dhcp_fallback,
-
-				# TODO: Add to vlans list
-				# TEMPLATE_KEY_VLAN: 		self.members.get(IFACE_KEY_VLAN),	# not resolved (for now)
 				
 				TEMPLATE_KEY_ADDRESS: 	self.members.get(IFACE_KEY_ADDRESS),
 				TEMPLATE_KEY_NETMASK:	self.members.get(IFACE_KEY_NETMASK),
@@ -472,6 +485,28 @@ class Iface(Typed):
 			TEMPLATE_KEY_FUNCTION_NAMES: 	function_names
 		})
 
+	# Call only once per Iface
+	def add_iface_vlans(self, vlans):		
+		pystache_vlans = []
+		for vlan in vlans:
+			vlan.process() # Make sure the Vlan has been processed
+			gateway = vlan.members.get(VLAN_KEY_GATEWAY)
+			if gateway is None:
+				gateway = self.members.get(IFACE_KEY_GATEWAY)
+			
+			pystache_vlans.append({
+				TEMPLATE_KEY_INDEX: 	vlan.members.get(VLAN_KEY_INDEX),
+				TEMPLATE_KEY_ADDRESS: 	vlan.members.get(VLAN_KEY_ADDRESS),
+				TEMPLATE_KEY_NETMASK: 	vlan.members.get(VLAN_KEY_NETMASK),
+				TEMPLATE_KEY_GATEWAY: 	gateway
+			})
+
+		ifaces_with_vlans.append({
+			TEMPLATE_KEY_IFACE: 		self.name,
+			TEMPLATE_KEY_IFACE_INDEX: 	self.members.get(IFACE_KEY_INDEX),
+			TEMPLATE_KEY_VLANS: 		pystache_vlans
+		})
+
 # < Iface
 
 # -------------------- Vlan --------------------
@@ -490,7 +525,65 @@ class Vlan(Typed):
 		if self.res is None:
 			# Then process
 		
-			# TODO
+			# ---------- Handle the Vlan's value ctx object: Fill self.members dictionary ----------
+
+			# value = self.ctx.value()
+			value = self.ctx.value() if hasattr(self.ctx, 'value') else self.ctx
+
+			if value.obj() is not None:
+				for pair in value.obj().key_value_list().key_value_pair():
+					orig_key 	= pair.key().getText()
+					key 		= orig_key.lower()
+					pair_value 	= pair.value()
+
+					if key not in predefined_vlan_keys:
+						sys.exit("Error (" + self.name + "): Invalid member (" + orig_key + ") inside Vlan object")
+
+					if self.members.get(key) is not None:
+						sys.exit("Error (" + self.name + "): Member " + key + " has already been set")
+
+					self.members[key] = pair_value
+			else:
+				sys.exit("Error (" + self.name + "): A Vlan has to contain key value pairs")
+
+			# ---------- Loop through elements that are assignments ----------
+			# Find assignments (f.ex. vlan0.index: <value>) related to this Vlan
+			
+			for i, key in enumerate(elements):
+				if key.startswith(self.name + DOT):
+					# Then we know we have to do with a value_name
+					element = elements.get(key)
+					name_parts = element.ctx.value_name().getText().split(DOT)					
+					orig_vlan_member = name_parts[1]
+					vlan_member = orig_vlan_member.lower()
+
+					if len(name_parts) != 2:
+						sys.exit("Error (" + element.name + "): Invalid Vlan member " + key)
+
+					if vlan_member not in predefined_vlan_keys:
+						sys.exit("Error (" + element.name + "): Invalid member (" + orig_vlan_member + ") of Vlan object")
+
+					found_element_value = element.ctx.value()
+					if self.members.get(vlan_member) is None:
+						self.members[vlan_member] = found_element_value
+					else:
+						sys.exit("Error (" + self.name + "): Member " + vlan_member + " has already been set")
+
+			# ---------- Validate values given ----------
+
+			if self.members.get(VLAN_KEY_INDEX) is None or self.members.get(VLAN_KEY_ADDRESS) is None or \
+				self.members.get(VLAN_KEY_NETMASK) is None:
+				sys.exit("Error (" + self.name + "): The members index, address and netmask must be set for every Vlan")
+
+			# ---------- Resolve values ----------
+			# Note: If a member's value is None, the new value will be "" here:
+
+			for key, member in self.members.iteritems():
+				self.members[key] = resolve_value(LANGUAGE, self.members.get(key))
+
+				print "Processed", key, ":", self.members.get(key)
+
+			# ----------
 
 			self.res = self.members
 			# Or:
@@ -600,13 +693,6 @@ class Gateway(Typed):
 					if num_name_parts == 2:
 						# Then the user is adding an additional route to this Gateway
 						# F.ex. gateway.r6: <value>
-						# Not allowed to edit already set property:
-						# if self.members.get(gw_member) is None or i > self.idx:
-						# 	# Then add the route if valid
-						# 	if element.ctx.value().obj() is None:
-						# 		sys.exit("Error (" + element.name + "): A Gateway member's value needs to be contain key value pairs")
-						# 	self.members[gw_member] = self.get_pystache_route_obj(element.ctx.value().obj())
-						# Therefore:
 						if self.members.get(gw_member) is None:
 							# Then add the route if valid
 							if element.ctx.value().obj() is None:
@@ -665,7 +751,7 @@ class Gateway(Typed):
 				if iface_name is not None and not any(ip_forward_iface[TEMPLATE_KEY_IFACE] == iface_name for ip_forward_iface in ip_forward_ifaces):
 					ip_forward_ifaces.append({TEMPLATE_KEY_IFACE: iface_name})
 
-					print "IFACE IP FORWARD LIST:", str(ip_forward_ifaces)
+					print "Iface ip forward list:", str(ip_forward_ifaces)
 
 				route[TEMPLATE_KEY_COMMA] = (index < (num_routes - 1))
 				index += 1
@@ -765,7 +851,7 @@ def handle_input():
 
 	data = {
 		TEMPLATE_KEY_IFACES: 			ifaces,
-		TEMPLATE_KEY_VLANS: 			vlans,
+		TEMPLATE_KEY_IFACES_WITH_VLANS: ifaces_with_vlans,
 		TEMPLATE_KEY_FILTERS: 			filters,
 		TEMPLATE_KEY_NATS: 				nats,
 		TEMPLATE_KEY_REWRITES: 			rewrites,
@@ -776,7 +862,8 @@ def handle_input():
 		TEMPLATE_KEY_MASQUERADES: 		masquerades,
 		TEMPLATE_KEY_HAS_GATEWAYS: 		(len(gateways) > 0),
 		TEMPLATE_KEY_HAS_NATS: 			(len(nats) > 0),
-		TEMPLATE_KEY_HAS_MASQUERADES:	(len(masquerades) > 0)
+		TEMPLATE_KEY_HAS_MASQUERADES:	(len(masquerades) > 0),
+		TEMPLATE_KEY_HAS_VLANS: 		(len(ifaces_with_vlans) > 0)
 	}
 
 	if LANGUAGE == CPP:
