@@ -118,7 +118,6 @@ predefined_vlan_keys = [
 	VLAN_KEY_ADDRESS,
 	VLAN_KEY_NETMASK,
 	VLAN_KEY_GATEWAY,
-	VLAN_KEY_DNS,
 	VLAN_KEY_INDEX
 ]
 
@@ -178,7 +177,7 @@ INCLUDEOS_REFERENCE_OP = "&"
 
 # IncludeOS class names
 INCLUDEOS_IP4_ADDR_CLASS = "IP4::addr"
-INCLUDEOS_IP4_CIDR_CLASS = "IP4::cidr"
+INCLUDEOS_IP4_CIDR_CLASS = "ip4::Cidr"
 
 # NaCl verdicts/actions
 ACCEPT 	= 'accept'
