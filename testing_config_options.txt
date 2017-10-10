@@ -28,18 +28,6 @@ Iface eth0 {
 	index: 		4
 }
 
-Vlan my_vlan {
-	address: 10.0.0.45,
-	netmask: 255.255.255.0,
-	index: 3 				// == vlan id
-}
-
-Vlan my_other_vlan {
-	address: 10.0.0.50,
-	netmask: 255.255.255.0,
-	index: 4				// == id (vlan id)
-}
-
 whitelist: [
 	10.0.0.1,	# my gateway
 	10.0.0.2,
