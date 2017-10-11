@@ -435,8 +435,9 @@ class Iface(Typed):
 		else:
 			self.config_is_static = True
 
-		# Process and add vlans found
-		self.add_iface_vlans(vlans)
+		if len(vlans) > 0:
+			# Process and add vlans found
+			self.add_iface_vlans(vlans)
 
 	def add_push(self, chain, functions):
 		# chain: string with name of chain
