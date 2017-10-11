@@ -163,6 +163,27 @@ class Untyped(Element):
 	def __init__(self, idx, name, ctx, base_type):
 		super(Untyped, self).__init__(idx, name, ctx, base_type)
 
+	def process_assignments(self):
+		# Loop through elements that are assignments
+		# Find assignments (f.ex. my_map.e1: <value>) that refers to this Untyped element
+		
+		for i, key in enumerate(elements):
+			if key.startswith(self.name + DOT):
+				# Then we know we have to do with a value_name
+				element = elements.get(key)
+				assignment_name_parts = key.split(DOT)
+				# Remove first part (the name of this element)
+				assignment_name_parts.pop(0)
+
+				# Check if this key has already been set in this Untyped element
+				# In that case: Error: Value already set
+				if self.get_dictionary_val(self.members, list(assignment_name_parts)) is not None:
+					sys.exit("Error (" + self.name + "): Member " + element.name + " has already been set")
+				else:
+					# Add to members dictionary
+					self.add_dictionary_val(self.members, assignment_name_parts, element.ctx.value())
+
+	# Main processing method
 	def process(self):
 		if self.res is None:
 			name_parts = self.name.split(DOT)
@@ -182,24 +203,7 @@ class Untyped(Element):
 					# values:
 					
 					self.process_obj(self.members, self.ctx.value().obj())
-
-					# Loop through assignments
-					# Find assignments (f.ex. my_map.e1: <value>) that refers to this Untyped element
-					for i, key in enumerate(elements):
-						if key.startswith(self.name + DOT):
-							# Then we know we have to do with a value_name
-							element = elements.get(key)
-							assignment_name_parts = key.split(DOT)
-							# Remove first part (the name of this element)
-							assignment_name_parts.pop(0)
-
-							# Check if this key has already been set in this Untyped element
-							# In that case: Error: Value already set
-							if self.get_dictionary_val(self.members, list(assignment_name_parts)) is not None:
-								sys.exit("Error (" + self.name + "): Member " + element.name + " has already been set")
-							else:
-								# Add to members dictionary
-								self.add_dictionary_val(self.members, assignment_name_parts, element.ctx.value())
+					self.process_assignments();
 
 					print self.name, ": Members after checking assignments related to this element:", str(self.members)
 
@@ -244,233 +248,200 @@ class Iface(Typed):
 		# output
 		# postrouting
 
-	def process(self):
-		if self.res is None:
-			# Then process
-			
-			pushes_to_add = {}
+	def process_push(self, chain, pair_ctx):
+		value_ctx = pair_ctx.value()
 
-			# ---------- Handle the Iface's value ctx object: Fill self.members dictionary ----------
+		functions = []
+		if value_ctx.list_t() is not None:
+			# More than one function pushed onto chain
+			for list_value in value_ctx.list_t().value_list().value():
+				if list_value.value_name() is None:
+					sys.exit("Error (" + self.name + "): This is not supported: " + pair_ctx.getText())
+				functions.append(list_value.value_name().getText())
+		elif value_ctx.value_name() is not None:
+			# Only one function pushed onto chain
+			functions = [value_ctx.value_name().getText()]
+		else:
+			sys.exit("Error (" + self.name + "): This is not supported: " + pair_ctx.getText())
+		
+		self.add_push(chain, functions)
 
-			value = self.ctx.value()
-			if value.obj() is not None:
-				for pair in value.obj().key_value_list().key_value_pair():
-					orig_key 	= pair.key().getText()
-					key 		= orig_key.lower()
-					pair_value 	= pair.value()
+	def process_ctx(self):
+		# Handle the Iface's value ctx object: Fill self.members dictionary
 
-					if key not in predefined_iface_keys:
-						sys.exit("Error (" + self.name + "): Invalid member (" + orig_key + ") inside Iface object")
+		value = self.ctx.value()
+		if value.obj() is not None:
+			for pair in value.obj().key_value_list().key_value_pair():
+				orig_key 	= pair.key().getText()
+				key 		= orig_key.lower()
+				pair_value 	= pair.value()
 
-					if self.members.get(key) is not None:
-						sys.exit("Error (" + self.name + "): Member " + key + " has already been set")
+				if key not in predefined_iface_keys:
+					sys.exit("Error (" + self.name + "): Invalid member (" + orig_key + ") inside Iface object")
 
-					if key in chains:
-						# Handle pushes
-						
-						functions = []
-						if pair_value.list_t() is not None:
-							# More than one function pushed onto chain
-							for list_value in pair_value.list_t().value_list().value():
-								if list_value.value_name() is None:
-									sys.exit("Error (" + self.name + "): This is not supported: " + pair.getText())
-								functions.append(list_value.value_name().getText())
-						elif pair_value.value_name() is not None:
-							# Only one function pushed onto chain
-							functions = [pair_value.value_name().getText()]
-						else:
-							sys.exit("Error (" + self.name + "): This is not supported: " + pair.getText())
+				if self.members.get(key) is not None:
+					sys.exit("Error (" + self.name + "): Member " + key + " has already been set")
 
-						pushes_to_add[key] = functions
-					else:
-						if key != IFACE_KEY_MASQUERADE:
-							self.members[key] = pair_value
-						else:
-							if resolve_value(LANGUAGE, pair_value) == TRUE:
-								self.masquerade = True
-			elif value.value_name() is not None:
-				# configuration type (dhcp, dhcp-with-fallback, static)
-				config = value.value_name().getText().lower()
-				if config in predefined_config_types:
-					self.members[IFACE_KEY_CONFIG] = value
+				if key in chains:
+					self.process_push(key, pair);
 				else:
-					sys.exit("Error (" + self.name + "): Invalid Iface value " + value.value_name().getText())
+					if key != IFACE_KEY_MASQUERADE:
+						self.members[key] = pair_value
+					else:
+						if resolve_value(LANGUAGE, pair_value) == TRUE:
+							self.masquerade = True
+		elif value.value_name() is not None:
+			# configuration type (dhcp, dhcp-with-fallback, static)
+			config = value.value_name().getText().lower()
+			if config in predefined_config_types:
+				self.members[IFACE_KEY_CONFIG] = value
 			else:
-				sys.exit("Error (" + self.name + "): An Iface has to contain key value pairs, or be set to a configuration type (" + \
-					", ".join(predefined_config_types) + ")")
+				sys.exit("Error (" + self.name + "): Invalid Iface value " + value.value_name().getText())
+		else:
+			sys.exit("Error (" + self.name + "): An Iface has to contain key value pairs, or be set to a configuration type (" + \
+				", ".join(predefined_config_types) + ")")
 
-			# ---------- Loop through elements that are assignments ----------
-			# Find assignments (f.ex. eth0.index: <value>) related to this Iface
+	def process_assignments(self):
+		# Loop through elements that are assignments
+		# Find assignments (f.ex. eth0.index: <value>) related to this Iface
 
-			for i, key in enumerate(elements):
-				if key.startswith(self.name + DOT):
-					# Then we know we have to do with a value_name
-					element = elements.get(key)
-					name_parts = element.ctx.value_name().getText().split(DOT)					
-					orig_iface_member = name_parts[1]
-					iface_member = orig_iface_member.lower()
+		for i, key in enumerate(elements):
+			if key.startswith(self.name + DOT):
+				# Then we know we have to do with a value_name
+				element = elements.get(key)
+				name_parts = element.ctx.value_name().getText().split(DOT)					
+				orig_iface_member = name_parts[1]
+				iface_member = orig_iface_member.lower()
 
-					if len(name_parts) != 2:
-						sys.exit("Error (" + element.name + "): Invalid Iface member " + key)
+				if len(name_parts) != 2:
+					sys.exit("Error (" + element.name + "): Invalid Iface member " + key)
 
-					if iface_member not in predefined_iface_keys:
-						sys.exit("Error (" + element.name + "): Invalid member (" + orig_iface_member + ") of Iface object")
+				if iface_member not in predefined_iface_keys:
+					sys.exit("Error (" + element.name + "): Invalid member (" + orig_iface_member + ") of Iface object")
+				
+				if self.members.get(iface_member) is not None:
+					sys.exit("Error (" + self.name + "): Member " + iface_member + " has already been set")
+
+				found_element_value = element.ctx.value()
+				if iface_member in chains:
+					# Handle pushes
 					
-					found_element_value = element.ctx.value()
-					if iface_member in chains:
-						# Handle pushes
-						
-						if pushes_to_add.get(iface_member) is None:
-							functions = []
-
-							if found_element_value.list_t() is not None:
-								# More than one function pushed onto chain
-								for list_value in found_element_value.list_t().value_list().value():
-									if list_value.value_name() is None:
-										sys.exit("Error (" + element.name + "): This is not supported: " + element.ctx.getText())
-									functions.append(list_value.value_name().getText())
-							elif found_element_value.value_name() is not None:
-								# Only one function pushed onto chain
-								functions = [found_element_value.value_name().getText()]
-							else:
+					# if pushes_to_add.get(iface_member) is None:
+					functions = []
+					if found_element_value.list_t() is not None:
+						# More than one function pushed onto chain
+						for list_value in found_element_value.list_t().value_list().value():
+							if list_value.value_name() is None:
 								sys.exit("Error (" + element.name + "): This is not supported: " + element.ctx.getText())
-
-							pushes_to_add[iface_member] = functions
-						else:
-							sys.exit("Error (" + element.name + "): Iface chain " + iface_member + " has already been set")
+							functions.append(list_value.value_name().getText())
+					elif found_element_value.value_name() is not None:
+						# Only one function pushed onto chain
+						functions = [found_element_value.value_name().getText()]
 					else:
-						if iface_member != IFACE_KEY_MASQUERADE:
-							if self.members.get(iface_member) is None:
-								self.members[iface_member] = found_element_value
-							else:
-								sys.exit("Error (" + element.name + "): Iface member " + iface_member + " has already been set")
-						else:
-							masq_val = resolve_value(LANGUAGE, found_element_value)
-							# TODO:
-							# Make impossible to edit masquerade property/member as well? (sys.exit)
-							if not self.masquerade or i > self.idx:
-								if masq_val == TRUE:
-									self.masquerade = True
+						sys.exit("Error (" + element.name + "): This is not supported: " + element.ctx.getText())
 
-			# ---------- Validate values given, add pushes to pystache pushes list and add vlans to pystache vlans list ----------
-
-			if self.members.get(IFACE_KEY_INDEX) is None:
-				sys.exit("Error (" + self.name + "): An index needs to be specified for all Ifaces")
-
-			config = self.members.get(IFACE_KEY_CONFIG)
-			if config is not None and (config.value_name() is None or config.value_name().getText().lower() not in predefined_config_types):
-				sys.exit("Error (" + self.name + "): Invalid config value " + config.getText())
-
-			if (config is None or config.value_name().getText().lower() != DHCP_CONFIG) and \
-				(self.members.get(IFACE_KEY_ADDRESS) is None or \
-					self.members.get(IFACE_KEY_NETMASK) is None or \
-					self.members.get(IFACE_KEY_GATEWAY) is None):
-				sys.exit("Error (" + self.name + "): The members address, netmask and gateway must be set for every Iface if the Iface " + \
-					"configuration hasn't been set to " + DHCP_CONFIG)
-
-			# Add pushes (pushes of functions onto the Iface's chains):
-			
-			for push_key, functions in pushes_to_add.iteritems():
-				self.add_push(push_key, functions)
-
-			# Masquerade
-
-			if self.masquerade:
-				masquerades.append({TEMPLATE_KEY_IFACE: self.name})
-
-			# Vlans
-
-			vlans = []
-			if self.members.get(IFACE_KEY_VLAN) is not None:
-				vlan_ctx = self.members.get(IFACE_KEY_VLAN)
-
-				if vlan_ctx.obj() is not None:
-					# Add each Vlan in obj to the vlans list
-					# Each element in the obj needs to be a valid Vlan
-					for pair in vlan_ctx.obj().key_value_list().key_value_pair():
-						# Key: Name of Vlan
-						# Value: Actual Vlan object/value (containing address, netmask, gateway, index)
-						vlan_name = pair.key().getText()
-						vlan_value = pair.value()
-						vlan_element = Vlan(0, vlan_name, vlan_value, BASE_TYPE_TYPED_INIT, TYPE_VLAN)
-
-						vlans.append(vlan_element)
-				elif vlan_ctx.list_t() is not None:
-					# Add each Vlan in list_t to the vlans list
-					# Each element in the list_t needs to be a valid Vlan
-					for i, v in enumerate(vlan_ctx.list_t().value_list().value()):
-						vlan_element = None
-
-						if v.value_name() is not None:
-							vlan_name = v.value_name().getText()
-							vlan_element = elements.get(vlan_name)
-							if vlan_element is None or not hasattr(vlan_element, 'type_t') or vlan_element.type_t.lower() != TYPE_VLAN:
-								sys.exit("Error (" + self.name + "): Undefined Vlan element " + vlan_name)
-						elif v.obj() is not None:
-							vlan_element = Vlan(0, "", v, BASE_TYPE_TYPED_INIT, TYPE_VLAN)
-						else:
-							sys.exit("Error (" + self.name + "): A Vlan list must either contain names of vlans or defined Vlan objects")
-
-						vlans.append(vlan_element)
+					self.add_push(iface_member, functions)
+					# pushes_to_add[iface_member] = functions
+					# else:
+					#	sys.exit("Error (" + element.name + "): Iface chain " + iface_member + " has already been set")
 				else:
-					sys.exit("Error (" + self.name + "): An Iface's Vlan needs to be a list of Vlans")
-
-			# ---------- Loop through self.members and resolve the values ----------
-
-			# Note: If a member's value is None, the new value will be "" here:
-			for key, member in self.members.iteritems():
-				if key != IFACE_KEY_CONFIG:
-					if key != IFACE_KEY_INDEX:
-						self.members[key] = resolve_value(LANGUAGE, self.members.get(key))							
+					if iface_member != IFACE_KEY_MASQUERADE:
+						if self.members.get(iface_member) is None:
+							self.members[iface_member] = found_element_value
+						else:
+							sys.exit("Error (" + element.name + "): Iface member " + iface_member + " has already been set")
 					else:
-						index = self.members.get(IFACE_KEY_INDEX)
-						self.members[IFACE_KEY_INDEX] = resolve_value(LANGUAGE, index)
-				else:
-					self.members[IFACE_KEY_CONFIG] = "" if self.members.get(IFACE_KEY_CONFIG) is None else self.members.get(IFACE_KEY_CONFIG).value_name().getText().lower()
+						masq_val = resolve_value(LANGUAGE, found_element_value)
+						# TODO:
+						# Make impossible to edit masquerade property/member as well? (sys.exit)
+						if not self.masquerade or i > self.idx:
+							if masq_val == TRUE:
+								self.masquerade = True
 
-			config = self.members.get(IFACE_KEY_CONFIG)
-			if config == DHCP_CONFIG:
-				self.config_is_dhcp = True
-			elif config == DHCP_FALLBACK_CONFIG:
-				self.config_is_dhcp_fallback = True
+	def validate_members(self):
+		if self.members.get(IFACE_KEY_INDEX) is None:
+			sys.exit("Error (" + self.name + "): An index needs to be specified for all Ifaces")
+
+		config = self.members.get(IFACE_KEY_CONFIG)
+		if config is not None and (config.value_name() is None or config.value_name().getText().lower() not in predefined_config_types):
+			sys.exit("Error (" + self.name + "): Invalid config value " + config.getText())
+
+		if (config is None or config.value_name().getText().lower() != DHCP_CONFIG) and \
+			(self.members.get(IFACE_KEY_ADDRESS) is None or \
+				self.members.get(IFACE_KEY_NETMASK) is None or \
+				self.members.get(IFACE_KEY_GATEWAY) is None):
+			sys.exit("Error (" + self.name + "): The members address, netmask and gateway must be set for every Iface if the Iface " + \
+				"configuration hasn't been set to " + DHCP_CONFIG)
+
+	def process_members(self):
+		# Masquerade
+		if self.masquerade:
+			masquerades.append({TEMPLATE_KEY_IFACE: self.name})
+
+		# Vlans
+		vlans = []
+		if self.members.get(IFACE_KEY_VLAN) is not None:
+			vlan_ctx = self.members.get(IFACE_KEY_VLAN)
+
+			if vlan_ctx.obj() is not None:
+				# Add each Vlan in obj to the vlans list
+				# Each element in the obj needs to be a valid Vlan
+				for pair in vlan_ctx.obj().key_value_list().key_value_pair():
+					# Key: Name of Vlan
+					# Value: Actual Vlan object/value (containing address, netmask, gateway, index)
+					vlan_name = pair.key().getText()
+					vlan_value = pair.value()
+					vlan_element = Vlan(0, vlan_name, vlan_value, BASE_TYPE_TYPED_INIT, TYPE_VLAN)
+
+					vlans.append(vlan_element)
+			elif vlan_ctx.list_t() is not None:
+				# Add each Vlan in list_t to the vlans list
+				# Each element in the list_t needs to be a valid Vlan
+				for i, v in enumerate(vlan_ctx.list_t().value_list().value()):
+					vlan_element = None
+
+					if v.value_name() is not None:
+						vlan_name = v.value_name().getText()
+						vlan_element = elements.get(vlan_name)
+						if vlan_element is None or not hasattr(vlan_element, 'type_t') or vlan_element.type_t.lower() != TYPE_VLAN:
+							sys.exit("Error (" + self.name + "): Undefined Vlan element " + vlan_name)
+					elif v.obj() is not None:
+						vlan_element = Vlan(0, "", v, BASE_TYPE_TYPED_INIT, TYPE_VLAN)
+					else:
+						sys.exit("Error (" + self.name + "): A Vlan list must either contain names of vlans or defined Vlan objects")
+
+					vlans.append(vlan_element)
 			else:
-				self.config_is_static = True
+				sys.exit("Error (" + self.name + "): An Iface's Vlan needs to be a list of Vlans")
 
-			# ---------- Process and add vlans found
+		# Loop through self.members and resolve the values
+		# Note: If a member's value is None, the new value will be "" here:
+		for key, member in self.members.iteritems():
+			if key != IFACE_KEY_CONFIG:
+				if key != IFACE_KEY_INDEX:
+					self.members[key] = resolve_value(LANGUAGE, self.members.get(key))							
+				else:
+					index = self.members.get(IFACE_KEY_INDEX)
+					self.members[IFACE_KEY_INDEX] = resolve_value(LANGUAGE, index)
+			else:
+				self.members[IFACE_KEY_CONFIG] = "" if self.members.get(IFACE_KEY_CONFIG) is None else self.members.get(IFACE_KEY_CONFIG).value_name().getText().lower()
 
-			self.add_iface_vlans(vlans)
+		# Update config members
+		config = self.members.get(IFACE_KEY_CONFIG)
+		if config == DHCP_CONFIG:
+			self.config_is_dhcp = True
+		elif config == DHCP_FALLBACK_CONFIG:
+			self.config_is_dhcp_fallback = True
+		else:
+			self.config_is_static = True
 
-			# ---------- Append iface object to pystache ifaces list ----------
+		# Process and add vlans found
+		self.add_iface_vlans(vlans)
 
-			# Create object containing key value pairs with the data we have collected
-			# Append this object to the ifaces list
-			# Is to be sent to pystache renderer in handle_input function
-			ifaces.append({
-				TEMPLATE_KEY_NAME: 		self.name,
-				TEMPLATE_KEY_TITLE: 	self.name.title(),
-				TEMPLATE_KEY_INDEX: 	self.members.get(IFACE_KEY_INDEX),
-				
-				TEMPLATE_KEY_CONFIG_IS_STATIC: 			self.config_is_static,
-				TEMPLATE_KEY_CONFIG_IS_DHCP: 			self.config_is_dhcp,
-				TEMPLATE_KEY_CONFIG_IS_DHCP_FALLBACK: 	self.config_is_dhcp_fallback,
-				
-				TEMPLATE_KEY_ADDRESS: 	self.members.get(IFACE_KEY_ADDRESS),
-				TEMPLATE_KEY_NETMASK:	self.members.get(IFACE_KEY_NETMASK),
-				TEMPLATE_KEY_GATEWAY: 	self.members.get(IFACE_KEY_GATEWAY),
-				TEMPLATE_KEY_DNS: 		self.members.get(IFACE_KEY_DNS)
-			})
-
-			print "Processed iface with name " + self.name
-
-			self.res = self.members
-			# Or:
-			# self.res = resolve_value(LANGUAGE, ...)
-
-		return self.res
-
-	# chain: string with name of chain
-	# functions: list containing strings, where each string corresponds to the name of a NaCl function
 	def add_push(self, chain, functions):
+		# chain: string with name of chain
+		# functions: list containing strings, where each string corresponds to the name of a NaCl function
+		
 		function_names = []
 		num_functions = len(functions)
 		for i, function in enumerate(functions):
@@ -485,8 +456,9 @@ class Iface(Typed):
 			TEMPLATE_KEY_FUNCTION_NAMES: 	function_names
 		})
 
-	# Call only once per Iface
-	def add_iface_vlans(self, vlans):		
+	def add_iface_vlans(self, vlans):
+		# Called once per Iface
+
 		pystache_vlans = []
 		for vlan in vlans:
 			vlan.process() # Make sure the Vlan has been processed
@@ -507,6 +479,46 @@ class Iface(Typed):
 			TEMPLATE_KEY_VLANS: 		pystache_vlans
 		})
 
+	def add_iface(self):
+		# Append iface object to pystache ifaces list
+
+		# Create object containing key value pairs with the data we have collected
+		# Append this object to the ifaces list
+		# Is to be sent to pystache renderer in handle_input function
+		ifaces.append({
+			TEMPLATE_KEY_NAME: 		self.name,
+			TEMPLATE_KEY_TITLE: 	self.name.title(),
+			TEMPLATE_KEY_INDEX: 	self.members.get(IFACE_KEY_INDEX),
+			
+			TEMPLATE_KEY_CONFIG_IS_STATIC: 			self.config_is_static,
+			TEMPLATE_KEY_CONFIG_IS_DHCP: 			self.config_is_dhcp,
+			TEMPLATE_KEY_CONFIG_IS_DHCP_FALLBACK: 	self.config_is_dhcp_fallback,
+			
+			TEMPLATE_KEY_ADDRESS: 	self.members.get(IFACE_KEY_ADDRESS),
+			TEMPLATE_KEY_NETMASK:	self.members.get(IFACE_KEY_NETMASK),
+			TEMPLATE_KEY_GATEWAY: 	self.members.get(IFACE_KEY_GATEWAY),
+			TEMPLATE_KEY_DNS: 		self.members.get(IFACE_KEY_DNS)
+		})
+
+	# Main processing method
+	def process(self):
+		if self.res is None:
+			# Then process
+
+			self.process_ctx()
+			self.process_assignments()
+			self.validate_members()
+			self.process_members()
+			self.add_iface()
+
+			print "Processed iface with name " + self.name
+
+			self.res = self.members
+			# Or:
+			# self.res = resolve_value(LANGUAGE, ...)
+
+		return self.res
+
 # < Iface
 
 # -------------------- Vlan --------------------
@@ -521,69 +533,72 @@ class Vlan(Typed):
 		# gateway
 		# index
 
+	def process_ctx(self):
+		# Handle the Vlan's value ctx object: Fill self.members dictionary
+
+		# value = self.ctx.value()
+		value = self.ctx.value() if hasattr(self.ctx, 'value') else self.ctx
+
+		if value.obj() is not None:
+			for pair in value.obj().key_value_list().key_value_pair():
+				orig_key 	= pair.key().getText()
+				key 		= orig_key.lower()
+				pair_value 	= pair.value()
+
+				if key not in predefined_vlan_keys:
+					sys.exit("Error (" + self.name + "): Invalid member (" + orig_key + ") inside Vlan object")
+
+				if self.members.get(key) is not None:
+					sys.exit("Error (" + self.name + "): Member " + key + " has already been set")
+
+				self.members[key] = pair_value
+		else:
+			sys.exit("Error (" + self.name + "): A Vlan has to contain key value pairs")
+
+	def process_assignments(self):
+		# Loop through elements that are assignments
+		# Find assignments (f.ex. vlan0.index: <value>) related to this Vlan
+		
+		for i, key in enumerate(elements):
+			if key.startswith(self.name + DOT):
+				# Then we know we have to do with a value_name
+				element = elements.get(key)
+				name_parts = element.ctx.value_name().getText().split(DOT)					
+				orig_vlan_member = name_parts[1]
+				vlan_member = orig_vlan_member.lower()
+
+				if len(name_parts) != 2:
+					sys.exit("Error (" + element.name + "): Invalid Vlan member " + key)
+
+				if vlan_member not in predefined_vlan_keys:
+					sys.exit("Error (" + element.name + "): Invalid member (" + orig_vlan_member + ") of Vlan object")
+
+				found_element_value = element.ctx.value()
+				if self.members.get(vlan_member) is None:
+					self.members[vlan_member] = found_element_value
+				else:
+					sys.exit("Error (" + self.name + "): Member " + vlan_member + " has already been set")
+
+	def validate_members(self):
+		if self.members.get(VLAN_KEY_INDEX) is None or self.members.get(VLAN_KEY_ADDRESS) is None or \
+			self.members.get(VLAN_KEY_NETMASK) is None:
+			sys.exit("Error (" + self.name + "): The members index, address and netmask must be set for every Vlan")
+
+	def process_members(self):
+		# Transpile values
+		# Note: If a member's value is None, the new value will be "" here:
+		for key, member in self.members.iteritems():
+			self.members[key] = resolve_value(LANGUAGE, self.members.get(key))
+
+	# Main processing method
 	def process(self):
 		if self.res is None:
 			# Then process
 		
-			# ---------- Handle the Vlan's value ctx object: Fill self.members dictionary ----------
-
-			# value = self.ctx.value()
-			value = self.ctx.value() if hasattr(self.ctx, 'value') else self.ctx
-
-			if value.obj() is not None:
-				for pair in value.obj().key_value_list().key_value_pair():
-					orig_key 	= pair.key().getText()
-					key 		= orig_key.lower()
-					pair_value 	= pair.value()
-
-					if key not in predefined_vlan_keys:
-						sys.exit("Error (" + self.name + "): Invalid member (" + orig_key + ") inside Vlan object")
-
-					if self.members.get(key) is not None:
-						sys.exit("Error (" + self.name + "): Member " + key + " has already been set")
-
-					self.members[key] = pair_value
-			else:
-				sys.exit("Error (" + self.name + "): A Vlan has to contain key value pairs")
-
-			# ---------- Loop through elements that are assignments ----------
-			# Find assignments (f.ex. vlan0.index: <value>) related to this Vlan
-			
-			for i, key in enumerate(elements):
-				if key.startswith(self.name + DOT):
-					# Then we know we have to do with a value_name
-					element = elements.get(key)
-					name_parts = element.ctx.value_name().getText().split(DOT)					
-					orig_vlan_member = name_parts[1]
-					vlan_member = orig_vlan_member.lower()
-
-					if len(name_parts) != 2:
-						sys.exit("Error (" + element.name + "): Invalid Vlan member " + key)
-
-					if vlan_member not in predefined_vlan_keys:
-						sys.exit("Error (" + element.name + "): Invalid member (" + orig_vlan_member + ") of Vlan object")
-
-					found_element_value = element.ctx.value()
-					if self.members.get(vlan_member) is None:
-						self.members[vlan_member] = found_element_value
-					else:
-						sys.exit("Error (" + self.name + "): Member " + vlan_member + " has already been set")
-
-			# ---------- Validate values given ----------
-
-			if self.members.get(VLAN_KEY_INDEX) is None or self.members.get(VLAN_KEY_ADDRESS) is None or \
-				self.members.get(VLAN_KEY_NETMASK) is None:
-				sys.exit("Error (" + self.name + "): The members index, address and netmask must be set for every Vlan")
-
-			# ---------- Resolve values ----------
-			# Note: If a member's value is None, the new value will be "" here:
-
-			for key, member in self.members.iteritems():
-				self.members[key] = resolve_value(LANGUAGE, self.members.get(key))
-
-				print "Processed", key, ":", self.members.get(key)
-
-			# ----------
+			self.process_ctx()
+			self.process_assignments()
+			self.validate_members()
+			self.process_members()
 
 			self.res = self.members
 			# Or:
@@ -637,144 +652,156 @@ class Gateway(Typed):
 
 		return route_obj
 
+	def process_ctx(self):
+		value = self.ctx.value()
+
+		if value.obj() is not None:
+			for route_pair in value.obj().key_value_list().key_value_pair():
+				name = route_pair.key().getText()
+				if self.members.get(name) is not None:
+					sys.exit("Error (" + self.name + "): Member " + name + " has already been set")
+
+				if route_pair.value().obj() is None:
+					sys.exit("Error (" + self.name + "): A Gateway's routes must constitute an object (" + \
+						"containing key value pairs)")
+				key = route_pair.key().getText()
+
+				if route_pair.value().obj() is None:
+					sys.exit("Error (" + self.name + "): A Gateway's route must contain key value pairs. " + \
+						"Invalid route value: " + route_pair.value().getText())
+				
+				# Add pystache route obj to members dictionary
+				self.members[key] = self.get_pystache_route_obj(key, route_pair.value().obj())
+		elif value.list_t() is not None:
+			for i, val in enumerate(value.list_t().value_list().value()):
+				if val.obj() is None:
+					sys.exit("Error (" + self.name + "): A Gateway that constitutes a list must be a list of " + \
+						"objects (containing key value pairs). Invalid value: " + val.getText())
+				
+				# Add pystache route obj to members dictionary
+				# When unnamed routes, use index as key
+				self.members[i] = self.get_pystache_route_obj(str(i), val.obj())
+		else:
+			sys.exit("Error (" + self.name + "): A Gateway must contain key value pairs (in which " + \
+				"each pair's value is an object), or it must contain a list of objects")
+
+	def process_assignments(self):
+		# Loop through elements that are assignments
+		# Find assignments (f.ex. gateway.r2.nexthop: <value>) that refers to this Gateway
+		
+		for i, key in enumerate(elements):
+			if key.startswith(self.name + DOT):
+				# Then we know we have to do with a value_name
+				element = elements.get(key)
+				name_parts = element.ctx.value_name().getText().split(DOT)					
+				gw_member = name_parts[1]
+				num_name_parts = len(name_parts)
+
+				if num_name_parts > 3:
+					sys.exit("Error (" + self.name + "): Invalid Gateway member " + key)
+
+				if self.members.get(0) is not None:
+					sys.exit("Error (" + self.name + "): Trying to access a named member in a Gateway without named members (" + key + ")")
+				# Could support later: gateway.0.netmask: 255.255.255.0
+
+				if num_name_parts == 2:
+					# Then the user is adding an additional route to this Gateway
+					# F.ex. gateway.r6: <value>
+					if self.members.get(gw_member) is None:
+						# Then add the route if valid
+						if element.ctx.value().obj() is None:
+							sys.exit("Error (" + element.name + "): A Gateway member's value needs to be contain key value pairs")
+						self.members[gw_member] = self.get_pystache_route_obj(element.ctx.value().obj())
+					else:
+						sys.exit("Error (" + self.name + "): Gateway member " + gw_member + " has already been set")
+				else:
+					# Then num_name_parts are 3 and we're talking about changing (no longer allowed) a route's member
+					# or adding one
+					route = self.members.get(gw_member)
+					if route is None:
+						sys.exit("Error (" + self.name + "): No member named " + gw_member + " in Gateway " + self.name + \
+							" This assignment is invalid: " + element.ctx.getText())
+
+					route_member = name_parts[2].lower()
+					
+					if route.get(route_member) is not None:
+						sys.exit("Error (" + self.name + "): Member " + route_member + " in route " + gw_member + " has already been set")
+
+					if route_member not in predefined_gateway_keys:
+						sys.exit("Error (" + element.ctx.key().getText() + "): " + route_member + " is not a valid Gateway route member. " + \
+							"Valid members are: " + ", ".join(predefined_gateway_keys))
+
+					if route_member != GATEWAY_KEY_IFACE:
+						route[route_member] = resolve_value(LANGUAGE, element.ctx.value())
+					else:
+						# Then the Iface element's name is to be added to the route obj,
+						# not the resolved Iface
+						iface_name = element.ctx.value().getText()
+
+						if element.ctx.value().value_name() is None:
+							sys.exit("Error (" + element.ctx.key().getText() + "): iface property's value (" + \
+								iface_name + ") is invalid")
+
+						iface_element = elements.get(iface_name)
+						if iface_element is None or (hasattr(iface_element, 'type_t') and iface_element.type_t.lower() != TYPE_IFACE):
+							sys.exit("Error (" + element.ctx.key().getText() + "): No Iface with the name " + iface_name + " exists")
+
+						route[route_member] = iface_name
+
+	def process_members(self):
+		routes = []
+		index = 0
+		num_routes = len(self.members)
+		for i, route in self.members.iteritems():
+			if GATEWAY_KEY_NETMASK not in route or \
+				GATEWAY_KEY_IFACE not in route or \
+				(GATEWAY_KEY_NET not in route and GATEWAY_KEY_HOST not in route):
+				sys.exit("Error (" + self.name + "'s route " + str(i) + "): In a Gateway route, these properties are mandatory: " + \
+					", " + GATEWAY_KEY_IFACE + ", " + GATEWAY_KEY_NETMASK + " and either " + GATEWAY_KEY_NET + \
+					" or " + GATEWAY_KEY_HOST)
+
+			# Add iface_name to ip_forward_ifaces pystache list if it is not in the
+			# list already
+			iface_name = route.get(GATEWAY_KEY_IFACE)
+			if iface_name is not None and not any(ip_forward_iface[TEMPLATE_KEY_IFACE] == iface_name for ip_forward_iface in ip_forward_ifaces):
+				ip_forward_ifaces.append({TEMPLATE_KEY_IFACE: iface_name})
+
+				print "Iface ip forward list:", str(ip_forward_ifaces)
+
+			route[TEMPLATE_KEY_COMMA] = (index < (num_routes - 1))
+			index += 1
+
+			routes.append(route)
+			# routes.append({
+			#	'host': ,
+			#	'net': ,
+			#	'netmask': ,
+			#	'nexthop': ,
+			#	'iface': ,
+			#	'cost':
+			# })
+
+		self.add_gateway(routes)
+
+		print "Gateway pystache obj processed. Routes:", str(routes)
+
+	def add_gateway(self, routes):
+		# Create object containing key value pairs with the data we have collected
+		# Append this object to the gateways list
+		# Is to be sent to pystache renderer in handle_input function
+		gateways.append({
+			TEMPLATE_KEY_NAME: self.name,
+			TEMPLATE_KEY_ROUTES: routes
+		})
+
+	# Main processing method
 	def process(self):
 		if self.res is None:
 			# Then process:
 			
-			value = self.ctx.value()
-
-			if value.obj() is not None:
-				for route_pair in value.obj().key_value_list().key_value_pair():
-					name = route_pair.key().getText()
-					if self.members.get(name) is not None:
-						sys.exit("Error (" + self.name + "): Member " + name + " has already been set")
-
-					if route_pair.value().obj() is None:
-						sys.exit("Error (" + self.name + "): A Gateway's routes must constitute an object (" + \
-							"containing key value pairs)")
-					key = route_pair.key().getText()
-
-					if route_pair.value().obj() is None:
-						sys.exit("Error (" + self.name + "): A Gateway's route must contain key value pairs. " + \
-							"Invalid route value: " + route_pair.value().getText())
-					
-					# Add pystache route obj to members dictionary
-					self.members[key] = self.get_pystache_route_obj(key, route_pair.value().obj())
-			elif value.list_t() is not None:
-				for i, val in enumerate(value.list_t().value_list().value()):
-					if val.obj() is None:
-						sys.exit("Error (" + self.name + "): A Gateway that constitutes a list must be a list of " + \
-							"objects (containing key value pairs). Invalid value: " + val.getText())
-					
-					# Add pystache route obj to members dictionary
-					# When unnamed routes, use index as key
-					self.members[i] = self.get_pystache_route_obj(str(i), val.obj())
-			else:
-				sys.exit("Error (" + self.name + "): A Gateway must contain key value pairs (in which " + \
-					"each pair's value is an object), or it must contain a list of objects")
-
-			# Loop through assignments
-			# Find assignments (f.ex. gateway.r2.nexthop: <value>) that refers to this Gateway
-			for i, key in enumerate(elements):
-				if key.startswith(self.name + DOT):
-					# Then we know we have to do with a value_name
-					element = elements.get(key)
-					name_parts = element.ctx.value_name().getText().split(DOT)					
-					gw_member = name_parts[1]
-					num_name_parts = len(name_parts)
-
-					if num_name_parts > 3:
-						sys.exit("Error (" + self.name + "): Invalid Gateway member " + key)
-
-					if self.members.get(0) is not None:
-						sys.exit("Error (" + self.name + "): Trying to access a named member in a Gateway without named members (" + key + ")")
-					# Could support later: gateway.0.netmask: 255.255.255.0
-
-					if num_name_parts == 2:
-						# Then the user is adding an additional route to this Gateway
-						# F.ex. gateway.r6: <value>
-						if self.members.get(gw_member) is None:
-							# Then add the route if valid
-							if element.ctx.value().obj() is None:
-								sys.exit("Error (" + element.name + "): A Gateway member's value needs to be contain key value pairs")
-							self.members[gw_member] = self.get_pystache_route_obj(element.ctx.value().obj())
-						else:
-							sys.exit("Error (" + self.name + "): Gateway member " + gw_member + " has already been set")
-					else:
-						# Then num_name_parts are 3 and we're talking about changing (no longer allowed) a route's member
-						# or adding one
-						route = self.members.get(gw_member)
-						if route is None:
-							sys.exit("Error (" + self.name + "): No member named " + gw_member + " in Gateway " + self.name + \
-								" This assignment is invalid: " + element.ctx.getText())
-
-						route_member = name_parts[2].lower()
-						
-						if route.get(route_member) is not None:
-							sys.exit("Error (" + self.name + "): Member " + route_member + " in route " + gw_member + " has already been set")
-
-						if route_member not in predefined_gateway_keys:
-							sys.exit("Error (" + element.ctx.key().getText() + "): " + route_member + " is not a valid Gateway route member. " + \
-								"Valid members are: " + ", ".join(predefined_gateway_keys))
-
-						if route_member != GATEWAY_KEY_IFACE:
-							route[route_member] = resolve_value(LANGUAGE, element.ctx.value())
-						else:
-							# Then the Iface element's name is to be added to the route obj,
-							# not the resolved Iface
-							iface_name = element.ctx.value().getText()
-
-							if element.ctx.value().value_name() is None:
-								sys.exit("Error (" + element.ctx.key().getText() + "): iface property's value (" + \
-									iface_name + ") is invalid")
-
-							iface_element = elements.get(iface_name)
-							if iface_element is None or (hasattr(iface_element, 'type_t') and iface_element.type_t.lower() != TYPE_IFACE):
-								sys.exit("Error (" + element.ctx.key().getText() + "): No Iface with the name " + iface_name + " exists")
-
-							route[route_member] = iface_name
-
-			routes = []
-			index = 0
-			num_routes = len(self.members)
-			for i, route in self.members.iteritems():
-				if GATEWAY_KEY_NETMASK not in route or \
-					GATEWAY_KEY_IFACE not in route or \
-					(GATEWAY_KEY_NET not in route and GATEWAY_KEY_HOST not in route):
-					sys.exit("Error (" + self.name + "'s route " + str(i) + "): In a Gateway route, these properties are mandatory: " + \
-						", " + GATEWAY_KEY_IFACE + ", " + GATEWAY_KEY_NETMASK + " and either " + GATEWAY_KEY_NET + \
-						" or " + GATEWAY_KEY_HOST)
-
-				# Add iface_name to ip_forward_ifaces pystache list if it is not in the
-				# list already
-				iface_name = route.get(GATEWAY_KEY_IFACE)
-				if iface_name is not None and not any(ip_forward_iface[TEMPLATE_KEY_IFACE] == iface_name for ip_forward_iface in ip_forward_ifaces):
-					ip_forward_ifaces.append({TEMPLATE_KEY_IFACE: iface_name})
-
-					print "Iface ip forward list:", str(ip_forward_ifaces)
-
-				route[TEMPLATE_KEY_COMMA] = (index < (num_routes - 1))
-				index += 1
-
-				routes.append(route)
-				# routes.append({
-				#	'host': ,
-				#	'net': ,
-				#	'netmask': ,
-				#	'nexthop': ,
-				#	'iface': ,
-				#	'cost':
-				# })
-			
-			# Create object containing key value pairs with the data we have collected
-			# Append this object to the gateways list
-			# Is to be sent to pystache renderer in handle_input function
-			gateways.append({
-				TEMPLATE_KEY_NAME: self.name,
-				TEMPLATE_KEY_ROUTES: routes
-			})
-
-			print "Gateway pystache obj processed. Routes:", str(routes)
+			self.process_ctx()
+			self.process_assignments()
+			self.process_members()
 
 			self.res = self.members # Indicating that this element (Gateway) has been processed
 			# Or:
@@ -792,39 +819,40 @@ class Function(Element):
 		self.type_t 	= type_t
 		self.subtype 	= subtype
 
+	def add_function(self):
+		# Only if a function is mentioned in an assignment that is a push or
+		# an Iface's chain, should it be added to filters/nats/rewrites pystache list
+
+		pystache_function_obj = {
+			TEMPLATE_KEY_NAME: 		self.name,
+			TEMPLATE_KEY_TITLE: 	self.name.title(),
+			TEMPLATE_KEY_CONTENT: 	self.res 	# Contains transpiled content
+		}
+
+		for p in pushes:
+			for f in p[TEMPLATE_KEY_FUNCTION_NAMES]:
+		 		if self.name == f[TEMPLATE_KEY_FUNCTION_NAME]:
+		 			# Then we know that this function is called in the C++ code
+		 			# And the function should be added to the correct pystache list
+		 			type_t_lower = self.type_t.lower()
+
+		 			if type_t_lower == TYPE_FILTER:
+		 				filters.append(pystache_function_obj)
+		 			elif type_t_lower == TYPE_NAT:
+		 				nats.append(pystache_function_obj)
+		 			elif type_t_lower == TYPE_REWRITE:
+		 				rewrites.append(pystache_function_obj)
+		 			else:
+		 				sys.exit("Error (" + self.name + "): Function of type " + self.type_t + " is not valid")
+		 			return self.res
+
+	# Main processing method
 	def process(self):
 		if self.res is None:
-			transpiled_content = transpile_function(LANGUAGE, self.type_t, self.subtype, self.ctx)
-
-			pystache_function_obj = {
-				TEMPLATE_KEY_NAME: 		self.name,
-				TEMPLATE_KEY_TITLE: 	self.name.title(),
-				TEMPLATE_KEY_CONTENT: 	transpiled_content
-			}
-
-			# Only if a function is mentioned in an assignment that is a push or
-			# an Iface's chain, should it be added to filters/nats/rewrites pystache list
-
-			self.res = transpiled_content
+			self.res = transpile_function(LANGUAGE, self.type_t, self.subtype, self.ctx)
+			self.add_function()
 
 			print "Processed function with name " + self.name
-
-			for p in pushes:
-				for f in p[TEMPLATE_KEY_FUNCTION_NAMES]:
-			 		if self.name == f[TEMPLATE_KEY_FUNCTION_NAME]:
-			 			# Then we know that this function is called in the C++ code
-			 			# And the function should be added to the correct pystache list
-			 			type_t_lower = self.type_t.lower()
-			 			
-			 			if type_t_lower == TYPE_FILTER:
-			 				filters.append(pystache_function_obj)
-			 			elif type_t_lower == TYPE_NAT:
-			 				nats.append(pystache_function_obj)
-			 			elif type_t_lower == TYPE_REWRITE:
-			 				rewrites.append(pystache_function_obj)
-			 			else:
-			 				sys.exit("Error (" + self.name + "): Function of type " + self.type_t + " is not valid")
-			 			return self.res
 
 		return self.res
 
