@@ -1,4 +1,5 @@
 #include <net/inet4>
+#include <net/ip4/cidr.hpp>
 #include <plugins/nacl.hpp>
 {{#has_nats}}
 #include <net/nat/napt.hpp>
@@ -6,6 +7,9 @@
 {{#has_gateways}}
 #include <net/router.hpp>
 {{/has_gateways}}
+{{#has_vlans}}
+#include <net/vlan>
+{{/has_vlans}}
 
 using namespace net;
 using namespace nacl;
@@ -42,7 +46,6 @@ public:
 };
 
 {{/nats}}
-
 void register_plugin_nacl() {
 	INFO("NaCl", "Registering NaCl plugin");
 
@@ -72,12 +75,16 @@ void register_plugin_nacl() {
 	{{/config_is_dhcp_fallback}}
 	{{/ifaces}}
 
+	{{#ifaces_with_vlans}}	
+	// For each iface:
+	auto& {{iface}}_nic = {{iface}}.nic();
+	auto& {{iface}}_manager = VLAN_manager::get({{iface_index}});
+	
+	// For each vlan connected to this iface:
 	{{#vlans}}
-	auto& nic = {{iface}}.nic();
-	auto& vif = VLAN_manager::get().add(nic, {{index}});
-	auto& vif_stack = Super_stack::inet().create<IP4>(vif, {{iface_index}}, {{index}});
-	vif_stack.network_config({{address}}, {{netmask}}, {{gateway}});
+	Super_stack::inet().create<IP4>({{iface}}_manager.add({{iface}}_nic, {{index}}), {{iface_index}}, {{index}}).network_config({{address}}, {{netmask}}, {{gateway}});
 	{{/vlans}}
+	{{/ifaces_with_vlans}}
 	
 	{{#filters}}
 	{{title}} {{name}};
@@ -91,6 +98,7 @@ void register_plugin_nacl() {
 	{{iface}}.ip_obj().{{chain}}_chain().chain = { {{#function_names}}{{function_name}}{{#comma}}, {{/comma}}{{/function_names}} };
 	{{/pushes}}
 	*/
+
 	{{#pushes}}
 	{{#function_names}}
 	{{iface}}.ip_obj().{{chain}}_chain().chain.push_back({{function_name}});
