@@ -118,7 +118,7 @@ void register_plugin_nacl() {
 		{{/gateways}}
 	};
 
-	router = std::make_unique<Router<IP4>>(Super_stack::inet().ip4_stacks(), routing_table);
+	router = std::make_unique<Router<IP4>>(routing_table);
 
 	// Set ip forwarding on every iface mentioned in routing_table
 	{{#ip_forward_ifaces}}
