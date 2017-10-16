@@ -896,6 +896,8 @@ def handle_input():
 	else:
 		sys.exit("Error (handle_input): Transpilation to language " + LANGUAGE + " has not been implemented")
 
+	print "Transpilation complete"
+
 # -------------------- 1. Visiting --------------------
 
 def save_element(base_type, ctx):
