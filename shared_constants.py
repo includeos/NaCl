@@ -464,16 +464,16 @@ class Tcp:
 		if language == CPP:
 			return self.resolve_cast_cpp(prop)
 
-	def resolve_method(self, language, prop):
+	def resolve_method(self, language, prop, ctx):
 		if language == CPP:
-			return self.resolve_method_cpp(prop)
+			return self.resolve_method_cpp(prop, ctx)
 
 	def resolve_cast_cpp(self, prop):
 		return ""
 
-	def resolve_method_cpp(self, prop):
+	def resolve_method_cpp(self, prop, ctx):
 		if prop not in self.properties:
-			sys.exit("Error: No property named " + prop + " in TCP")
+			sys.exit("Error line " + get_line_and_column(ctx) + ": No property named " + prop + " in TCP")
 		return self.cpp_properties[prop]
 
 class Udp:
@@ -496,16 +496,16 @@ class Udp:
 		if language == CPP:
 			return self.resolve_cast_cpp(prop)
 
-	def resolve_method(self, language, prop):
+	def resolve_method(self, language, prop, ctx):
 		if language == CPP:
-			return self.resolve_method_cpp(prop)
+			return self.resolve_method_cpp(prop, ctx)
 
 	def resolve_cast_cpp(self, prop):
 		return ""
 
-	def resolve_method_cpp(self, prop):
+	def resolve_method_cpp(self, prop, ctx):
 		if prop not in self.properties:
-			sys.exit("Error: No property named " + prop + " in UDP")
+			sys.exit("Error line " + get_line_and_column(ctx) + ": No property named " + prop + " in UDP")
 		return self.cpp_properties[prop]
 
 class Ip:
@@ -552,30 +552,30 @@ class Ip:
 		if language == CPP:
 			return self.resolve_cast_cpp(prop)
 
-	def resolve_method(self, language, prop):
+	def resolve_method(self, language, prop, ctx):
 		if language == CPP:
-			return self.resolve_method_cpp(prop)
+			return self.resolve_method_cpp(prop, ctx)
 
-	def resolve_protocol(self, language, nacl_proto):
+	def resolve_protocol(self, language, nacl_proto, ctx):
 		if language == CPP:
-			return self.resolve_protocol_cpp(nacl_proto)
+			return self.resolve_protocol_cpp(nacl_proto, ctx)
 
 	def resolve_cast_cpp(self, prop):
 		if prop != DSCP and prop != ECN:
 			return ""
 		return "(uint8_t)"
 
-	def resolve_method_cpp(self, prop):
+	def resolve_method_cpp(self, prop, ctx):
 		if prop not in self.properties:
-			sys.exit("Error: No property named " + prop + " in IP")
+			sys.exit("Error line " + get_line_and_column(ctx) + ": No property named " + prop + " in IP")
 		return self.cpp_properties[prop]
 
 	# Returns the correct C++/IncludeOS IP protocol constant based on the
 	# incoming (NaCl) protocol (tcp, udp, icmp)
-	def resolve_protocol_cpp(self, nacl_proto):
+	def resolve_protocol_cpp(self, nacl_proto, ctx):
 		proto = nacl_proto.lower()
 		if proto not in self.cpp_protocols:
-			sys.exit("Error: No protocol named " + nacl_proto + " exists")
+			sys.exit("Error line " + get_line_and_column(ctx) + ": No protocol named " + nacl_proto + " exists")
 		return self.cpp_protocols[proto]
 
 class Icmp:
@@ -592,16 +592,16 @@ class Icmp:
 		if language == CPP:
 			return self.resolve_cast_cpp(prop)
 
-	def resolve_method(self, language, prop):
+	def resolve_method(self, language, prop, ctx):
 		if language == CPP:
-			return self.resolve_method_cpp(prop)
+			return self.resolve_method_cpp(prop, ctx)
 
 	def resolve_cast_cpp(self, prop):
 		return ""
 
-	def resolve_method_cpp(self, prop):
+	def resolve_method_cpp(self, prop, ctx):
 		if prop not in self.properties:
-			sys.exit("Error: No property named " + prop + " in ICMP")
+			sys.exit("Error line " + get_line_and_column(ctx) + ": No property named " + prop + " in ICMP")
 		return self.cpp_properties[prop]
 
 class Ct:
@@ -618,16 +618,16 @@ class Ct:
 		if language == CPP:
 			return self.resolve_cast_cpp(prop)
 
-	def resolve_method(self, language, prop):
+	def resolve_method(self, language, prop, ctx):
 		if language == CPP:
-			return self.resolve_method_cpp(prop)
+			return self.resolve_method_cpp(prop, ctx)
 
 	def resolve_cast_cpp(self, prop):
 		return ""
 
-	def resolve_method_cpp(self, prop):
+	def resolve_method_cpp(self, prop, ctx):
 		if prop not in self.properties:
-			sys.exit("Error: No property named " + prop + " in CT")
+			sys.exit("Error line " + get_line_and_column(ctx) + ": No property named " + prop + " in CT")
 		return self.cpp_properties[prop]
 
 Tcp_obj = Tcp()
