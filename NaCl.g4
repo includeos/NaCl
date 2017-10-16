@@ -35,7 +35,7 @@ In: 'in' | 'IN';
 // Logical operators
 And: 	'&&' 	| 	'and';
 Or: 	'||' 	| 	'or';
-Not: 	'!'		| 	'not' 	| 	'NOT';
+Not: 	'!'		| 	'not';
 
 // Keywords
 If: 	'if';
