@@ -6,7 +6,7 @@ import pystache
 
 class Cpp_template(object):
 	def __init__(self):
-		print "Init Cpp_template"
+		pass
 
 # ------------------ < Pystache ------------------
 

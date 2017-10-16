@@ -643,3 +643,6 @@ proto_objects = {
 	ICMP: 	Icmp_obj,
 	CT: 	Ct_obj
 }
+
+def get_line_and_column(ctx):
+	return str(ctx.start.line) + ":" + str(ctx.start.column)

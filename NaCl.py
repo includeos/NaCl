@@ -620,7 +620,7 @@ class Gateway(Typed):
 		# Value: pystache route object
 
 	def get_pystache_route_obj(self, name, route_ctx):
-		route_obj = {}
+		route_obj = { "ctx": route_ctx }
 		pairs = route_ctx.key_value_list().key_value_pair()
 		num_pairs = len(pairs)
 
@@ -629,10 +629,11 @@ class Gateway(Typed):
 			key = orig_key.lower()
 
 			if route_obj.get(key) is not None:
-				sys.exit("Error (" + self.name + "): Member " + key + " has already been set for route " + name)
+				sys.exit("Error line " + get_line_and_column(pair.key()) + ": Member " + key + \
+					" has already been set for route " + name)
 
 			if key not in predefined_gateway_keys:
-				sys.exit("Error (" + self.name + "): " + orig_key + " is not a valid Gateway route member. " + \
+				sys.exit("Error line " + get_line_and_column(pair.key()) + ": " + orig_key + " is not a valid Gateway route member. " + \
 					"Valid members are: " + ", ".join(predefined_gateway_keys))
 
 			if key != GATEWAY_KEY_IFACE:
@@ -643,11 +644,11 @@ class Gateway(Typed):
 				iface_name = pair.value().getText()
 
 				if pair.value().value_name() is None:
-					sys.exit("Error (" + self.name + "): Gateway route contains an iface property with an invalid value: " + iface_name)
+					sys.exit("Error line " + get_line_and_column(pair.value()) + ": Gateway route member iface contains an invalid value (" + iface_name + ")")
 
 				element = elements.get(iface_name)
 				if element is None or (hasattr(element, 'type_t') and element.type_t.lower() != TYPE_IFACE):
-					sys.exit("Error (" + self.name + "): No Iface with the name " + iface_name + " exists")
+					sys.exit("Error line " + get_line_and_column(pair.value()) + ": No Iface with the name " + iface_name + " exists")
 
 				route_obj[key] = iface_name
 
@@ -660,30 +661,26 @@ class Gateway(Typed):
 			for route_pair in value.obj().key_value_list().key_value_pair():
 				name = route_pair.key().getText()
 				if self.members.get(name) is not None:
-					sys.exit("Error (" + self.name + "): Member " + name + " has already been set")
+					sys.exit("Error line " + get_line_and_column(route_pair) + ": Route " + name + " has already been set")
 
 				if route_pair.value().obj() is None:
-					sys.exit("Error (" + self.name + "): A Gateway's routes must constitute an object (" + \
+					sys.exit("Error line " + get_line_and_column(route_pair.value()) + ": A Gateway's routes must be objects (" + \
 						"containing key value pairs)")
-				key = route_pair.key().getText()
-
-				if route_pair.value().obj() is None:
-					sys.exit("Error (" + self.name + "): A Gateway's route must contain key value pairs. " + \
-						"Invalid route value: " + route_pair.value().getText())
 				
 				# Add pystache route obj to members dictionary
+				key = route_pair.key().getText()
 				self.members[key] = self.get_pystache_route_obj(key, route_pair.value().obj())
 		elif value.list_t() is not None:
 			for i, val in enumerate(value.list_t().value_list().value()):
 				if val.obj() is None:
-					sys.exit("Error (" + self.name + "): A Gateway that constitutes a list must be a list of " + \
-						"objects (containing key value pairs). Invalid value: " + val.getText())
+					sys.exit("Error line " + get_line_and_column(val) + ": A Gateway that constitutes a list must be a list of " + \
+						"objects (containing key value pairs)")
 				
 				# Add pystache route obj to members dictionary
 				# When unnamed routes, use index as key
 				self.members[i] = self.get_pystache_route_obj(str(i), val.obj())
 		else:
-			sys.exit("Error (" + self.name + "): A Gateway must contain key value pairs (in which " + \
+			sys.exit("Error line " + get_line_and_column(value) + ": A Gateway must contain key value pairs (in which " + \
 				"each pair's value is an object), or it must contain a list of objects")
 
 	def process_assignments(self):
@@ -699,10 +696,11 @@ class Gateway(Typed):
 				num_name_parts = len(name_parts)
 
 				if num_name_parts > 3:
-					sys.exit("Error (" + self.name + "): Invalid Gateway member " + key)
+					sys.exit("Error line " + get_line_and_column(element.ctx) + " (" + self.name + "): Invalid Gateway member " + key)
 
 				if self.members.get(0) is not None:
-					sys.exit("Error (" + self.name + "): Trying to access a named member in a Gateway without named members (" + key + ")")
+					sys.exit("Error line " + get_line_and_column(element.ctx) + " (" + self.name + \
+						"): Trying to access a named member in a Gateway without named members (" + key + ")")
 				# Could support later: gateway.0.netmask: 255.255.255.0
 
 				if num_name_parts == 2:
@@ -711,25 +709,26 @@ class Gateway(Typed):
 					if self.members.get(gw_member) is None:
 						# Then add the route if valid
 						if element.ctx.value().obj() is None:
-							sys.exit("Error (" + element.name + "): A Gateway member's value needs to be contain key value pairs")
+							sys.exit("Error line " + get_line_and_column(element.ctx.value()) + " (" + element.name + \
+								"): A Gateway member's value needs to contain key value pairs")
 						self.members[gw_member] = self.get_pystache_route_obj(element.ctx.value().obj())
 					else:
-						sys.exit("Error (" + self.name + "): Gateway member " + gw_member + " has already been set")
+						sys.exit("Error line " + get_line_and_column(element.ctx) + ": Gateway member " + gw_member + " has already been set")
 				else:
 					# Then num_name_parts are 3 and we're talking about changing (no longer allowed) a route's member
 					# or adding one
 					route = self.members.get(gw_member)
 					if route is None:
-						sys.exit("Error (" + self.name + "): No member named " + gw_member + " in Gateway " + self.name + \
-							" This assignment is invalid: " + element.ctx.getText())
+						sys.exit("Error line " + get_line_and_column(element.ctx) + ": No member named " + gw_member + " in Gateway " + self.name)
 
 					route_member = name_parts[2].lower()
 					
 					if route.get(route_member) is not None:
-						sys.exit("Error (" + self.name + "): Member " + route_member + " in route " + gw_member + " has already been set")
+						sys.exit("Error line " + get_line_and_column(element.ctx) + ": Member " + route_member + " in route " + gw_member + \
+							" has already been set")
 
 					if route_member not in predefined_gateway_keys:
-						sys.exit("Error (" + element.ctx.key().getText() + "): " + route_member + " is not a valid Gateway route member. " + \
+						sys.exit("Error line " + get_line_and_column(element.ctx) + ": " + route_member + " is not a valid Gateway route member. " + \
 							"Valid members are: " + ", ".join(predefined_gateway_keys))
 
 					if route_member != GATEWAY_KEY_IFACE:
@@ -740,12 +739,12 @@ class Gateway(Typed):
 						iface_name = element.ctx.value().getText()
 
 						if element.ctx.value().value_name() is None:
-							sys.exit("Error (" + element.ctx.key().getText() + "): iface property's value (" + \
-								iface_name + ") is invalid")
+							sys.exit("Error line " + get_line_and_column(element.ctx.value()) + ": Invalid iface value " + \
+								iface_name + " (the value must be the name of an Iface)")
 
 						iface_element = elements.get(iface_name)
 						if iface_element is None or (hasattr(iface_element, 'type_t') and iface_element.type_t.lower() != TYPE_IFACE):
-							sys.exit("Error (" + element.ctx.key().getText() + "): No Iface with the name " + iface_name + " exists")
+							sys.exit("Error line " + get_line_and_column(element.ctx.value()) + ": No Iface with the name " + iface_name + " exists")
 
 						route[route_member] = iface_name
 
@@ -757,17 +756,15 @@ class Gateway(Typed):
 			if GATEWAY_KEY_NETMASK not in route or \
 				GATEWAY_KEY_IFACE not in route or \
 				(GATEWAY_KEY_NET not in route and GATEWAY_KEY_HOST not in route):
-				sys.exit("Error (" + self.name + "'s route " + str(i) + "): In a Gateway route, these properties are mandatory: " + \
-					", " + GATEWAY_KEY_IFACE + ", " + GATEWAY_KEY_NETMASK + " and either " + GATEWAY_KEY_NET + \
-					" or " + GATEWAY_KEY_HOST)
+				sys.exit("Error line " + get_line_and_column(route.get("ctx")) + " (" + self.name + "'s route " + str(i) + \
+					"): A Gateway route must specify " + GATEWAY_KEY_IFACE + ", " + GATEWAY_KEY_NETMASK + " and either " + \
+					GATEWAY_KEY_NET + " or " + GATEWAY_KEY_HOST)
 
 			# Add iface_name to ip_forward_ifaces pystache list if it is not in the
 			# list already
 			iface_name = route.get(GATEWAY_KEY_IFACE)
 			if iface_name is not None and not any(ip_forward_iface[TEMPLATE_KEY_IFACE] == iface_name for ip_forward_iface in ip_forward_ifaces):
 				ip_forward_ifaces.append({TEMPLATE_KEY_IFACE: iface_name})
-
-				print "Iface ip forward list:", str(ip_forward_ifaces)
 
 			route[TEMPLATE_KEY_COMMA] = (index < (num_routes - 1))
 			index += 1
@@ -783,8 +780,6 @@ class Gateway(Typed):
 			# })
 
 		self.add_gateway(routes)
-
-		print "Gateway pystache obj processed. Routes:", str(routes)
 
 	def add_gateway(self, routes):
 		# Create object containing key value pairs with the data we have collected
@@ -844,7 +839,8 @@ class Function(Element):
 		 			elif type_t_lower == TYPE_REWRITE:
 		 				rewrites.append(pystache_function_obj)
 		 			else:
-		 				sys.exit("Error (" + self.name + "): Function of type " + self.type_t + " is not valid")
+		 				sys.exit("Error line " + get_line_and_column(ctx.type_t()) + " (" + self.name + "): Functions of type " + \
+		 					self.type_t + " are not handled")
 		 			return self.res
 
 	# Main processing method
@@ -852,9 +848,6 @@ class Function(Element):
 		if self.res is None:
 			self.res = transpile_function(LANGUAGE, self.type_t, self.subtype, self.ctx)
 			self.add_function()
-
-			print "Processed function with name " + self.name
-
 		return self.res
 
 # < Function
@@ -911,90 +904,65 @@ def handle_input():
 # -------------------- 1. Visiting --------------------
 
 def save_element(base_type, ctx):
+	if base_type != BASE_TYPE_TYPED_INIT and base_type != BASE_TYPE_UNTYPED_INIT and base_type != BASE_TYPE_FUNCTION:
+		sys.exit("Error line " + get_line_and_column(ctx) + ": NaCl elements of base type " + base_type + " are not handled")
+
+	name_ctx = ctx.name() if base_type != BASE_TYPE_UNTYPED_INIT else ctx.value_name()
+	if name_ctx is None:
+		sys.exit("Error line " + get_line_and_column(ctx) + ": Missing name of element")
+	if name_ctx.getText() in elements:
+		sys.exit("Error line " + get_line_and_column(name_ctx) + ": Element " + name_ctx.getText() + " has already been defined")
+
+	name = name_ctx.getText()
 	idx = len(elements)
 
+	# BASE_TYPE_UNTYPED_INIT
+
 	if base_type == BASE_TYPE_UNTYPED_INIT:
-		name = ctx.value_name().getText()
-		if name in elements:
-			sys.exit("Error (save_element): Element " + name + " has already been defined")
-
-		# Untyped
 		elements[name] = Untyped(idx, name, ctx, base_type)
-	elif base_type == BASE_TYPE_TYPED_INIT:
-		type_t = ctx.type_t().getText()
-		type_t_lower = type_t.lower()
-		name = ctx.name().getText()
-		
-		if type_t_lower not in valid_nacl_types:
-			sys.exit("Error (" + name + "): Undefined type " + type_t)
-		if name in elements:
-			sys.exit("Error (save_element): Element " + name + " has already been defined")
+		return
+	
+	type_t_ctx = ctx.type_t()
+	type_t = type_t_ctx.getText()
 
-		if type_t_lower == TYPE_IFACE:
-			# Iface
-			elements[name] = Iface(idx, name, ctx, base_type, type_t)
-		elif type_t_lower == TYPE_VLAN:
-			elements[name] = Vlan(idx, name, ctx, base_type, type_t)
-		elif type_t_lower == TYPE_GATEWAY:
-			global gateway_exists
-			
-			# Gateway
-			# Only allowed to create one Gateway (for now at least)
-			if gateway_exists:
-				sys.exit("Error (" + name + "): You cannot create more than one Gateway")
+	if type_t.lower() not in valid_nacl_types:
+		sys.exit("Error line " + get_line_and_column(type_t_ctx) + ": Undefined type " + type_t)
 
-			elements[name] = Gateway(idx, name, ctx, base_type, type_t)
-			gateway_exists = True
-		else:
-			sys.exit("Error (" + name + "): NaCl elements of type " + type_t + " are not handled")
-	elif base_type == BASE_TYPE_FUNCTION:
-		type_t = ctx.type_t().getText()
-		subtype = ctx.subtype().getText()
-		
-		if type_t.lower() not in valid_nacl_types:
-			sys.exit("Error (save_element): Undefined type " + type_t)
+	# BASE_TYPE_FUNCTION
 
-		# A top function must have a name
-		if ctx.name() is None:
-			sys.exit("Error (save_element): A top function (" + type_t + "::" + subtype + ") must have a name")
+	if base_type == BASE_TYPE_FUNCTION:
+		elements[name] = Function(idx, name, ctx, base_type, type_t, ctx.subtype().getText())
+		return
 
-		name = ctx.name().getText()
-		if name in elements:
-			sys.exit("Error (save_element): Element " + name + " has already been defined")
-
-		# Function
-		elements[name] = Function(idx, name, ctx, base_type, type_t, subtype)
+	# BASE_TYPE_TYPED_INIT
+	
+	type_t_lower = type_t.lower()
+	if type_t_lower == TYPE_IFACE:
+		elements[name] = Iface(idx, name, ctx, base_type, type_t)
+	elif type_t_lower == TYPE_VLAN:
+		elements[name] = Vlan(idx, name, ctx, base_type, type_t)
+	elif type_t_lower == TYPE_GATEWAY:
+		global gateway_exists
+		if gateway_exists:
+			sys.exit("Error line " + get_line_and_column(type_t_ctx) + ": A Gateway has already been defined")
+		elements[name] = Gateway(idx, name, ctx, base_type, type_t)
+		gateway_exists = True
 	else:
-		sys.exit("Error (save_element): Undefined base type " + base_type)
+		sys.exit("Error line " + get_line_and_column(type_t_ctx) + ": NaCl elements of type " + type_t + " are not handled")
 
 class NaClRecordingVisitor(NaClVisitor):
 
 	def visitTyped_initializer(self, ctx):
-		print "Visiting typed initializer", ctx.name().getText(), "of type", ctx.type_t().getText()
-
 		# Typed: Could indicate that C++ code is going to be created from this - depends on the
 		# type_t specified (Iface, Gateway special)
-
 		save_element(BASE_TYPE_TYPED_INIT, ctx)
 
 	def visitInitializer(self, ctx):
-		print "Visiting untyped initializer with value_name", ctx.value_name().getText()
-
 		# Untyped: Means generally that no C++ code is going to be created from this - exists only in NaCl
 		# Except: Assignments
-
 		save_element(BASE_TYPE_UNTYPED_INIT, ctx)
 
 	def visitFunction(self, ctx):
-		text = "Visiting function of type " + ctx.type_t().getText() + " and subtype " + ctx.subtype().getText()
-		
-		if ctx.name() is not None:
-			text += " with name " + ctx.name().getText()
-		else:
-			text += " without a name"
-		
-		print text
-
 		save_element(BASE_TYPE_FUNCTION, ctx)
 
 lexer = NaClLexer(StdinStream())
