@@ -47,8 +47,7 @@ testing_out_port_map.e4.e4-3: {
 	e4-3-1: 33,
 	e4-3-2: 44,
 	e4-3-3: 55
-}
-*/
+}*/
 
 // Allowed:
 testing_out_port_map.e4.e4-4: {
@@ -142,8 +141,9 @@ Gateway gateway {
 
 // Allowed:
 gateway.r2.nexthop: 140.50.200.55
-// Not allowed (already set):
-// gateway.r4.iface: eth2
+/* Not allowed (already set):
+gateway.r4.iface: eth2
+*/
 
 /* Not allowed (already set):
 eth1.index: 10

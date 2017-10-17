@@ -74,12 +74,11 @@ void register_plugin_nacl() {
 	});
 	{{/config_is_dhcp_fallback}}
 	{{/ifaces}}
-
-	{{#ifaces_with_vlans}}	
+	{{#ifaces_with_vlans}}
+	
 	// For each iface:
 	auto& {{iface}}_nic = {{iface}}.nic();
 	auto& {{iface}}_manager = VLAN_manager::get({{iface_index}});
-	
 	// For each vlan connected to this iface:
 	{{#vlans}}
 	Super_stack::inet().create<IP4>({{iface}}_manager.add({{iface}}_nic, {{index}}), {{iface_index}}, {{index}}).network_config({{address}}, {{netmask}}, {{gateway}});
@@ -109,7 +108,6 @@ void register_plugin_nacl() {
 	// Router
 
 	INFO("NaCl", "Setup routing");
-
 	Router<IP4>::Routing_table routing_table {
 		{{#gateways}}
 		{{#routes}}
@@ -117,9 +115,7 @@ void register_plugin_nacl() {
 		{{/routes}}
 		{{/gateways}}
 	};
-
 	router = std::make_unique<Router<IP4>>(routing_table);
-
 	// Set ip forwarding on every iface mentioned in routing_table
 	{{#ip_forward_ifaces}}
 	{{iface}}.set_forward_delg(router->forward_delg());

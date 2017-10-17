@@ -6,7 +6,7 @@ import pystache
 
 class Cpp_template(object):
 	def __init__(self):
-		print "Init Cpp_template"
+		pass
 
 # ------------------ < Pystache ------------------
 
@@ -38,48 +38,53 @@ class Action_handler:
 			TYPE_NAT: 		[ DNAT, SNAT, LOG ]
 		}
 
-	def transpile_action(self, language, action_name, parameter_ctx_list, type_t, subtype):
+	def transpile_action(self, language, type_t, subtype, action_ctx):
 		if language == CPP:
-			return self.transpile_action_cpp(action_name, parameter_ctx_list, type_t, subtype)
+			return self.transpile_action_cpp(type_t, subtype, action_ctx)
 
-	def transpile_action_cpp(self, action_name, parameter_ctx_list, type_t, subtype):
-		if action_name.lower() not in self.actions:
-			# Then the action_name could be the name of a function
-			element = elements.get(action_name)
+	def transpile_action_cpp(self, type_t, subtype, action_ctx):
+		parameters = [] if action_ctx.value_list() is None else action_ctx.value_list().value() # list
+		name = action_ctx.name().getText()
+		name_lower = name.lower()
+
+		if name_lower not in self.actions:
+			# Then the action name could be the name of a function
+			element = elements.get(name)
 			if element is None or element.base_type != BASE_TYPE_FUNCTION:
-				sys.exit("Error: Couldn't identify action or function name " + action_name)
-			return self.transpile_function_call_cpp(action_name, parameter_ctx_list, type_t, subtype)
+				sys.exit("Error line " + get_line_and_column(action_ctx) + \
+					": Couldn't identify action or function name " + name)
+			return self.transpile_function_call_cpp(name, parameters, type_t, subtype, action_ctx)
 
-		# If get here, action_name is the name of an action in self.actions
+		# If get here, name is the name of an action in self.actions
 		
-		action_name_lower = action_name.lower()
 		actions = self.legal_actions[type_t.lower()]
 
-		if action_name_lower not in actions:
-			sys.exit("Error transpiling action " + action_name + ": Legal actions for a function of type " + type_t + \
-				" are: " + ", ".join(actions))
+		if name_lower not in actions:
+			sys.exit("Error line " + get_line_and_column(action_ctx) + ": Error transpiling action " + name + \
+				": Legal actions for a function of type " + type_t + " are: " + ", ".join(actions))
 
-		return self.cpp_actions[action_name_lower](parameter_ctx_list, subtype)
+		return self.cpp_actions[name_lower](parameters, subtype, action_ctx)
 
-	def transpile_function_call_cpp(self, name, parameter_ctx_list, type_t, subtype):
+	def transpile_function_call_cpp(self, name, parameter_ctx_list, type_t, subtype, action_ctx):
 		# This was the name of a function, and a function takes no parameters:
 		if len(parameter_ctx_list) > 0:
-			sys.exit("Error: A function call takes no parameters")
+			sys.exit("Error line " + get_line_and_column(action_ctx) + ": A function call takes no parameters")
 
 		element = elements.get(name)
 		if element is None or element.base_type != BASE_TYPE_FUNCTION:
-			sys.exit("Error: No function with the name " + name + " exists")
+			sys.exit("Error line " + get_line_and_column(action_ctx) + ": No function with the name " + name + " exists")
 
 		# element is a Function
 		
 		# A function of type Filter can only call functions of type Filter,
 		# a function of type Nat can only call functions of type Nat, etc.
 		if element.type_t.lower() != type_t.lower():
-			sys.exit("Error transpiling function call to " + name + ": A function of type " + type_t + \
-				" can only call functions of the same type")
+			sys.exit("Error line " + get_line_and_column(action_ctx) + ": Error transpiling call to " + \
+				name + ": A function of type " + type_t + " can only call functions of the same type")
 
 		if element.subtype.lower() not in legal_nested_subtypes[subtype.lower()]:
-			sys.exit("Error: Cannot call a function of subtype " + element.subtype + " inside a function of subtype " + subtype)
+			sys.exit("Error line " + get_line_and_column(action_ctx) + ": Cannot call a function of subtype " + \
+				element.subtype + " inside a function of subtype " + subtype)
 
 		# return e.process()
 		# Cannot call this and use the element's process method and res attribute because
@@ -87,21 +92,21 @@ class Action_handler:
 		# Therefore:
 		return transpile_function_cpp(element.type_t, element.subtype, element.ctx, subtype)
 
-	def transpile_accept_cpp(self, parameter_ctx_list, subtype):
+	def transpile_accept_cpp(self, parameter_ctx_list, subtype, action_ctx):
 		# This was the accept action, and this takes no parameters:
 		if len(parameter_ctx_list) > 0:
-			sys.exit("Error: An accept action takes no parameters")
+			sys.exit("Error line " + get_line_and_column(action_ctx) + ": An accept action takes no parameters")
 
 		return INCLUDEOS_ACCEPT
 
-	def transpile_drop_cpp(self, parameter_ctx_list, subtype):
+	def transpile_drop_cpp(self, parameter_ctx_list, subtype, action_ctx):
 		# This was the drop action, and this takes no parameters:
 		if len(parameter_ctx_list) > 0:
-			sys.exit("Error: A drop action takes no parameters")
+			sys.exit("Error line " + get_line_and_column(action_ctx) + ": A drop action takes no parameters")
 		
 		return INCLUDEOS_DROP
 
-	def transpile_log_cpp(self, parameter_ctx_list, subtype):
+	def transpile_log_cpp(self, parameter_ctx_list, subtype, action_ctx):
 		param = ""
 
 		if len(parameter_ctx_list) > 0:
@@ -109,9 +114,9 @@ class Action_handler:
 
 		return "printf(" + str(param) + ");\nprintf(\"\\n\");\n"
 
-	def transpile_nat_cpp(self, type_nat, parameter_ctx_list, subtype):
+	def transpile_nat_cpp(self, type_nat, parameter_ctx_list, subtype, action_ctx):
 		if type_nat != SNAT and type_nat != DNAT:
-			sys.exit("Error (transpile_nat_cpp): Invalid NAT type: " + type_nat)
+			sys.exit("Internal error in transpile_nat_cpp: Invalid NAT type " + type_nat)
 
 		pckt_name = get_pckt_name_cpp(subtype)
 
@@ -127,16 +132,16 @@ class Action_handler:
 			# parameters = pckt_name + ", " + INCLUDEOS_CT_ENTRY + ", {" + str(first) + ", " + str(second) + "}"
 			parameters = IP_PCKT + ", " + INCLUDEOS_CT_ENTRY + ", {" + str(first) + ", " + str(second) + "}"
 		else:
-			sys.exit("Error (transpile_nat_cpp): No arguments provided to " + type_nat)
+			sys.exit("Error line " + get_line_and_column(action_ctx) + ": No arguments provided to " + type_nat)
 
 		return NAT_OBJ_NAME + ARROW + type_nat + "(" + parameters + ");\n" + \
-			self.transpile_accept_cpp([], subtype)
+			self.transpile_accept_cpp([], subtype, action_ctx)
 
-	def transpile_snat_cpp(self, parameter_ctx_list, subtype):
-		return self.transpile_nat_cpp(SNAT, parameter_ctx_list, subtype)
+	def transpile_snat_cpp(self, parameter_ctx_list, subtype, action_ctx):
+		return self.transpile_nat_cpp(SNAT, parameter_ctx_list, subtype, action_ctx)
 
-	def transpile_dnat_cpp(self, parameter_ctx_list, subtype):
-		return self.transpile_nat_cpp(DNAT, parameter_ctx_list, subtype)
+	def transpile_dnat_cpp(self, parameter_ctx_list, subtype, action_ctx):
+		return self.transpile_nat_cpp(DNAT, parameter_ctx_list, subtype, action_ctx)
 
 Action_hdlr = Action_handler()
 
@@ -146,7 +151,7 @@ def construct_rng_comparison(resolved_rng_list, resolved_lhs):
 	# A rng can only consist of integers or ipv4_addrs
 
 	if len(resolved_rng_list) != 2:
-		sys.exit("Error: Resolved list should be a rng consisting of two values instead of " + \
+		sys.exit("Internal error: Resolved list should be a rng consisting of two values instead of " + \
 			str(resolved_rng_list))
 
 	from_val 	= resolved_rng_list[0]
@@ -192,7 +197,7 @@ def construct_comparisons_from_list(resolved_rhs_list, resolved_lhs, is_inner_li
 		# Then this was a rng (containing a from-value and a to-value)
 		return construct_rng_comparison(resolved_rhs_list, resolved_lhs)
 
-def construct_comparison_cpp(resolved_lhs, resolved_rhs, comparison_op, op):
+def construct_comparison_cpp(comp_ctx, resolved_lhs, resolved_rhs, comparison_op, op):
 	lhs_is_list = True if isinstance(resolved_lhs, list) else False
 	rhs_is_list = True if isinstance(resolved_rhs, list) else False
 
@@ -202,13 +207,15 @@ def construct_comparison_cpp(resolved_lhs, resolved_rhs, comparison_op, op):
 	if not lhs_is_list and not rhs_is_list:
 		if INCLUDEOS_IP4_CIDR_CLASS in str(resolved_rhs):
 			if comparison_op.lower() != IN:
-				sys.exit("Error: Invalid operator (" + comparison_op + "). Only the 'in' " + \
+				sys.exit("Error line " + get_line_and_column(comp_ctx.comparison_operator()) + \
+					": Invalid operator (" + comparison_op + "). Only the 'in' " + \
 					"operator is valid when comparing a property to a range, cidr, list or object")
 
 			result = str(resolved_rhs) + ".contains(" + str(resolved_lhs) + ")"
 		else:
 			if comparison_op.lower() == IN:
-				sys.exit("Error: The 'in' operator can only be used when comparing a property to " + \
+				sys.exit("Error line " + get_line_and_column(comp_ctx.comparison_operator()) + \
+					": The 'in' operator can only be used when comparing a property to " + \
 					"a range, cidr, list or object")
 
 			result = str(resolved_lhs) + " " + comparison_op + " " + str(resolved_rhs)
@@ -221,13 +228,14 @@ def construct_comparison_cpp(resolved_lhs, resolved_rhs, comparison_op, op):
 	# If any of the resolved sides is a list, the 'in' operator should have been used
 	# (rng, ip4_cidr, list_t, obj)
 	if comparison_op != IN:
-		sys.exit("Error: Invalid operator (" + comparison_op + "). Only the 'in' " + \
-			"operator is valid when comparing a value to a range, cidr, list or object")
+		sys.exit("Error line " + get_line_and_column(comp_ctx.comparison_operator()) + ": Invalid operator (" + \
+			comparison_op + "). Only the 'in' operator is valid when comparing a value to a range, cidr, list or object")
 
 	# If the 'in' operator has been used, only the resolved_rhs should be a list, not
 	# the resolved_lhs
 	if lhs_is_list:
-		sys.exit("Error: The left hand side of a comparison can not resolve to a set of values, e.g. " + \
+		sys.exit("Error line " + get_line_and_column(comp_ctx.lhs().value()) + \
+			": The left hand side of a comparison can not resolve to a set of values, e.g. " + \
 			"a range, cidr, list or object")
 
 	if rhs_is_list:
@@ -241,15 +249,13 @@ def construct_comparison_cpp(resolved_lhs, resolved_rhs, comparison_op, op):
 # ---- < Helper functions for transpile_comparison_cpp ----
 
 def transpile_comparison_cpp(subtype, comp, op=""):
-	print "Comparison: " + comp.getText()
-
 	# Resolve the values
 	resolved_lhs = resolve_value_cpp(comp.lhs().value(), subtype)
 	comparison_op = comp.comparison_operator().getText()
 	resolved_rhs = resolve_value_cpp(comp.rhs().value(), subtype)
 
 	# And construct the comparison(s) based on the resolved values
-	return construct_comparison_cpp(resolved_lhs, resolved_rhs, comparison_op, op)
+	return construct_comparison_cpp(comp, resolved_lhs, resolved_rhs, comparison_op, op)
 
 def transpile_bool_expr_cpp(type_t, subtype, expr, op=""):
 	content = ""
@@ -333,14 +339,8 @@ def transpile_conditional_cpp(type_t, subtype, cond):
 		# Else-body is always second/last (index 1)
 		content += cond.Else().getText() + " {\n" + \
 			transpile_body_elements_cpp(type_t, subtype, bodies[1].body_element()) + "}\n"
-
-	print "Condition: " + content
 	
 	return content
-
-def transpile_action_cpp(type_t, subtype, action):
-	parameters = [] if action.value_list() is None else action.value_list().value() # list
-	return Action_hdlr.transpile_action_cpp(action.name().getText(), parameters, type_t, subtype)
 
 def transpile_body_elements_cpp(type_t, subtype, body_elements):
 	content = ""
@@ -350,7 +350,7 @@ def transpile_body_elements_cpp(type_t, subtype, body_elements):
 			content += transpile_conditional_cpp(type_t, subtype, e.conditional())
 		
 		elif e.action() is not None:
-			content += transpile_action_cpp(type_t, subtype, e.action())
+			content += Action_hdlr.transpile_action_cpp(type_t, subtype, e.action())
 		
 		elif e.function() is not None:
 			# Validate if valid type_t and subtype
@@ -359,12 +359,14 @@ def transpile_body_elements_cpp(type_t, subtype, body_elements):
 
 			# Can only nest functions of the same type_t
 			if type_t.lower() != nested_type_t.lower():
-				sys.exit("Error: You cannot create a function of type " + nested_type_t + " inside a function of type " + type_t)
+				sys.exit("Error line " + get_line_and_column(e.function().type_t()) + ": You cannot create a function of type " + \
+					nested_type_t + " inside a function of type " + type_t)
 
 			# If this is a function, we have to validate that the subtype is legal based on the subtype of
 			# the parent function
 			if nested_subtype.lower() not in legal_nested_subtypes[subtype.lower()]:
-				sys.exit("Error: You cannot create a function of subtype " + nested_subtype + " inside a function of subtype " + subtype)
+				sys.exit("Error line " + get_line_and_column(e.function().subtype()) + ": You cannot create a function of subtype " + \
+					nested_subtype + " inside a function of subtype " + subtype)
 
 			content += transpile_function_cpp(nested_type_t, nested_subtype, e.function(), subtype)
 
@@ -391,9 +393,9 @@ def transpile_function_cpp(type_t, subtype, ctx, parent_subtype=""):
 		# If the subtype of the Filter indicates another protocol than IP, the incoming packet
 		# is cast to a packet of the correct protocol, following the test on the packet's protocol field.
 		
-		protocol_method = Ip_obj.resolve_method_cpp(PROTOCOL)
-		protocol_val 	= Ip_obj.resolve_protocol_cpp(subtype)
-		pckt_cast 		= get_pckt_cast_cpp(subtype)
+		protocol_method = Ip_obj.resolve_method_cpp(PROTOCOL, ctx)
+		protocol_val 	= Ip_obj.resolve_protocol_cpp(subtype, ctx)
+		pckt_cast 		= get_pckt_cast_cpp(subtype, ctx)
 		
 		# If we are in a nested function and the parent function was not IP,
 		# we have another pckt_name than 'pckt' to take into account:
