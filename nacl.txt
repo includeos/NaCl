@@ -343,7 +343,7 @@ Filter::TCP tcp_filter {
 cidr_test: 244.20.10.0/24
 
 Filter::ICMP main_icmp_filter {
-	if (NOT (icmp.type == timestamp-request and not ip.saddr in saddr_range) and not ip.ttl > 30) {
+	if (not (icmp.type == timestamp-request and not ip.saddr in saddr_range) and not ip.ttl > 30) {
 		drop
 	}
 

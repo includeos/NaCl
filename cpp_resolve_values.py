@@ -20,13 +20,13 @@ def get_pckt_cast_cpp(subtype, ctx):
 	if pckt_name is not None:
 		return AUTO + INCLUDEOS_REFERENCE_OP + " " + pckt_name + " = " + get_cast_cpp(subtype_lower, IP_PCKT, ctx)	
 	else:
-		sys.exit("Error line " + get_line_and_column(ctx) + ": Invalid subtype " + subtype + \
+		sys.exit("line " + get_line_and_column(ctx) + " Invalid subtype " + subtype + \
 			", or pckt name or cpp pckt name not found")
 
 def get_cast_cpp(cast_to_proto, pckt_name, ctx):
 	proto = cast_to_proto.lower()
 	if proto not in cpp_pckt_classes:
-		sys.exit("Error line " + get_line_and_column(ctx) + ": Invalid protocol " + cast_to_proto)
+		sys.exit("line " + get_line_and_column(ctx) + " Invalid protocol " + cast_to_proto)
 
 	cpp_pckt_class = cpp_pckt_classes[proto]
 
@@ -43,7 +43,7 @@ def transpile_ip4_addr_cpp(ip_addr_ctx):
 	part3 = parts[3].getText()
 
 	if int(part0) > BYTE_LIMIT or int(part1) > BYTE_LIMIT or int(part2) > BYTE_LIMIT or int(part3) > BYTE_LIMIT:
-		sys.exit("Error line " + get_line_and_column(ip_addr_ctx) + ": IPv4 addr " + ip_addr_ctx.getText() + \
+		sys.exit("line " + get_line_and_column(ip_addr_ctx) + " IPv4 addr " + ip_addr_ctx.getText() + \
 			" contains bytes greater than " + str(BYTE_LIMIT))
 
 	return INCLUDEOS_IP4_ADDR_CLASS + "{" + ip_addr_ctx.getText().replace(".", ",") + "}"
@@ -56,13 +56,13 @@ def transpile_ip4_cidr_cpp(ip_cidr_ctx):
 	part3 = parts[3].getText()
 
 	if int(part0) > BYTE_LIMIT or int(part1) > BYTE_LIMIT or int(part2) > BYTE_LIMIT or int(part3) > BYTE_LIMIT:
-		sys.exit("Error line " + get_line_and_column(ip_cidr_ctx) + ": IPv4 cidr " + ip_cidr_ctx.getText() + \
+		sys.exit("line " + get_line_and_column(ip_cidr_ctx) + " IPv4 cidr " + ip_cidr_ctx.getText() + \
 			" contains bytes greater than " + str(BYTE_LIMIT))
 
 	mask = ip_cidr_ctx.cidr_mask().integer().getText()
 
 	if int(mask) > MASK_LIMIT:
-		sys.exit("Error line " + get_line_and_column(ip_cidr_ctx) + ": IPv4 cidr mask in " + ip_cidr_ctx.getText() + \
+		sys.exit("line " + get_line_and_column(ip_cidr_ctx) + " IPv4 cidr mask in " + ip_cidr_ctx.getText() + \
 			" is greater than " + str(MASK_LIMIT))
 
 	return INCLUDEOS_IP4_CIDR_CLASS + "{" + part0 + "," + part1 + "," + part2 + "," + part3 + "," + mask + "}"
@@ -104,7 +104,7 @@ def resolve_value_cpp(val_ctx, subtype=""):
 			to_transpiled 	= transpile_numeric_value_cpp(to_val)
 			return [ from_transpiled, to_transpiled ]
 		else:
-			sys.exit("Error line " + get_line_and_column(val_ctx) + ": A range's values need to be of the same type (" + val + ")")
+			sys.exit("line " + get_line_and_column(val_ctx) + " A range's values need to be of the same type (" + val + ")")
 
 	if val_ctx.string() is not None:
 		return val
@@ -115,7 +115,7 @@ def resolve_value_cpp(val_ctx, subtype=""):
 	if val_ctx.list_t() is not None:
 		return resolve_list_t_cpp(val_ctx.list_t())
 
-	sys.exit("Error line " + get_line_and_column(val_ctx) + ": Undefined value " + val_ctx.getText())
+	sys.exit("line " + get_line_and_column(val_ctx) + " Undefined value " + val_ctx.getText())
 
 def resolve_object_cpp(obj_ctx):
 	resolved_values = [ IS_LIST ]
@@ -144,7 +144,7 @@ def transpile_value_name_cpp(val_ctx, subtype):
 			# if it is:
 			predefined_val = predefined_values_cpp.get(name.lower())
 			if predefined_val is None:
-				sys.exit("Error line " + get_line_and_column(val_ctx) + ": Undefined value " + name)
+				sys.exit("line " + get_line_and_column(val_ctx) + " Undefined value " + name)
 			return predefined_val
 		else:
 			# Then properties/members are referenced, and this could be f.ex. tcp.dport
@@ -153,18 +153,18 @@ def transpile_value_name_cpp(val_ctx, subtype):
 				# Checking if obj == tcp, udp, ip, icmp or ct
 				
 				if subtype == "":
-					sys.exit("Error line " + get_line_and_column(val_ctx) + ": Trying to transpile protocol object (" + \
+					sys.exit("line " + get_line_and_column(val_ctx) + " Trying to transpile protocol object (" + \
 						name + "), but the function's subtype has not been given")
 
 				if name.lower() not in legal_obj_types[subtype.lower()]:
-					sys.exit("Error line " + get_line_and_column(val_ctx) + ": A function of subtype " + \
+					sys.exit("line " + get_line_and_column(val_ctx) + " A function of subtype " + \
 						subtype + " cannot test on " + name + " properties")
 
 				# Remove the name of the proto object - only need its members/properties
 				name_parts.pop(0)
 				properties = name_parts
 				if len(properties) > 1:
-					sys.exit("Error line " + get_line_and_column(val_ctx) + ": Undefined protocol object properties: " + \
+					sys.exit("line " + get_line_and_column(val_ctx) + " Undefined protocol object properties: " + \
 						val_ctx.value_name().getText())
 
 				pckt_name 	= get_pckt_name_cpp(subtype)
@@ -185,7 +185,7 @@ def transpile_value_name_cpp(val_ctx, subtype):
 				transpiled_value += pckt_name + access_op + method
 				return transpiled_value
 
-			sys.exit("Error line " + get_line_and_column(val_ctx) + ": Undefined value " + name)
+			sys.exit("line " + get_line_and_column(val_ctx) + " Undefined value " + name)
 
 	# element is not None:
 
@@ -205,7 +205,7 @@ def resolve_element_values_cpp(element, ctx):
 	# FUNCTION
 
 	if element.base_type == BASE_TYPE_FUNCTION:
-		sys.exit("Error line " + get_line_and_column(ctx) + ": The name of a function (" + \
+		sys.exit("line " + get_line_and_column(ctx) + " The name of a function (" + \
 			element.name + ") cannot be used as a value name in a comparison")
 
 	return resolve_value_cpp(element.ctx.value())
@@ -254,13 +254,13 @@ def resolve_member_value_from_element_cpp(element, member_list, ctx):
 	# then recursion where the e1 (first level) has been popped
 
 	if element.base_type == BASE_TYPE_FUNCTION:
-		sys.exit("Error line " + get_line_and_column(ctx) + ": A function (" + element.name + \
+		sys.exit("line " + get_line_and_column(ctx) + " A function (" + element.name + \
 			") does not have any named attributes")
 
 	if element.base_type == BASE_TYPE_UNTYPED_INIT:
 		val = element.get_member_value(member_list)
 		if val is None:
-			sys.exit("Error line " + get_line_and_column(ctx) + ": Could not identify " + element.name + "." + ".".join(member_list))
+			sys.exit("line " + get_line_and_column(ctx) + " Could not identify " + element.name + "." + ".".join(member_list))
 		
 		if not isinstance(val, dict):
 			return val # The value has been resolved inside the Untyped element's process method
@@ -285,7 +285,7 @@ def resolve_member_value_from_element_cpp(element, member_list, ctx):
 		
 		e = find_assignment_element(assignment_value_name)
 		if e is None:
-			sys.exit("Error line " + get_line_and_column(ctx) + ": Could not identify " + element.name + "." + ".".join(member_list))
+			sys.exit("line " + get_line_and_column(ctx) + " Could not identify " + element.name + "." + ".".join(member_list))
 		else:
 			if e.ctx.value().obj() is not None:
 				# Remove the name of the e element to get only the name of the member left
@@ -295,11 +295,11 @@ def resolve_member_value_from_element_cpp(element, member_list, ctx):
 				if found_val is not None:
 					return found_val
 				else:
-					sys.exit("Error line " + get_line_and_column(ctx) + ": Could not identify " + element.name + "." + ".".join(member_list))
+					sys.exit("line " + get_line_and_column(ctx) + " Could not identify " + element.name + "." + ".".join(member_list))
 			
 			return resolve_value_cpp(e.ctx.value())
 
-	sys.exit("Error line " + get_line_and_column(ctx) + ": No support for handling element of base type " + element.base_type)
+	sys.exit("line " + get_line_and_column(ctx) + " No support for handling element of base type " + element.base_type)
 
 def transpile_numeric_value_cpp(numeric_value):
 	if numeric_value.ipv4_addr() is not None:
@@ -309,4 +309,4 @@ def transpile_numeric_value_cpp(numeric_value):
 	numeric_value.decimal() is not None:
 		return numeric_value.getText()
 
-	sys.exit("Error line " + get_line_and_column(numeric_value) + ": Undefined numeric value " + numeric_value.getText())
+	sys.exit("line " + get_line_and_column(numeric_value) + " Undefined numeric value " + numeric_value.getText())
