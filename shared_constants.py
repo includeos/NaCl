@@ -473,7 +473,7 @@ class Tcp:
 
 	def resolve_method_cpp(self, prop, ctx):
 		if prop not in self.properties:
-			sys.exit("Error line " + get_line_and_column(ctx) + ": No property named " + prop + " in TCP")
+			sys.exit("line " + get_line_and_column(ctx) + " No property named " + prop + " in TCP")
 		return self.cpp_properties[prop]
 
 class Udp:
@@ -505,7 +505,7 @@ class Udp:
 
 	def resolve_method_cpp(self, prop, ctx):
 		if prop not in self.properties:
-			sys.exit("Error line " + get_line_and_column(ctx) + ": No property named " + prop + " in UDP")
+			sys.exit("line " + get_line_and_column(ctx) + " No property named " + prop + " in UDP")
 		return self.cpp_properties[prop]
 
 class Ip:
@@ -567,7 +567,7 @@ class Ip:
 
 	def resolve_method_cpp(self, prop, ctx):
 		if prop not in self.properties:
-			sys.exit("Error line " + get_line_and_column(ctx) + ": No property named " + prop + " in IP")
+			sys.exit("line " + get_line_and_column(ctx) + " No property named " + prop + " in IP")
 		return self.cpp_properties[prop]
 
 	# Returns the correct C++/IncludeOS IP protocol constant based on the
@@ -575,7 +575,7 @@ class Ip:
 	def resolve_protocol_cpp(self, nacl_proto, ctx):
 		proto = nacl_proto.lower()
 		if proto not in self.cpp_protocols:
-			sys.exit("Error line " + get_line_and_column(ctx) + ": No protocol named " + nacl_proto + " exists")
+			sys.exit("line " + get_line_and_column(ctx) + " No protocol named " + nacl_proto + " exists")
 		return self.cpp_protocols[proto]
 
 class Icmp:
@@ -601,7 +601,7 @@ class Icmp:
 
 	def resolve_method_cpp(self, prop, ctx):
 		if prop not in self.properties:
-			sys.exit("Error line " + get_line_and_column(ctx) + ": No property named " + prop + " in ICMP")
+			sys.exit("line " + get_line_and_column(ctx) + " No property named " + prop + " in ICMP")
 		return self.cpp_properties[prop]
 
 class Ct:
@@ -627,7 +627,7 @@ class Ct:
 
 	def resolve_method_cpp(self, prop, ctx):
 		if prop not in self.properties:
-			sys.exit("Error line " + get_line_and_column(ctx) + ": No property named " + prop + " in CT")
+			sys.exit("line " + get_line_and_column(ctx) + " No property named " + prop + " in CT")
 		return self.cpp_properties[prop]
 
 Tcp_obj = Tcp()
