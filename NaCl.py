@@ -255,14 +255,14 @@ class Iface(Typed):
 			for list_value in value_ctx.list_t().value_list().value():
 				if list_value.value_name() is None:
 					sys.exit("line " + get_line_and_column(list_value) + " This is not supported: " + pair_ctx.getText())
-				functions.append(list_value.value_name().getText())
+				functions.append(list_value.value_name())
 		elif value_ctx.value_name() is not None:
 			# Only one function pushed onto chain
-			functions = [ value_ctx.value_name().getText() ]
+			functions = [ value_ctx.value_name() ]
 		else:
 			sys.exit("line " + get_line_and_column(value_ctx) + " This is not supported: " + pair_ctx.getText())
-		
-		self.add_push(chain, functions, value_ctx)
+
+		self.add_push(chain, functions)
 
 	def process_ctx(self):
 		# Handle the Iface's value ctx object: Fill self.members dictionary
@@ -331,14 +331,14 @@ class Iface(Typed):
 						for list_value in found_element_value.list_t().value_list().value():
 							if list_value.value_name() is None:
 								sys.exit("line " + get_line_and_column(list_value) + " This is not supported: " + element.ctx.getText())
-							functions.append(list_value.value_name().getText())
+							functions.append(list_value.value_name())
 					elif found_element_value.value_name() is not None:
 						# Only one function pushed onto chain
-						functions = [ found_element_value.value_name().getText() ]
+						functions = [ found_element_value.value_name() ]
 					else:
 						sys.exit("line " + get_line_and_column(found_element_value) + " This is not supported: " + element.ctx.getText())
 
-					self.add_push(iface_member, functions, found_element_value)
+					self.add_push(iface_member, functions)
 					# pushes_to_add[iface_member] = functions
 					# else:
 					#	sys.exit("Error (" + element.name + "): Iface chain " + iface_member + " has already been set")
@@ -437,17 +437,18 @@ class Iface(Typed):
 			# Process and add vlans found
 			self.add_iface_vlans(vlans)
 
-	def add_push(self, chain, functions, ctx):
+	def add_push(self, chain, functions):
 		# chain: string with name of chain
-		# functions: list containing strings, where each string corresponds to the name of a NaCl function
+		# functions: list containing value_name ctxs, where each name corresponds to the name of a NaCl function
 		
 		function_names = []
 		num_functions = len(functions)
 		for i, function in enumerate(functions):
-			element = elements.get(function)
+			name = function.getText()
+			element = elements.get(name)
 			if element is None or element.base_type != BASE_TYPE_FUNCTION:
-				sys.exit("line " + get_line_and_column(ctx) + " No function with the name " + function + " exists")
-			function_names.append({TEMPLATE_KEY_FUNCTION_NAME: function, TEMPLATE_KEY_COMMA: (i < (num_functions - 1))})
+				sys.exit("line " + get_line_and_column(function) + " No function with the name " + name + " exists")
+			function_names.append({TEMPLATE_KEY_FUNCTION_NAME: name, TEMPLATE_KEY_COMMA: (i < (num_functions - 1))})
 
 		pushes.append({
 			TEMPLATE_KEY_IFACE:				self.name,
