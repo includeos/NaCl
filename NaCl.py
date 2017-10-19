@@ -225,8 +225,7 @@ class Typed(Element):
 class Iface(Typed):
 	def __init__(self, idx, name, ctx, base_type, type_t):
 		super(Iface, self).__init__(idx, name, ctx, base_type, type_t)
-
-		self.masquerade = False
+		
 		self.config_is_dhcp = False
 		self.config_is_dhcp_fallback = False
 		self.config_is_static = False
@@ -283,11 +282,7 @@ class Iface(Typed):
 				if key in chains:
 					self.process_push(key, pair);
 				else:
-					if key != IFACE_KEY_MASQUERADE:
-						self.members[key] = pair_value
-					else:
-						if resolve_value(LANGUAGE, pair_value) == TRUE:
-							self.masquerade = True
+					self.members[key] = pair_value
 		elif value.value_name() is not None:
 			# configuration type (dhcp, dhcp-with-fallback, static)
 			config = value.value_name().getText().lower()
@@ -324,7 +319,6 @@ class Iface(Typed):
 				if iface_member in chains:
 					# Handle pushes
 					
-					# if pushes_to_add.get(iface_member) is None:
 					functions = []
 					if found_element_value.list_t() is not None:
 						# More than one function pushed onto chain
@@ -339,22 +333,11 @@ class Iface(Typed):
 						sys.exit("line " + get_line_and_column(found_element_value) + " This is not supported: " + element.ctx.getText())
 
 					self.add_push(iface_member, functions)
-					# pushes_to_add[iface_member] = functions
-					# else:
-					#	sys.exit("Error (" + element.name + "): Iface chain " + iface_member + " has already been set")
 				else:
-					if iface_member != IFACE_KEY_MASQUERADE:
-						if self.members.get(iface_member) is None:
-							self.members[iface_member] = found_element_value
-						else:
-							sys.exit("line " + get_line_and_column(element.ctx) + " Iface member " + iface_member + " has already been set")
+					if self.members.get(iface_member) is None:
+						self.members[iface_member] = found_element_value
 					else:
-						masq_val = resolve_value(LANGUAGE, found_element_value)
-						# TODO:
-						# Make impossible to edit masquerade property/member as well? (sys.exit)
-						if not self.masquerade or i > self.idx:
-							if masq_val == TRUE:
-								self.masquerade = True
+						sys.exit("line " + get_line_and_column(element.ctx) + " Iface member " + iface_member + " has already been set")
 
 	def validate_members(self):
 		if self.members.get(IFACE_KEY_INDEX) is None:
@@ -368,14 +351,17 @@ class Iface(Typed):
 			(self.members.get(IFACE_KEY_ADDRESS) is None or \
 				self.members.get(IFACE_KEY_NETMASK) is None or \
 				self.members.get(IFACE_KEY_GATEWAY) is None):
-			sys.exit("line " + get_line_and_column(self.ctx.value()) + " The members address, netmask and gateway must be set for " + \
-				"every Iface if the Iface configuration hasn't been set to " + DHCP_CONFIG)
+			sys.exit("line " + get_line_and_column(self.ctx.value()) + " The members " + IFACE_KEY_ADDRESS + ", " + IFACE_KEY_NETMASK + \
+				" and gateway must be set for every Iface if the Iface configuration hasn't been set to " + DHCP_CONFIG)
+		elif config is not None and config.value_name().getText().lower() == DHCP_CONFIG and \
+			(self.members.get(IFACE_KEY_ADDRESS) is not None or \
+				self.members.get(IFACE_KEY_NETMASK) is not None or \
+				self.members.get(IFACE_KEY_GATEWAY) is not None or \
+				self.members.get(IFACE_KEY_DNS) is not None):
+			sys.exit("line " + get_line_and_column(config.value_name()) + " An Iface with config set to dhcp should not specify " + IFACE_KEY_ADDRESS + \
+				", " + IFACE_KEY_NETMASK + ", " + IFACE_KEY_GATEWAY + " or " + IFACE_KEY_DNS)
 
 	def process_members(self):
-		# Masquerade
-		if self.masquerade:
-			masquerades.append({TEMPLATE_KEY_IFACE: self.name})
-
 		# Vlans
 		vlans = []
 		if self.members.get(IFACE_KEY_VLAN) is not None:
@@ -413,16 +399,20 @@ class Iface(Typed):
 				sys.exit("line " + get_line_and_column(vlan_ctx) + " An Iface's vlan needs to be a list of Vlans")
 
 		# Loop through self.members and resolve the values
-		# Note: If a member's value is None, the new value will be "" here:
 		for key, member in self.members.iteritems():
-			if key != IFACE_KEY_CONFIG:
-				if key != IFACE_KEY_INDEX:
-					self.members[key] = resolve_value(LANGUAGE, self.members.get(key))							
-				else:
-					index = self.members.get(IFACE_KEY_INDEX)
-					self.members[IFACE_KEY_INDEX] = resolve_value(LANGUAGE, index)
-			else:
+			if key != IFACE_KEY_CONFIG and key != IFACE_KEY_MASQUERADE:
+				self.members[key] = resolve_value(LANGUAGE, self.members.get(key))
+			elif key == IFACE_KEY_CONFIG:
 				self.members[IFACE_KEY_CONFIG] = "" if self.members.get(IFACE_KEY_CONFIG) is None else self.members.get(IFACE_KEY_CONFIG).value_name().getText().lower()
+			else:
+				masq_ctx = self.members.get(key)
+				masq_val = resolve_value(LANGUAGE, masq_ctx)
+
+				if not isinstance(masq_val, basestring) or (masq_val.lower() != TRUE and masq_val.lower() != FALSE):
+					sys.exit("line " + get_line_and_column(masq_ctx) + " Invalid masquerade value. Must be set to true or false")
+				
+				if masq_val == TRUE:
+					masquerades.append({TEMPLATE_KEY_IFACE: self.name})
 
 		# Update config members
 		config = self.members.get(IFACE_KEY_CONFIG)
@@ -583,7 +573,6 @@ class Vlan(Typed):
 
 	def process_members(self):
 		# Transpile values
-		# Note: If a member's value is None, the new value will be "" here:
 		for key, member in self.members.iteritems():
 			self.members[key] = resolve_value(LANGUAGE, self.members.get(key))
 
@@ -876,7 +865,7 @@ def handle_input():
 		TEMPLATE_KEY_CT_IFACES:			ct_ifaces,
 		TEMPLATE_KEY_MASQUERADES: 		masquerades,
 		TEMPLATE_KEY_HAS_GATEWAYS: 		(len(gateways) > 0),
-		TEMPLATE_KEY_HAS_NATS: 			(len(nats) > 0),
+		TEMPLATE_KEY_HAS_NATS: 			(len(nats) > 0 or len(masquerades) > 0),
 		TEMPLATE_KEY_HAS_MASQUERADES:	(len(masquerades) > 0),
 		TEMPLATE_KEY_HAS_VLANS: 		(len(ifaces_with_vlans) > 0)
 	}
