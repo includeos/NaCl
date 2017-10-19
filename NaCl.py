@@ -351,8 +351,15 @@ class Iface(Typed):
 			(self.members.get(IFACE_KEY_ADDRESS) is None or \
 				self.members.get(IFACE_KEY_NETMASK) is None or \
 				self.members.get(IFACE_KEY_GATEWAY) is None):
-			sys.exit("line " + get_line_and_column(self.ctx.value()) + " The members address, netmask and gateway must be set for " + \
-				"every Iface if the Iface configuration hasn't been set to " + DHCP_CONFIG)
+			sys.exit("line " + get_line_and_column(self.ctx.value()) + " The members " + IFACE_KEY_ADDRESS + ", " + IFACE_KEY_NETMASK + \
+				" and gateway must be set for every Iface if the Iface configuration hasn't been set to " + DHCP_CONFIG)
+		elif config is not None and config.value_name().getText().lower() == DHCP_CONFIG and \
+			(self.members.get(IFACE_KEY_ADDRESS) is not None or \
+				self.members.get(IFACE_KEY_NETMASK) is not None or \
+				self.members.get(IFACE_KEY_GATEWAY) is not None or \
+				self.members.get(IFACE_KEY_DNS) is not None):
+			sys.exit("line " + get_line_and_column(config.value_name()) + " An Iface with config set to dhcp should not specify " + IFACE_KEY_ADDRESS + \
+				", " + IFACE_KEY_NETMASK + ", " + IFACE_KEY_GATEWAY + " or " + IFACE_KEY_DNS)
 
 	def process_members(self):
 		# Vlans
