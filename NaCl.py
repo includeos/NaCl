@@ -373,10 +373,7 @@ class Iface(Typed):
 				for pair in vlan_ctx.obj().key_value_list().key_value_pair():
 					# Key: Name of Vlan
 					# Value: Actual Vlan object/value (containing address, netmask, gateway, index)
-					vlan_name = pair.key().getText()
-					vlan_value = pair.value()
-					vlan_element = Vlan(0, vlan_name, vlan_value, BASE_TYPE_TYPED_INIT, TYPE_VLAN)
-
+					vlan_element = Vlan(0, pair.key().getText(), pair.value(), BASE_TYPE_TYPED_INIT, TYPE_VLAN)
 					vlans.append(vlan_element)
 			elif vlan_ctx.list_t() is not None:
 				# Add each Vlan in list_t to the vlans list
@@ -401,7 +398,16 @@ class Iface(Typed):
 		# Loop through self.members and resolve the values
 		for key, member in self.members.iteritems():
 			if key != IFACE_KEY_CONFIG and key != IFACE_KEY_MASQUERADE:
-				self.members[key] = resolve_value(LANGUAGE, self.members.get(key))
+				val_ctx = self.members.get(key)
+				self.members[key] = resolve_value(LANGUAGE, val_ctx)
+
+				# Validate that an Iface with this Iface's index has not already been defined
+				if key == IFACE_KEY_INDEX:
+					for key, el in elements.iteritems():
+						if isinstance(el, Iface) and key != self.name:
+							el_idx = el.members.get(IFACE_KEY_INDEX)
+							if el_idx is not None and el_idx == self.members.get(IFACE_KEY_INDEX):
+								sys.exit("line " + get_line_and_column(val_ctx) + " Another Iface has been defined with index " + el_idx)
 			elif key == IFACE_KEY_CONFIG:
 				self.members[IFACE_KEY_CONFIG] = "" if self.members.get(IFACE_KEY_CONFIG) is None else self.members.get(IFACE_KEY_CONFIG).value_name().getText().lower()
 			else:
@@ -452,6 +458,7 @@ class Iface(Typed):
 		pystache_vlans = []
 		for vlan in vlans:
 			vlan.process() # Make sure the Vlan has been processed
+
 			gateway = vlan.members.get(VLAN_KEY_GATEWAY)
 			if gateway is None:
 				gateway = self.members.get(IFACE_KEY_GATEWAY)
