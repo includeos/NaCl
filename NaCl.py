@@ -361,7 +361,7 @@ class Iface(Typed):
 			sys.exit("line " + get_line_and_column(config.value_name()) + " An Iface with config set to dhcp should not specify " + IFACE_KEY_ADDRESS + \
 				", " + IFACE_KEY_NETMASK + ", " + IFACE_KEY_GATEWAY + " or " + IFACE_KEY_DNS)
 
-	def process_members(self):		
+	def process_members(self):
 		# Vlans
 		vlans = []
 		if self.members.get(IFACE_KEY_VLAN) is not None:
