@@ -39,9 +39,8 @@ public:
 			return Filter_verdict::ACCEPT;
 
 		{{{content}}}
-
 		// At the end of a Nat we want to accept the packet that hasn't been DNATed or SNATed
-		return Filter_verdict::ACCEPT
+		return Filter_verdict::ACCEPT;
 	}
 };
 
@@ -84,27 +83,28 @@ void register_plugin_nacl() {
 	Super_stack::inet().create<IP4>({{iface}}_manager.add({{iface}}_nic, {{index}}), {{iface_index}}, {{index}}).network_config({{address}}, {{netmask}}, {{gateway}});
 	{{/vlans}}
 	{{/ifaces_with_vlans}}
-	
 	{{#filters}}
+
 	{{title}} {{name}};
 	{{/filters}}
 	{{#nats}}
+
 	{{title}} {{name}};
 	{{/nats}}
-	
+
 	/*
 	{{#pushes}}
 	{{iface}}.ip_obj().{{chain}}_chain().chain = { {{#function_names}}{{function_name}}{{#comma}}, {{/comma}}{{/function_names}} };
 	{{/pushes}}
 	*/
-
 	{{#pushes}}
+
 	{{#function_names}}
 	{{iface}}.ip_obj().{{chain}}_chain().chain.push_back({{function_name}});
 	{{/function_names}}
 	{{/pushes}}
-
 	{{#has_gateways}}
+
 	// Router
 
 	INFO("NaCl", "Setup routing");
@@ -138,13 +138,13 @@ void register_plugin_nacl() {
 	{{iface}}.enable_conntrack(ct);
 	{{/ct_ifaces}}
 	*/
-
 	{{#has_nats}}
-	// NAT (Masquerade)
+
+	// NAT
 
 	natty = std::make_unique<nat::NAPT>(ct);
-
 	{{#has_masquerades}}
+
 	auto masq = [](IP4::IP_packet& pckt, Inet<IP4>& stack, Conntrack::Entry_ptr entry)->auto {
 		natty->masquerade(pckt, stack, entry);
 		return Filter_verdict::ACCEPT;
@@ -153,12 +153,22 @@ void register_plugin_nacl() {
 		natty->demasquerade(pckt, stack, entry);
 		return Filter_verdict::ACCEPT;
 	};
-
 	{{#masquerades}}
+
 	INFO("NaCl", "Enable MASQUERADE on {{iface}}");
 	{{iface}}.ip_obj().prerouting_chain().chain.push_back(demasq);
 	{{iface}}.ip_obj().postrouting_chain().chain.push_back(masq);
 	{{/masquerades}}
 	{{/has_masquerades}}
+	{{#has_snats}}
+
+	auto snat_translate = [](IP4::IP_packet& pckt, Inet<IP4>&, Conntrack::Entry_ptr entry)-> auto {
+		natty->snat(pckt, entry);
+		return Filter_verdict::ACCEPT;
+	};
+	{{#snats}}
+	{{iface}}.ip_obj().postrouting_chain().chain.push_back(snat_translate);
+	{{/snats}}
+	{{/has_snats}}
 	{{/has_nats}}
 }

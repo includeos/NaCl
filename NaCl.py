@@ -25,11 +25,13 @@ TEMPLATE_KEY_GATEWAYS 			= "gateways"
 TEMPLATE_KEY_IP_FORWARD_IFACES 	= "ip_forward_ifaces"
 TEMPLATE_KEY_CT_IFACES 			= "ct_ifaces"
 TEMPLATE_KEY_MASQUERADES 		= "masquerades"
+TEMPLATE_KEY_SNATS 				= "snats"
 
 TEMPLATE_KEY_HAS_GATEWAYS 		= "has_gateways"
 TEMPLATE_KEY_HAS_NATS 			= "has_nats"
 TEMPLATE_KEY_HAS_MASQUERADES 	= "has_masquerades"
 TEMPLATE_KEY_HAS_VLANS 			= "has_vlans"
+TEMPLATE_KEY_HAS_SNATS 			= "has_snats"
 
 # Data to be sent to pystache renderer
 # Each list are to contain objects consisting of key value pairs
@@ -43,6 +45,7 @@ gateways 			= []
 ip_forward_ifaces 	= []
 ct_ifaces 			= []
 masquerades 		= []
+snats 				= []
 
 gateway_exists 		= False
 
@@ -437,6 +440,7 @@ class Iface(Typed):
 		# chain: string with name of chain
 		# functions: list containing value_name ctxs, where each name corresponds to the name of a NaCl function
 		
+		add_snat = False
 		function_names = []
 		num_functions = len(functions)
 		for i, function in enumerate(functions):
@@ -444,7 +448,17 @@ class Iface(Typed):
 			element = elements.get(name)
 			if element is None or element.base_type != BASE_TYPE_FUNCTION:
 				sys.exit("line " + get_line_and_column(function) + " No function with the name " + name + " exists")
+
+			# If a Nat function is pushed onto an Iface's chain,
+			# push the snat_translate lambda in cpp_template.mustache
+			# onto the same Iface's postrouting chain
+			if element.type_t.lower() == TYPE_NAT:
+				add_snat = True
+
 			function_names.append({TEMPLATE_KEY_FUNCTION_NAME: name, TEMPLATE_KEY_COMMA: (i < (num_functions - 1))})
+
+		if add_snat:
+			snats.append({ TEMPLATE_KEY_IFACE: self.name })
 
 		pushes.append({
 			TEMPLATE_KEY_IFACE:				self.name,
@@ -871,10 +885,12 @@ def handle_input():
 		TEMPLATE_KEY_IP_FORWARD_IFACES:	ip_forward_ifaces,
 		TEMPLATE_KEY_CT_IFACES:			ct_ifaces,
 		TEMPLATE_KEY_MASQUERADES: 		masquerades,
+		TEMPLATE_KEY_SNATS: 			snats,
 		TEMPLATE_KEY_HAS_GATEWAYS: 		(len(gateways) > 0),
 		TEMPLATE_KEY_HAS_NATS: 			(len(nats) > 0 or len(masquerades) > 0),
 		TEMPLATE_KEY_HAS_MASQUERADES:	(len(masquerades) > 0),
-		TEMPLATE_KEY_HAS_VLANS: 		(len(ifaces_with_vlans) > 0)
+		TEMPLATE_KEY_HAS_VLANS: 		(len(ifaces_with_vlans) > 0),
+		TEMPLATE_KEY_HAS_SNATS: 		(len(snats) > 0)
 	}
 
 	if LANGUAGE == CPP:
