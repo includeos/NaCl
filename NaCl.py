@@ -352,10 +352,9 @@ class Iface(Typed):
 
 		if (config is None or config.value_name().getText().lower() != DHCP_CONFIG) and \
 			(self.members.get(IFACE_KEY_ADDRESS) is None or \
-				self.members.get(IFACE_KEY_NETMASK) is None or \
-				self.members.get(IFACE_KEY_GATEWAY) is None):
-			sys.exit("line " + get_line_and_column(self.ctx.value()) + " The members " + IFACE_KEY_ADDRESS + ", " + IFACE_KEY_NETMASK + \
-				" and gateway must be set for every Iface if the Iface configuration hasn't been set to " + DHCP_CONFIG)
+				self.members.get(IFACE_KEY_NETMASK) is None):
+			sys.exit("line " + get_line_and_column(self.ctx.value()) + " The members " + IFACE_KEY_ADDRESS + " and " + IFACE_KEY_NETMASK + \
+				" must be set for every Iface if the Iface configuration hasn't been set to " + DHCP_CONFIG)
 		elif config is not None and config.value_name().getText().lower() == DHCP_CONFIG and \
 			(self.members.get(IFACE_KEY_ADDRESS) is not None or \
 				self.members.get(IFACE_KEY_NETMASK) is not None or \
@@ -476,7 +475,7 @@ class Iface(Typed):
 			gateway = vlan.members.get(VLAN_KEY_GATEWAY)
 			if gateway is None:
 				gateway = self.members.get(IFACE_KEY_GATEWAY)
-			
+
 			pystache_vlans.append({
 				TEMPLATE_KEY_INDEX: 	vlan.members.get(VLAN_KEY_INDEX),
 				TEMPLATE_KEY_ADDRESS: 	vlan.members.get(VLAN_KEY_ADDRESS),

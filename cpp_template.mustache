@@ -51,7 +51,7 @@ void register_plugin_nacl() {
 	{{#ifaces}}
 	{{#config_is_static}}
 	auto& {{name}} = Inet4::stack<{{index}}>();
-	{{name}}.network_config({{address}}, {{netmask}}, {{gateway}}{{#dns}}, {{.}}{{/dns}});
+	{{name}}.network_config({{address}}, {{netmask}}{{#gateway}}, {{.}}{{/gateway}}{{^gateway}}, 0{{/gateway}}{{#dns}}, {{.}}{{/dns}});
 	{{/config_is_static}}
 	{{#config_is_dhcp}}
 	auto& {{name}} = Inet4::stack<{{index}}>();
@@ -68,7 +68,7 @@ void register_plugin_nacl() {
 	Inet4::ifconfig<{{index}}>(10.0, [&{{name}}] (bool timedout) {
 		if (timedout) {
 			INFO("NaCl plugin interface {{name}}", "DHCP timeout (%s) - falling back to static configuration", {{name}}.ifname().c_str());
-			{{name}}.network_config({{address}}, {{netmask}}, {{gateway}}{{#dns}}, {{.}}{{/dns}});
+			{{name}}.network_config({{address}}, {{netmask}}{{#gateway}}, {{.}}{{/gateway}}{{^gateway}}, 0{{/gateway}}{{#dns}}, {{.}}{{/dns}});
 		}
 	});
 	{{/config_is_dhcp_fallback}}
@@ -80,7 +80,7 @@ void register_plugin_nacl() {
 	auto& {{iface}}_manager = VLAN_manager::get({{iface_index}});
 	// For each vlan connected to this iface:
 	{{#vlans}}
-	Super_stack::inet().create<IP4>({{iface}}_manager.add({{iface}}_nic, {{index}}), {{iface_index}}, {{index}}).network_config({{address}}, {{netmask}}, {{gateway}});
+	Super_stack::inet().create<IP4>({{iface}}_manager.add({{iface}}_nic, {{index}}), {{iface_index}}, {{index}}).network_config({{address}}, {{netmask}}{{#gateway}}, {{.}}{{/gateway}}{{^gateway}}, 0{{/gateway}});
 	{{/vlans}}
 	{{/ifaces_with_vlans}}
 	{{#filters}}
@@ -111,7 +111,7 @@ void register_plugin_nacl() {
 	Router<IP4>::Routing_table routing_table {
 		{{#gateways}}
 		{{#routes}}
-		{ {{#net}}{{.}}{{/net}}{{#host}}{{.}}{{/host}}, {{#netmask}}{{.}}, {{/netmask}}{{#nexthop}}{{.}}{{/nexthop}}{{^nexthop}}{0}{{/nexthop}}{{#iface}}, {{.}}{{/iface}}{{#cost}}, {{.}}{{/cost}}{{^cost}}, 1{{/cost}} }{{#comma}},{{/comma}}
+		{ {{#net}}{{.}}{{/net}}{{#host}}{{.}}{{/host}}, {{#netmask}}{{.}}, {{/netmask}}{{#nexthop}}{{.}}{{/nexthop}}{{^nexthop}}0{{/nexthop}}{{#iface}}, {{.}}{{/iface}}{{#cost}}, {{.}}{{/cost}}{{^cost}}, 1{{/cost}} }{{#comma}},{{/comma}}
 		{{/routes}}
 		{{/gateways}}
 	};
