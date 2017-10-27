@@ -35,9 +35,6 @@ public:
 class {{title}} : public Filter {
 public:
 	Filter_verdict operator()(IP4::IP_packet& pckt, Inet<IP4>& stack, Conntrack::Entry_ptr ct_entry) {
-		if (not stack.is_valid_source(pckt.ip_dst()))	// this is not for me
-			return Filter_verdict::ACCEPT;
-
 		{{{content}}}
 		// At the end of a Nat we want to accept the packet that hasn't been DNATed or SNATed
 		return Filter_verdict::ACCEPT;
