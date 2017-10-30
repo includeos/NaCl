@@ -17,8 +17,8 @@ my_addresses: [
 ]
 
 Filter::IP my_filter {
-  if (ip.saddr in my_addresses) { log("Accepting") accept }
-  log("Dropping")
+  if (ip.saddr in my_addresses) { log("Accepting\n") accept }
+  log("Dropping\n")
   drop
 }
 
