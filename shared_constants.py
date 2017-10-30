@@ -145,6 +145,10 @@ IP 		= "ip"
 ICMP 	= "icmp"
 CT 		= "ct"
 
+# Constants related to the log action (std::cout)
+TO_UNSIGNED = "TO_UNSIGNED"
+TO_STRING = "TO_STRING"
+
 NAT_OBJ_NAME 	= "natty"
 
 # Pckt variable names, used in transpiled text/code
@@ -476,6 +480,11 @@ class Tcp:
 			sys.exit("line " + get_line_and_column(ctx) + " No property named " + prop + " in TCP")
 		return self.cpp_properties[prop]
 
+	def get_cout_convert_to_type_cpp(self, prop, ctx):
+		if prop not in self.properties:
+			sys.exit("line " + get_line_and_column(ctx) + " No property named " + prop + " in TCP")
+		return TO_UNSIGNED
+
 class Udp:
 	def __init__(self):
 		self.properties = [
@@ -507,6 +516,11 @@ class Udp:
 		if prop not in self.properties:
 			sys.exit("line " + get_line_and_column(ctx) + " No property named " + prop + " in UDP")
 		return self.cpp_properties[prop]
+
+	def get_cout_convert_to_type_cpp(self, prop, ctx):
+		if prop not in self.properties:
+			sys.exit("line " + get_line_and_column(ctx) + " No property named " + prop + " in UDP")
+		return TO_UNSIGNED
 
 class Ip:
 	def __init__(self):
@@ -548,6 +562,21 @@ class Ip:
 			IP: 	INCLUDEOS_PROTO_IP4
 		}
 
+		self.cpp_cout_conversion_types = {
+			VERSION: 	TO_UNSIGNED,
+			HDRLENGTH:	TO_UNSIGNED,
+			DSCP: 		TO_UNSIGNED,
+			ECN: 		TO_UNSIGNED,
+			LENGTH: 	TO_UNSIGNED,
+			ID: 		TO_UNSIGNED,
+			FRAG_OFF: 	TO_UNSIGNED,
+			TTL: 		TO_UNSIGNED,
+			PROTOCOL: 	TO_UNSIGNED,
+			CHECKSUM: 	TO_UNSIGNED,
+			SADDR: 		TO_STRING,
+			DADDR: 		TO_STRING
+		}
+
 	def resolve_cast(self, language, prop):
 		if language == CPP:
 			return self.resolve_cast_cpp(prop)
@@ -578,6 +607,11 @@ class Ip:
 			sys.exit("line " + get_line_and_column(ctx) + " No protocol named " + nacl_proto + " exists")
 		return self.cpp_protocols[proto]
 
+	def get_cout_convert_to_type_cpp(self, prop, ctx):
+		if prop not in self.properties:
+			sys.exit("line " + get_line_and_column(ctx) + " No property named " + prop + " in IP")
+		return self.cpp_cout_conversion_types[prop]
+
 class Icmp:
 	def __init__(self):
 		self.properties = [
@@ -604,6 +638,11 @@ class Icmp:
 			sys.exit("line " + get_line_and_column(ctx) + " No property named " + prop + " in ICMP")
 		return self.cpp_properties[prop]
 
+	def get_cout_convert_to_type_cpp(self, prop, ctx):
+		if prop not in self.properties:
+			sys.exit("line " + get_line_and_column(ctx) + " No property named " + prop + " in ICMP")
+		return TO_UNSIGNED
+
 class Ct:
 	def __init__(self):
 		self.properties = [
@@ -629,6 +668,11 @@ class Ct:
 		if prop not in self.properties:
 			sys.exit("line " + get_line_and_column(ctx) + " No property named " + prop + " in CT")
 		return self.cpp_properties[prop]
+
+	def get_cout_convert_to_type_cpp(self, prop, ctx):
+		if prop not in self.properties:
+			sys.exit("line " + get_line_and_column(ctx) + " No property named " + prop + " in TCP")
+		return TO_UNSIGNED
 
 Tcp_obj = Tcp()
 Udp_obj = Udp()

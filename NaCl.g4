@@ -2,7 +2,7 @@ grammar NaCl;
 
 /* Lexer */
 
-Whitespace: (' ' | '\t' | '\n' | '\r') -> skip;
+Whitespace: (' ' | '\t' | '\n' | '\r') -> channel(1);
 
 fragment Digit: [0-9];
 Number: Digit+;
@@ -71,7 +71,7 @@ decimal: Number+ Dot Number+
 ipv4_addr: Number Dot Number Dot Number Dot Number;
 
 rng: numeric_type Hyphen numeric_type;
-string: Quotes (~(Quotes)*?) Quotes;
+string: Quotes (~(Quotes) | '\\')* Quotes; // Allowed to write \ inside a string
 value_name: Identifier | Identifier Dot value_name;
 
 obj: Curly_bracket_start key_value_list Curly_bracket_end;

@@ -1,0 +1,51 @@
+Iface eth0 {
+	address: 10.0.0.45,
+	netmask: 255.255.255.0,
+	index: 0,
+	gateway: 10.0.0.1
+}
+
+Filter::IP ip_filter {
+    log("CT state: ", ct.state, "\n")
+
+    log("IP saddr: ", ip.saddr, "\n")
+	log("IP daddr: ", ip.daddr, "\n")
+	log("IP version: ", ip.version, "\n")
+	log("IP hdrlength: ", ip.hdrlength, "\n")
+	log("IP dscp: ", ip.dscp, "\n")
+	log("IP ecn: ", ip.ecn, "\n")
+	log("IP length: ", ip.length, "\n")
+	log("IP id: ", ip.id, "\n")
+	log("IP frag-off: ", ip.frag-off, "\n")
+	log("IP ttl: ", ip.ttl, "\n")
+	log("IP protocol: ", ip.protocol, "\n")
+	log("IP checksum: ", ip.checksum, "\n")
+
+	Filter::TCP {
+	    log("TCP sport: ", tcp.sport, "\n")
+		log("TCP dport: ", tcp.dport, "\n")
+		log("TCP sequence: ", tcp.sequence, "\n")
+		log("TCP ackseq: ", tcp.ackseq, "\n")
+		log("TCP doff: ", tcp.doff, "\n")
+		log("TCP reserved: ", tcp.reserved, "\n")
+		log("TCP flags: ", tcp.flags, "\n")
+		log("TCP window: ", tcp.window, "\n")
+		log("TCP checksum: ", tcp.checksum, "\n")
+		log("TCP urgptr: ", tcp.urgptr, "\n")
+	}
+
+	Filter::UDP {
+	    log("UDP sport: ", udp.sport, "\n")
+		log("UDP dport: ", udp.dport, "\n")
+		log("UDP length: ", udp.length, "\n")
+		log("UDP checksum: ", udp.checksum, "\n")
+	}
+	
+	Filter::ICMP {
+	    log("ICMP type: ", icmp.type, "\n")
+	}
+
+	accept
+}
+
+eth0.prerouting: ip_filter
