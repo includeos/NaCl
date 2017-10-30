@@ -1,5 +1,4 @@
 import sys
-
 from shared_constants import *
 
 # ---- Helper functions ----
@@ -128,8 +127,7 @@ def resolve_value_cpp(val_ctx, subtype=""):
 			sys.exit("line " + get_line_and_column(val_ctx) + " A range's values need to be of the same type (" + val + ")")
 
 	if val_ctx.string() is not None:
-		# TODO: Keep whitespace
-		return val
+		return val_ctx.parser.getTokenStream().getText(interval=(val_ctx.start.tokenIndex, val_ctx.stop.tokenIndex))
 
 	if val_ctx.obj() is not None:
 		return resolve_object_cpp(val_ctx.obj())

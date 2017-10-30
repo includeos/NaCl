@@ -2,7 +2,7 @@ grammar NaCl;
 
 /* Lexer */
 
-Whitespace: (' ' | '\t' | '\n' | '\r') -> skip;
+Whitespace: (' ' | '\t' | '\n' | '\r') -> channel(1);
 
 fragment Digit: [0-9];
 Number: Digit+;
