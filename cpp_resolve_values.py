@@ -35,6 +35,27 @@ def get_cast_cpp(cast_to_proto, pckt_name, ctx):
 	else:
 		return "*(" + cpp_pckt_class + "*) " + INCLUDEOS_REFERENCE_OP + pckt_name + ";"
 
+def get_cout_convert_to_type_cpp(val_ctx):
+	if val_ctx.value_name() is None:
+		sys.exit("line " + get_line_and_column(val_ctx) + " This value can not be printed")
+
+	name_parts = val_ctx.value_name().getText().split(DOT)
+	name = name_parts[0]
+
+	if len(name_parts) == 1:
+		sys.exit("line " + get_line_and_column(val_ctx) + " This value can not be printed")
+
+	if name.lower() not in proto_objects:
+		sys.exit("line " + get_line_and_column(val_ctx) + " " + name + " is not a valid protocol")
+
+	name_parts.pop(0)
+	properties = name_parts
+	if len(properties) > 1:
+		sys.exit("line " + get_line_and_column(val_ctx) + " Undefined protocol object properties: " + \
+			val_ctx.value_name().getText())
+
+	return proto_objects[name.lower()].get_cout_convert_to_type_cpp(properties[0].lower(), val_ctx)
+
 def transpile_ip4_addr_cpp(ip_addr_ctx):
 	parts = ip_addr_ctx.Number() # list
 	part0 = parts[0].getText()
@@ -107,6 +128,7 @@ def resolve_value_cpp(val_ctx, subtype=""):
 			sys.exit("line " + get_line_and_column(val_ctx) + " A range's values need to be of the same type (" + val + ")")
 
 	if val_ctx.string() is not None:
+		# TODO: Keep whitespace
 		return val
 
 	if val_ctx.obj() is not None:

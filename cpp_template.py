@@ -107,12 +107,25 @@ class Action_handler:
 		return INCLUDEOS_DROP
 
 	def transpile_log_cpp(self, parameter_ctx_list, subtype, action_ctx):
-		param = ""
+		content = "std::cout << "
 
 		if len(parameter_ctx_list) > 0:
-			param = resolve_value_cpp(parameter_ctx_list[0])
+			for i, p in enumerate(parameter_ctx_list):
+				if p.string() is not None:
+					content += resolve_value_cpp(p, subtype)
+				else:
+					t = get_cout_convert_to_type_cpp(p)
+					if t == TO_UNSIGNED:
+						content += "static_cast<unsigned>(" + resolve_value_cpp(p, subtype) + ")"
+					elif t == TO_STRING:
+						content += resolve_value_cpp(p, subtype) + ".to_string()"
+					else:
+						sys.exit("line " + get_line_and_column(p) + " Internal error: std::cout conversion for " + t + " has not been implemented")
 
-		return "printf(" + str(param) + ");\nprintf(\"\\n\");\n"
+				if i < (len(parameter_ctx_list) - 1):
+					content += " << "
+
+		return content + ";\n"
 
 	def transpile_nat_cpp(self, type_nat, parameter_ctx_list, subtype, action_ctx):
 		if type_nat != SNAT and type_nat != DNAT:
