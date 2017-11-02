@@ -124,18 +124,20 @@ void register_plugin_nacl() {
 
 	ct = std::make_shared<Conntrack>();
 
+	{{#enable_conntrack}}
 	// Enable conntrack on all ifaces created by default
 	{{#ifaces}}
 	INFO("NaCl", "Enable Conntrack on {{name}}");
 	{{name}}.enable_conntrack(ct);
 	{{/ifaces}}
-
-	/* If not enable on all by default:
+	{{/enable_conntrack}}
+/*
+	// If not enable on all by default:
 	{{#ct_ifaces}}
 	INFO("NaCl", "Enable Conntrack on {{iface}}");
 	{{iface}}.enable_conntrack(ct);
 	{{/ct_ifaces}}
-	*/
+*/
 	{{#has_nats}}
 
 	// NAT
