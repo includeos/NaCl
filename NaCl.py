@@ -23,7 +23,7 @@ TEMPLATE_KEY_REWRITES 			= "rewrites"
 TEMPLATE_KEY_PUSHES 			= "pushes"
 TEMPLATE_KEY_GATEWAYS 			= "gateways"
 TEMPLATE_KEY_IP_FORWARD_IFACES 	= "ip_forward_ifaces"
-TEMPLATE_KEY_CT_IFACES 			= "ct_ifaces"
+# TEMPLATE_KEY_CT_IFACES 		= "ct_ifaces"
 TEMPLATE_KEY_MASQUERADES 		= "masquerades"
 TEMPLATE_KEY_SNATS 				= "snats"
 
@@ -44,7 +44,7 @@ nats 				= []
 pushes 				= []
 gateways 			= []
 ip_forward_ifaces 	= []
-ct_ifaces 			= []
+# ct_ifaces 		= []
 masquerades 		= []
 snats 				= []
 
@@ -883,7 +883,7 @@ def handle_input():
 		TEMPLATE_KEY_PUSHES: 			pushes,
 		TEMPLATE_KEY_GATEWAYS: 			gateways, # or only one gateway?
 		TEMPLATE_KEY_IP_FORWARD_IFACES:	ip_forward_ifaces,
-		TEMPLATE_KEY_CT_IFACES:			ct_ifaces,
+		# TEMPLATE_KEY_CT_IFACES:		ct_ifaces,
 		TEMPLATE_KEY_MASQUERADES: 		masquerades,
 		TEMPLATE_KEY_SNATS: 			snats,
 		TEMPLATE_KEY_HAS_GATEWAYS: 		(len(gateways) > 0),

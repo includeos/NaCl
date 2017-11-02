@@ -18,7 +18,9 @@ using namespace nacl;
 {{#has_gateways}}
 std::unique_ptr<Router<IP4>> router;
 {{/has_gateways}}
+{{#enable_conntrack}}
 std::shared_ptr<Conntrack> ct;
+{{/enable_conntrack}}
 {{#has_nats}}
 std::unique_ptr<nat::NAPT> natty;
 {{/has_nats}}
@@ -119,12 +121,12 @@ void register_plugin_nacl() {
 	{{iface}}.set_forward_delg(router->forward_delg());
 	{{/ip_forward_ifaces}}
 	{{/has_gateways}}
+	{{#enable_conntrack}}
 
 	// Ct
 
 	ct = std::make_shared<Conntrack>();
 
-	{{#enable_conntrack}}
 	// Enable conntrack on all ifaces created by default
 	{{#ifaces}}
 	INFO("NaCl", "Enable Conntrack on {{name}}");
