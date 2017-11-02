@@ -32,6 +32,7 @@ TEMPLATE_KEY_HAS_NATS 			= "has_nats"
 TEMPLATE_KEY_HAS_MASQUERADES 	= "has_masquerades"
 TEMPLATE_KEY_HAS_VLANS 			= "has_vlans"
 TEMPLATE_KEY_HAS_SNATS 			= "has_snats"
+TEMPLATE_KEY_ENABLE_CONNTRACK 	= "enable_conntrack"
 
 # Data to be sent to pystache renderer
 # Each list are to contain objects consisting of key value pairs
@@ -889,7 +890,8 @@ def handle_input():
 		TEMPLATE_KEY_HAS_NATS: 			(len(nats) > 0 or len(masquerades) > 0),
 		TEMPLATE_KEY_HAS_MASQUERADES:	(len(masquerades) > 0),
 		TEMPLATE_KEY_HAS_VLANS: 		(len(ifaces_with_vlans) > 0),
-		TEMPLATE_KEY_HAS_SNATS: 		(len(snats) > 0)
+		TEMPLATE_KEY_HAS_SNATS: 		(len(snats) > 0),
+		TEMPLATE_KEY_ENABLE_CONNTRACK: 	(len(nats) > 0 or len(filters) > 0)
 	}
 
 	if LANGUAGE == CPP:
