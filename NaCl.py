@@ -364,6 +364,11 @@ class Iface(Typed):
 			sys.exit("line " + get_line_and_column(config.value_name()) + " An Iface with config set to dhcp should not specify " + IFACE_KEY_ADDRESS + \
 				", " + IFACE_KEY_NETMASK + ", " + IFACE_KEY_GATEWAY + " or " + IFACE_KEY_DNS)
 
+	def is_vlan(self, element):
+		if element is None or not hasattr(element, 'type_t') or element.type_t.lower() != TYPE_VLAN:
+			return False
+		return True
+
 	def process_members(self):
 		# Vlans
 		vlans = []
@@ -387,14 +392,20 @@ class Iface(Typed):
 					if v.value_name() is not None:
 						vlan_name = v.value_name().getText()
 						vlan_element = elements.get(vlan_name)
-						if vlan_element is None or not hasattr(vlan_element, 'type_t') or vlan_element.type_t.lower() != TYPE_VLAN:
-							sys.exit("line " + get_line_and_column(v) + " Undefined Vlan " + vlan_name)
+						if not self.is_vlan(vlan_element):
+							sys.exit("line " + get_line_and_column(v.value_name()) + " Undefined Vlan " + vlan_name)
 					elif v.obj() is not None:
 						vlan_element = Vlan(0, "", v, BASE_TYPE_TYPED_INIT, TYPE_VLAN)
 					else:
 						sys.exit("line " + get_line_and_column(v) + " A Vlan list must either contain Vlan objects (key value pairs) or names of Vlans")
 
 					vlans.append(vlan_element)
+			elif vlan_ctx.value_name() is not None:
+				vlan_name = vlan_ctx.value_name().getText()
+				vlan_element = elements.get(vlan_name)
+				if not self.is_vlan(vlan_element):
+					sys.exit("line " + get_line_and_column(vlan_ctx.value_name()) + " Undefined Vlan " + vlan_name)
+				vlans.append(vlan_element)
 			else:
 				sys.exit("line " + get_line_and_column(vlan_ctx) + " An Iface's vlan needs to be a list of Vlans")
 

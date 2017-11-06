@@ -1,0 +1,38 @@
+Iface eth0 {
+	address: 10.0.0.45,
+	netmask: 255.255.255.0,
+	index: 0
+}
+
+Iface eth1 {
+	address: 10.10.10.50,
+	netmask: 255.255.255.0,
+	index: 1
+}
+
+Gateway gw [
+	{
+	    net: 10.0.0.0,
+	    netmask: 255.255.255.0,
+	    iface: eth0
+	},
+	{
+		net: 10.10.10.0,
+	    netmask: 255.255.255.0,
+	    iface: eth1
+	},
+	{
+		net: 0.0.0.0,
+	    netmask: 0.0.0.0,
+	    iface: eth0,
+	    nexthop: 10.0.0.1
+	}
+]
+
+Nat::TCP natting {
+	if (tcp.dport == 1500) {
+		dnat(eth1.address, 1500)
+	}
+}
+
+eth0.prerouting: natting
