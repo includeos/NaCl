@@ -13,20 +13,22 @@
 {{/has_vlans}}
 
 using namespace net;
-using namespace nacl;
 
 {{#has_gateways}}
-std::unique_ptr<Router<IP4>> router;
+std::unique_ptr<Router<IP4>> nacl_router_obj;
 {{/has_gateways}}
-{{#enable_conntrack}}
-std::shared_ptr<Conntrack> ct;
-{{/enable_conntrack}}
+{{#has_functions}}
+std::shared_ptr<Conntrack> nacl_ct_obj;
+{{/has_functions}}
 {{#has_nats}}
-std::unique_ptr<nat::NAPT> natty;
+std::unique_ptr<nat::NAPT> nacl_natty_obj;
 {{/has_nats}}
+{{#has_functions}}
+
+namespace custom_made_classes_from_nacl {
 
 {{#filters}}
-class {{title}} : public Filter {
+class {{title}} : public nacl::Filter {
 public:
 	Filter_verdict operator()(IP4::IP_packet& pckt, Inet<IP4>& stack, Conntrack::Entry_ptr ct_entry) {
 		{{{content}}}
@@ -35,7 +37,7 @@ public:
 
 {{/filters}}
 {{#nats}}
-class {{title}} : public Filter {
+class {{title}} : public nacl::Filter {
 public:
 	Filter_verdict operator()(IP4::IP_packet& pckt, Inet<IP4>& stack, Conntrack::Entry_ptr ct_entry) {
 		{{{content}}}
@@ -45,6 +47,9 @@ public:
 };
 
 {{/nats}}
+} //< namespace custom_made_classes_from_nacl
+
+{{/has_functions}}
 void register_plugin_nacl() {
 	INFO("NaCl", "Registering NaCl plugin");
 
@@ -83,20 +88,14 @@ void register_plugin_nacl() {
 	Super_stack::inet().create<IP4>({{iface}}_manager.add({{iface}}_nic, {{index}}), {{iface_index}}, {{index}}).network_config({{address}}, {{netmask}}{{#gateway}}, {{.}}{{/gateway}}{{^gateway}}, 0{{/gateway}});
 	{{/vlans}}
 	{{/ifaces_with_vlans}}
-	{{#filters}}
 
-	{{title}} {{name}};
+	{{#filters}}
+	custom_made_classes_from_nacl::{{title}} {{name}};
 	{{/filters}}
 	{{#nats}}
 
-	{{title}} {{name}};
+	custom_made_classes_from_nacl::{{title}} {{name}};
 	{{/nats}}
-
-	/*
-	{{#pushes}}
-	{{iface}}.ip_obj().{{chain}}_chain().chain = { {{#function_names}}{{function_name}}{{#comma}}, {{/comma}}{{/function_names}} };
-	{{/pushes}}
-	*/
 	{{#pushes}}
 
 	{{#function_names}}
@@ -115,44 +114,43 @@ void register_plugin_nacl() {
 		{{/routes}}
 		{{/gateways}}
 	};
-	router = std::make_unique<Router<IP4>>(routing_table);
+	nacl_router_obj = std::make_unique<Router<IP4>>(routing_table);
 	// Set ip forwarding on every iface mentioned in routing_table
 	{{#ip_forward_ifaces}}
-	{{iface}}.set_forward_delg(router->forward_delg());
+	{{iface}}.set_forward_delg(nacl_router_obj->forward_delg());
 	{{/ip_forward_ifaces}}
 	{{/has_gateways}}
-	{{#enable_conntrack}}
+	{{#has_functions}}
 
 	// Ct
 
-	ct = std::make_shared<Conntrack>();
+	nacl_ct_obj = std::make_shared<Conntrack>();
 
 	// Enable conntrack on all ifaces created by default
 	{{#ifaces}}
 	INFO("NaCl", "Enable Conntrack on {{name}}");
-	{{name}}.enable_conntrack(ct);
+	{{name}}.enable_conntrack(nacl_ct_obj);
 	{{/ifaces}}
-	{{/enable_conntrack}}
-/*
-	// If not enable on all by default:
+	{{/has_functions}}
+	/* If not enable on all by default:
 	{{#ct_ifaces}}
 	INFO("NaCl", "Enable Conntrack on {{iface}}");
-	{{iface}}.enable_conntrack(ct);
+	{{iface}}.enable_conntrack(nacl_ct_obj);
 	{{/ct_ifaces}}
-*/
+	*/
 	{{#has_nats}}
 
 	// NAT
 
-	natty = std::make_unique<nat::NAPT>(ct);
+	nacl_natty_obj = std::make_unique<nat::NAPT>(nacl_ct_obj);
 	{{#has_masquerades}}
 
 	auto masq = [](IP4::IP_packet& pckt, Inet<IP4>& stack, Conntrack::Entry_ptr entry)->auto {
-		natty->masquerade(pckt, stack, entry);
+		nacl_natty_obj->masquerade(pckt, stack, entry);
 		return Filter_verdict::ACCEPT;
 	};
 	auto demasq = [](IP4::IP_packet& pckt, Inet<IP4>& stack, Conntrack::Entry_ptr entry)->auto {
-		natty->demasquerade(pckt, stack, entry);
+		nacl_natty_obj->demasquerade(pckt, stack, entry);
 		return Filter_verdict::ACCEPT;
 	};
 	{{#masquerades}}
@@ -165,7 +163,7 @@ void register_plugin_nacl() {
 	{{#has_snats}}
 
 	auto snat_translate = [](IP4::IP_packet& pckt, Inet<IP4>&, Conntrack::Entry_ptr entry)-> auto {
-		natty->snat(pckt, entry);
+		nacl_natty_obj->snat(pckt, entry);
 		return Filter_verdict::ACCEPT;
 	};
 	{{#snats}}

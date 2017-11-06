@@ -32,7 +32,7 @@ TEMPLATE_KEY_HAS_NATS 			= "has_nats"
 TEMPLATE_KEY_HAS_MASQUERADES 	= "has_masquerades"
 TEMPLATE_KEY_HAS_VLANS 			= "has_vlans"
 TEMPLATE_KEY_HAS_SNATS 			= "has_snats"
-TEMPLATE_KEY_ENABLE_CONNTRACK 	= "enable_conntrack"
+TEMPLATE_KEY_HAS_FUNCTIONS 		= "has_functions"
 
 # Data to be sent to pystache renderer
 # Each list are to contain objects consisting of key value pairs
@@ -234,6 +234,9 @@ class Iface(Typed):
 		self.config_is_dhcp_fallback = False
 		self.config_is_static = False
 
+		self.chains = {}	# To handle setting of a chain multiple times in the same Iface
+		                	# Should not be handled as the ctx objects in self.members
+
 		# Iface keys/members:
 		# address
 		# netmask
@@ -249,21 +252,23 @@ class Iface(Typed):
 		# output
 		# postrouting
 
-	def process_push(self, chain, pair_ctx):
-		value_ctx = pair_ctx.value()
+	def process_push(self, chain, value_ctx):
+		if self.chains.get(chain) is not None:
+			sys.exit("line " + get_line_and_column(value_ctx) + " Iface chain " + chain + " has already been set")
+		self.chains[chain] = chain # Mark as set
 
 		functions = []
 		if value_ctx.list_t() is not None:
 			# More than one function pushed onto chain
 			for list_value in value_ctx.list_t().value_list().value():
 				if list_value.value_name() is None:
-					sys.exit("line " + get_line_and_column(list_value) + " This is not supported: " + pair_ctx.getText())
+					sys.exit("line " + get_line_and_column(list_value) + " This is not supported: " + value_ctx.getText())
 				functions.append(list_value.value_name())
 		elif value_ctx.value_name() is not None:
 			# Only one function pushed onto chain
 			functions = [ value_ctx.value_name() ]
 		else:
-			sys.exit("line " + get_line_and_column(value_ctx) + " This is not supported: " + pair_ctx.getText())
+			sys.exit("line " + get_line_and_column(value_ctx) + " This is not supported: " + value_ctx.getText())
 
 		self.add_push(chain, functions)
 
@@ -284,7 +289,7 @@ class Iface(Typed):
 					sys.exit("line " + get_line_and_column(pair.key()) + " Iface member " + key + " has already been set")
 
 				if key in chains:
-					self.process_push(key, pair);
+					self.process_push(key, pair.value())
 				else:
 					self.members[key] = pair_value
 		elif value.value_name() is not None:
@@ -321,22 +326,7 @@ class Iface(Typed):
 
 				found_element_value = element.ctx.value()
 				if iface_member in chains:
-					# Handle pushes
-					
-					functions = []
-					if found_element_value.list_t() is not None:
-						# More than one function pushed onto chain
-						for list_value in found_element_value.list_t().value_list().value():
-							if list_value.value_name() is None:
-								sys.exit("line " + get_line_and_column(list_value) + " This is not supported: " + element.ctx.getText())
-							functions.append(list_value.value_name())
-					elif found_element_value.value_name() is not None:
-						# Only one function pushed onto chain
-						functions = [ found_element_value.value_name() ]
-					else:
-						sys.exit("line " + get_line_and_column(found_element_value) + " This is not supported: " + element.ctx.getText())
-
-					self.add_push(iface_member, functions)
+					self.process_push(iface_member, found_element_value)
 				else:
 					if self.members.get(iface_member) is None:
 						self.members[iface_member] = found_element_value
@@ -902,7 +892,7 @@ def handle_input():
 		TEMPLATE_KEY_HAS_MASQUERADES:	(len(masquerades) > 0),
 		TEMPLATE_KEY_HAS_VLANS: 		(len(ifaces_with_vlans) > 0),
 		TEMPLATE_KEY_HAS_SNATS: 		(len(snats) > 0),
-		TEMPLATE_KEY_ENABLE_CONNTRACK: 	(len(nats) > 0 or len(filters) > 0)
+		TEMPLATE_KEY_HAS_FUNCTIONS: 	(len(nats) > 0 or len(filters) > 0)
 	}
 
 	if LANGUAGE == CPP:
