@@ -149,7 +149,7 @@ CT 		= "ct"
 TO_UNSIGNED = "TO_UNSIGNED"
 TO_STRING = "TO_STRING"
 
-NAT_OBJ_NAME 	= "natty"
+NAT_OBJ_NAME 	= "nacl_natty_obj"
 
 # Pckt variable names, used in transpiled text/code
 TCP_PCKT 		= "tcp_pckt"
