@@ -79,7 +79,7 @@ void register_plugin_nacl() {
 	{{/config_is_dhcp_fallback}}
 	{{/ifaces}}
 	{{#ifaces_with_vlans}}
-	
+
 	// For each iface:
 	auto& {{iface}}_nic = {{iface}}.nic();
 	auto& {{iface}}_manager = VLAN_manager::get({{iface_index}});
@@ -125,19 +125,17 @@ void register_plugin_nacl() {
 	// Ct
 
 	nacl_ct_obj = std::make_shared<Conntrack>();
+	{{#conntracks}}
+	{{#limit}}nacl_ct_obj->maximum_entries = {{.}};{{/limit}}
+	{{#reserve}}nacl_ct_obj->reserve({{.}});{{/reserve}}
+	{{/conntracks}}
+	{{#enable_ct_ifaces}}
 
-	// Enable conntrack on all ifaces created by default
-	{{#ifaces}}
 	INFO("NaCl", "Enable Conntrack on {{name}}");
 	{{name}}.enable_conntrack(nacl_ct_obj);
-	{{/ifaces}}
+	{{/enable_ct_ifaces}}
+
 	{{/has_functions}}
-	/* If not enable on all by default:
-	{{#ct_ifaces}}
-	INFO("NaCl", "Enable Conntrack on {{iface}}");
-	{{iface}}.enable_conntrack(nacl_ct_obj);
-	{{/ct_ifaces}}
-	*/
 	{{#has_nats}}
 
 	// NAT

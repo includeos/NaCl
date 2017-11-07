@@ -22,8 +22,9 @@ TEMPLATE_KEY_NATS 				= "nats"
 TEMPLATE_KEY_REWRITES 			= "rewrites"
 TEMPLATE_KEY_PUSHES 			= "pushes"
 TEMPLATE_KEY_GATEWAYS 			= "gateways"
+TEMPLATE_KEY_CONNTRACKS 		= "conntracks"
 TEMPLATE_KEY_IP_FORWARD_IFACES 	= "ip_forward_ifaces"
-# TEMPLATE_KEY_CT_IFACES 		= "ct_ifaces"
+TEMPLATE_KEY_ENABLE_CT_IFACES 	= "enable_ct_ifaces"
 TEMPLATE_KEY_MASQUERADES 		= "masquerades"
 TEMPLATE_KEY_SNATS 				= "snats"
 
@@ -43,12 +44,14 @@ rewrites 			= []
 nats 				= []
 pushes 				= []
 gateways 			= []
+conntracks 			= []
 ip_forward_ifaces 	= []
-# ct_ifaces 		= []
+enable_ct_ifaces 	= []
 masquerades 		= []
 snats 				= []
 
 gateway_exists 		= False
+conntrack_exists 	= False
 
 TEMPLATE_KEY_FUNCTION_NAME 	= "function_name"
 TEMPLATE_KEY_COMMA 			= "comma"
@@ -207,7 +210,7 @@ class Untyped(Element):
 					# values:
 					
 					self.process_obj(self.members, self.ctx.value().obj())
-					self.process_assignments();
+					self.process_assignments()
 
 			self.res = self.members
 
@@ -225,6 +228,81 @@ class Typed(Element):
 # < Typed
 
 # -------------------- Iface --------------------
+
+class Conntrack(Typed):
+	def __init__(self, idx, name, ctx, base_type, type_t):
+		super(Conntrack, self).__init__(idx, name, ctx, base_type, type_t)
+
+	def process_ctx(self):
+		value = self.ctx.value()
+
+		if value.obj() is not None:
+			for pair in value.obj().key_value_list().key_value_pair():
+				orig_key 	= pair.key().getText()
+				key 		= orig_key.lower()
+				pair_value 	= pair.value()
+
+				if key not in predefined_conntrack_keys:
+					sys.exit("line " + get_line_and_column(pair.key()) + " Invalid Conntrack member " + orig_key)
+
+				if self.members.get(key) is not None:
+					sys.exit("line " + get_line_and_column(pair.key()) + " Conntrack member " + key + " has already been set")
+
+				self.members[key] = pair_value
+		else:
+			sys.exit("line " + get_line_and_column(value) + " A Conntrack has to contain key value pairs")
+
+	def process_assignments(self):
+		# Loop through elements that are assignments
+		# Find assignments (f.ex. conntrack.limit: <value>) related to this Conntrack
+
+		for i, key in enumerate(elements):
+			if key.startswith(self.name + DOT):
+				# Then we know we have to do with a value_name
+				element = elements.get(key)
+				name_parts = element.ctx.value_name().getText().split(DOT)					
+				orig_conntrack_member = name_parts[1]
+				conntrack_member = orig_conntrack_member.lower()
+
+				if len(name_parts) != 2:
+					sys.exit("line " + get_line_and_column(element.ctx) + " Invalid Conntrack member " + key)
+
+				if conntrack_member not in predefined_conntrack_keys:
+					sys.exit("line " + get_line_and_column(element.ctx) + " Invalid Conntrack member " + orig_conntrack_member)
+				
+				if self.members.get(conntrack_member) is not None:
+					sys.exit("line " + get_line_and_column(element.ctx) + " Member " + conntrack_member + " has already been set")
+
+				found_element_value = element.ctx.value()
+				if conntrack_member in chains:
+					self.process_push(conntrack_member, found_element_value)
+				else:
+					if self.members.get(conntrack_member) is None:
+						self.members[conntrack_member] = found_element_value
+					else:
+						sys.exit("line " + get_line_and_column(element.ctx) + " Conntrack member " + conntrack_member + " has already been set")
+
+	def add_conntrack(self):
+		conntracks.append({
+			TEMPLATE_KEY_NAME: 		self.name,
+			CONNTRACK_KEY_LIMIT: 	resolve_value(LANGUAGE, self.members.get(CONNTRACK_KEY_LIMIT)),
+			CONNTRACK_KEY_RESERVE: 	resolve_value(LANGUAGE, self.members.get(CONNTRACK_KEY_RESERVE))
+		})
+
+	# Main processing method
+	def process(self):
+		if self.res is None:
+			# Then process
+
+			self.process_ctx()
+			self.process_assignments()
+			self.add_conntrack()
+
+			self.res = self.members
+			# Or:
+			# self.res = resolve_value(LANGUAGE, ...)
+
+		return self.res
 
 class Iface(Typed):
 	def __init__(self, idx, name, ctx, base_type, type_t):
@@ -512,6 +590,14 @@ class Iface(Typed):
 			TEMPLATE_KEY_DNS: 		self.members.get(IFACE_KEY_DNS)
 		})
 
+	def enable_ct(self):
+		for chain in chains:
+			if self.chains.get(chain) is not None:
+				enable_ct_ifaces.append({
+					TEMPLATE_KEY_NAME: self.name
+				})
+				return # Only one entry in enable_ct_ifaces list for each Iface
+
 	# Main processing method
 	def process(self):
 		if self.res is None:
@@ -522,6 +608,7 @@ class Iface(Typed):
 			self.validate_members()
 			self.process_members()
 			self.add_iface()
+			self.enable_ct()
 
 			self.res = self.members
 			# Or:
@@ -878,13 +965,14 @@ def handle_input():
 	data = {
 		TEMPLATE_KEY_IFACES: 			ifaces,
 		TEMPLATE_KEY_IFACES_WITH_VLANS: ifaces_with_vlans,
+		TEMPLATE_KEY_CONNTRACKS: 		conntracks,
 		TEMPLATE_KEY_FILTERS: 			filters,
 		TEMPLATE_KEY_NATS: 				nats,
 		TEMPLATE_KEY_REWRITES: 			rewrites,
 		TEMPLATE_KEY_PUSHES: 			pushes,
 		TEMPLATE_KEY_GATEWAYS: 			gateways, # or only one gateway?
 		TEMPLATE_KEY_IP_FORWARD_IFACES:	ip_forward_ifaces,
-		# TEMPLATE_KEY_CT_IFACES:		ct_ifaces,
+		TEMPLATE_KEY_ENABLE_CT_IFACES:	enable_ct_ifaces,
 		TEMPLATE_KEY_MASQUERADES: 		masquerades,
 		TEMPLATE_KEY_SNATS: 			snats,
 		TEMPLATE_KEY_HAS_GATEWAYS: 		(len(gateways) > 0),
@@ -956,6 +1044,14 @@ def save_element(base_type, ctx):
 			sys.exit("line " + get_line_and_column(type_t_ctx) + " A Gateway has already been defined")
 		elements[name] = Gateway(idx, name, ctx, base_type, type_t)
 		gateway_exists = True
+	elif type_t_lower == TYPE_CONNTRACK:
+		global conntrack_exists
+		if conntrack_exists:
+			sys.exit("line " + get_line_and_column(type_t_ctx) + " A Conntrack has already been defined")
+		if name.lower() == CT:
+			sys.exit("line " + get_line_and_column(name_ctx) + " Invalid name (" + name + ") of Conntrack object")
+		elements[name] = Conntrack(idx, name, ctx, base_type, type_t)
+		conntrack_exists = True
 	else:
 		sys.exit("line " + get_line_and_column(type_t_ctx) + " NaCl elements of type " + type_t + " are not handled")
 
