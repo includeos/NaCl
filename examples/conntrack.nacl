@@ -1,4 +1,4 @@
-Conntrack conntrack {
+Conntrack my_conntrack {
 	limit: 20000,
 	reserve: 10000
 }
