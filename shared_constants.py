@@ -44,6 +44,7 @@ FALSE 	= "false"
 TYPE_IFACE 		= "iface"
 TYPE_VLAN 		= "vlan"
 TYPE_GATEWAY 	= "gateway"
+TYPE_CONNTRACK 	= "conntrack"
 TYPE_FILTER 	= "filter"
 TYPE_REWRITE 	= "rewrite"
 TYPE_NAT 		= "nat"
@@ -52,6 +53,7 @@ valid_nacl_types = [
 	TYPE_IFACE,
 	TYPE_VLAN,
 	TYPE_GATEWAY,
+	TYPE_CONNTRACK,
 	TYPE_FILTER,
 	TYPE_REWRITE,
 	TYPE_NAT
@@ -135,6 +137,14 @@ predefined_gateway_keys = [
 	GATEWAY_KEY_NEXTHOP,
 	GATEWAY_KEY_IFACE,
 	GATEWAY_KEY_COST
+]
+
+CONNTRACK_KEY_LIMIT 	= "limit"
+CONNTRACK_KEY_RESERVE 	= "reserve"
+
+predefined_conntrack_keys = [
+	CONNTRACK_KEY_LIMIT,
+	CONNTRACK_KEY_RESERVE
 ]
 
 AUTO = "auto"
