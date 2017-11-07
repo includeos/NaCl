@@ -1,0 +1,27 @@
+Conntrack my_conntrack {
+	limit: 20000,
+	reserve: 10000
+}
+
+Iface eth0 {
+	address: 10.0.0.45,
+	netmask: 255.255.255.0,
+	gateway: 10.0.0.1,
+	index: 0,
+	prerouting: my_filter
+}
+
+Iface eth1 {
+	address: 10.0.0.50,
+	netmask: 255.255.255.0,
+	gateway: 10.0.0.1,
+	index: 1
+}
+
+Filter::TCP my_filter {
+	if (tcp.dport == 80) {
+		accept
+	}
+
+	drop
+}
