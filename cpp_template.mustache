@@ -17,9 +17,9 @@ using namespace net;
 {{#has_gateways}}
 std::unique_ptr<Router<IP4>> nacl_router_obj;
 {{/has_gateways}}
-{{#has_functions}}
+{{#enable_ct}}
 std::shared_ptr<Conntrack> nacl_ct_obj;
-{{/has_functions}}
+{{/enable_ct}}
 {{#has_nats}}
 std::unique_ptr<nat::NAPT> nacl_natty_obj;
 {{/has_nats}}
@@ -120,7 +120,7 @@ void register_plugin_nacl() {
 	{{iface}}.set_forward_delg(nacl_router_obj->forward_delg());
 	{{/ip_forward_ifaces}}
 	{{/has_gateways}}
-	{{#has_functions}}
+	{{#enable_ct}}
 
 	// Ct
 
@@ -134,7 +134,7 @@ void register_plugin_nacl() {
 	INFO("NaCl", "Enabling Conntrack on {{iface}}");
 	{{iface}}.enable_conntrack(nacl_ct_obj);
 	{{/enable_ct_ifaces}}
-	{{/has_functions}}
+	{{/enable_ct}}
 	{{#has_nats}}
 
 	// NAT

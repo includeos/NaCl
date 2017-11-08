@@ -35,6 +35,8 @@ TEMPLATE_KEY_HAS_VLANS 			= "has_vlans"
 TEMPLATE_KEY_HAS_SNATS 			= "has_snats"
 TEMPLATE_KEY_HAS_FUNCTIONS 		= "has_functions"
 
+TEMPLATE_KEY_ENABLE_CT 			= "enable_ct"
+
 # Data to be sent to pystache renderer
 # Each list are to contain objects consisting of key value pairs
 ifaces 				= []
@@ -985,7 +987,8 @@ def handle_input():
 		TEMPLATE_KEY_HAS_MASQUERADES:	(len(masquerades) > 0),
 		TEMPLATE_KEY_HAS_VLANS: 		(len(ifaces_with_vlans) > 0),
 		TEMPLATE_KEY_HAS_SNATS: 		(len(snats) > 0),
-		TEMPLATE_KEY_HAS_FUNCTIONS: 	(len(nats) > 0 or len(filters) > 0)
+		TEMPLATE_KEY_HAS_FUNCTIONS: 	(len(nats) > 0 or len(filters) > 0),
+		TEMPLATE_KEY_ENABLE_CT: 		(len(nats) > 0 or len(filters) > 0 or len(gateways) > 0)
 	}
 
 	if LANGUAGE == CPP:
