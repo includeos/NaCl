@@ -131,10 +131,9 @@ void register_plugin_nacl() {
 	{{/conntracks}}
 	{{#enable_ct_ifaces}}
 
-	INFO("NaCl", "Enable Conntrack on {{name}}");
-	{{name}}.enable_conntrack(nacl_ct_obj);
+	INFO("NaCl", "Enabling Conntrack on {{iface}}");
+	{{iface}}.enable_conntrack(nacl_ct_obj);
 	{{/enable_ct_ifaces}}
-
 	{{/has_functions}}
 	{{#has_nats}}
 

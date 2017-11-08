@@ -591,12 +591,12 @@ class Iface(Typed):
 		})
 
 	def enable_ct(self):
-		for chain in chains:
-			if self.chains.get(chain) is not None:
-				enable_ct_ifaces.append({
-					TEMPLATE_KEY_NAME: self.name
-				})
-				return # Only one entry in enable_ct_ifaces list for each Iface
+		# Add this Iface's name to enable_ct_ifaces pystache list if it is not in the list already
+		if not any(enable_ct_iface[TEMPLATE_KEY_IFACE] == self.name for enable_ct_iface in enable_ct_ifaces):
+			for chain in chains:
+				if self.chains.get(chain) is not None:
+					enable_ct_ifaces.append({TEMPLATE_KEY_IFACE: self.name})
+					return # Only one entry in enable_ct_ifaces list for each Iface
 
 	# Main processing method
 	def process(self):
@@ -856,6 +856,11 @@ class Gateway(Typed):
 			iface_name = route.get(GATEWAY_KEY_IFACE)
 			if iface_name is not None and not any(ip_forward_iface[TEMPLATE_KEY_IFACE] == iface_name for ip_forward_iface in ip_forward_ifaces):
 				ip_forward_ifaces.append({TEMPLATE_KEY_IFACE: iface_name})
+
+			# Add iface_name to enable_ct_ifaces pystache list if it is not in the
+			# list already
+			if iface_name is not None and not any(enable_ct_iface[TEMPLATE_KEY_IFACE] == iface_name for enable_ct_iface in enable_ct_ifaces):
+				enable_ct_ifaces.append({TEMPLATE_KEY_IFACE: iface_name})
 
 			route[TEMPLATE_KEY_COMMA] = (index < (num_routes - 1))
 			index += 1
