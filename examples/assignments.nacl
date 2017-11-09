@@ -1,0 +1,61 @@
+eth0.netmask: 255.255.255.0
+eth0.dns: 8.8.8.8
+
+eth1.index: 1
+eth1.input: another_filter
+
+Iface eth0 {
+	index: 0
+}
+
+eth0.vlan: vlan1
+
+eth0.address: 10.0.0.45
+eth0.gateway: 10.0.0.1
+eth0.prerouting: eth0_filter
+
+gw.r1.iface: eth0
+
+gw.r2: {
+	net: 10.20.30.0,
+	netmask: 255.255.255.0,
+	cost: 50
+}
+
+gw.r2.iface: eth1
+
+Filter::IP eth0_filter {
+	drop
+}
+
+gw.r1.netmask: 255.255.255.0
+gw.r1.cost: 100
+
+my_map: {
+	e1: 10
+}
+
+vlan1.address: 20.20.20.10
+vlan1.netmask: 255.255.255.0
+
+Gateway gw {
+	r1: {
+		net: 10.0.0.0
+	}
+}
+
+Vlan vlan1 {
+	index: 13
+}
+
+Conntrack my_ct {
+	reserve: 10000
+}
+
+limit: 20000
+
+Iface eth1 dhcp
+
+Filter::IP another_filter {
+	accept
+}

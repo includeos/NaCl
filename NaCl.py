@@ -805,7 +805,7 @@ class Gateway(Typed):
 						# Then add the route if valid
 						if element.ctx.value().obj() is None:
 							sys.exit("line " + get_line_and_column(element.ctx.value()) + " A Gateway member's value needs to contain key value pairs")
-						self.members[gw_member] = self.get_pystache_route_obj(element.ctx.value().obj())
+						self.members[gw_member] = self.get_pystache_route_obj(element.name, element.ctx.value().obj())
 					else:
 						sys.exit("line " + get_line_and_column(element.ctx) + " Gateway member " + gw_member + " has already been set")
 				else:
