@@ -450,8 +450,7 @@ class Iface(Typed):
 		# Loop through self.members and resolve the values
 		for key, member in self.members.iteritems():
 			if key != IFACE_KEY_CONFIG and key != IFACE_KEY_MASQUERADE:
-				val_ctx = self.members.get(key)
-				self.members[key] = resolve_value(LANGUAGE, val_ctx)
+				self.members[key] = resolve_value(LANGUAGE, member)
 
 				# Validate that an Iface with this Iface's index has not already been defined
 				if key == IFACE_KEY_INDEX:
@@ -459,16 +458,15 @@ class Iface(Typed):
 						if isinstance(el, Iface) and key != self.name:
 							el_idx = el.members.get(IFACE_KEY_INDEX)
 							if el_idx is not None and el_idx == self.members.get(IFACE_KEY_INDEX):
-								sys.exit("line " + get_line_and_column(val_ctx) + " Another Iface has been defined with index " + el_idx)
+								sys.exit("line " + get_line_and_column(member) + " Another Iface has been defined with index " + el_idx)
 			elif key == IFACE_KEY_CONFIG:
-				self.members[IFACE_KEY_CONFIG] = "" if self.members.get(IFACE_KEY_CONFIG) is None else self.members.get(IFACE_KEY_CONFIG).value_name().getText().lower()
+				self.members[IFACE_KEY_CONFIG] = member.value_name().getText().lower()
 			else:
-				masq_ctx = self.members.get(key)
-				masq_val = resolve_value(LANGUAGE, masq_ctx)
+				masq_val = resolve_value(LANGUAGE, member)
 
 				if not isinstance(masq_val, basestring) or (masq_val.lower() != TRUE and masq_val.lower() != FALSE):
-					sys.exit("line " + get_line_and_column(masq_ctx) + " Invalid masquerade value. Must be set to true or false")
-				
+					sys.exit("line " + get_line_and_column(member) + " Invalid masquerade value. Must be set to true or false")
+
 				if masq_val == TRUE:
 					masquerades.append({TEMPLATE_KEY_IFACE: self.name})
 
@@ -608,7 +606,7 @@ class Vlan(Typed):
 	def process_members(self):
 		# Transpile values
 		for key, member in self.members.iteritems():
-			self.members[key] = resolve_value(LANGUAGE, self.members.get(key))
+			self.members[key] = resolve_value(LANGUAGE, member)
 
 	# Main processing method
 	def process(self):
@@ -637,6 +635,8 @@ class Gateway(Typed):
 		# self.members (in Element) to contain this Gateway's members as defined in NaCl file
 		# Key: Name of route
 		# Value: pystache route object
+
+		self.not_route_members = {}
 
 	def get_pystache_route_obj(self, name, route_ctx):
 		route_obj = { "ctx": route_ctx }
@@ -680,7 +680,14 @@ class Gateway(Typed):
 
 		if value.obj() is not None:
 			for route_pair in value.obj().key_value_list().key_value_pair():
-				name = route_pair.key().getText()
+				orig_name = route_pair.key().getText()
+				name = orig_name.lower()
+
+				if name == GATEWAY_KEY_SEND_TIME_EXCEEDED:
+					if self.not_route_members.get(name) is not None:
+						sys.exit("line " + get_line_and_column(route_pair) + " " + name + " has already been set")
+					self.not_route_members[name] = route_pair.value()
+					continue
 
 				if self.members.get(name) is not None:
 					sys.exit("line " + get_line_and_column(route_pair) + " Route " + name + " has already been set")
@@ -690,8 +697,7 @@ class Gateway(Typed):
 						"containing key value pairs)")
 
 				# Add pystache route obj to members dictionary
-				key = route_pair.key().getText()
-				self.members[key] = self.get_pystache_route_obj(key, route_pair.value().obj())
+				self.members[name] = self.get_pystache_route_obj(name, route_pair.value().obj())
 		elif value.list_t() is not None:
 			for i, val in enumerate(value.list_t().value_list().value()):
 				if val.obj() is None:
@@ -719,15 +725,24 @@ class Gateway(Typed):
 			# Could support later: gateway.0.netmask: 255.255.255.0
 
 		if num_name_parts == 2:
-			# Then the user is adding an additional route to this Gateway
-			# F.ex. gateway.r6: <value>
-			if self.members.get(member) is None:
-				# Then add the route if valid
-				if element.ctx.value().obj() is None:
-					sys.exit("line " + get_line_and_column(element.ctx.value()) + " A Gateway member's value needs to contain key value pairs")
-				self.members[member] = self.get_pystache_route_obj(element.name, element.ctx.value().obj())
+			# members:
+			if member != GATEWAY_KEY_SEND_TIME_EXCEEDED:
+				# Then the user is adding an additional route to this Gateway
+				# F.ex. gateway.r6: <value>
+				if self.members.get(member) is None:
+					# Then add the route if valid
+					if element.ctx.value().obj() is None:
+						sys.exit("line " + get_line_and_column(element.ctx.value()) + " A Gateway member's value needs to contain key value pairs")
+					self.members[member] = self.get_pystache_route_obj(element.name, element.ctx.value().obj())
+				else:
+					sys.exit("line " + get_line_and_column(element.ctx) + " Gateway member " + member + " has already been set")
+			# not_route_members:
 			else:
-				sys.exit("line " + get_line_and_column(element.ctx) + " Gateway member " + member + " has already been set")
+				# only send_time_exceeded for now
+				if self.not_route_members.get(member) is None:
+					self.not_route_members[member] = element.ctx.value()
+				else:
+					sys.exit("line " + get_line_and_column(element.ctx.value()) + " Gateway member " + member + " has already been set")
 		else:
 			# Then num_name_parts are 3 and we're talking about adding a member to a route
 			route = self.members.get(member)
@@ -760,6 +775,16 @@ class Gateway(Typed):
 					sys.exit("line " + get_line_and_column(element.ctx.value()) + " No Iface with the name " + iface_name + " exists")
 
 				route[route_member] = iface_name
+
+	def validate_and_process_not_route_members(self):
+		for key, value_ctx in self.not_route_members.iteritems():
+			resolved_value = resolve_value(LANGUAGE, value_ctx)
+			self.not_route_members[key] = resolved_value
+
+			if key == GATEWAY_KEY_SEND_TIME_EXCEEDED:
+				if resolved_value != TRUE and resolved_value != FALSE:
+					sys.exit("line " + get_line_and_column(value_ctx) + " Invalid value of " + key + \
+						" (" + resolved_value + "). Must be set to " + TRUE + " or " + FALSE)
 
 	def process_members(self):
 		routes = []
@@ -799,12 +824,21 @@ class Gateway(Typed):
 		self.add_gateway(routes)
 
 	def add_gateway(self, routes):
+		send_time_exceeded = ""
+		resolved_value = self.not_route_members.get(GATEWAY_KEY_SEND_TIME_EXCEEDED)
+		if resolved_value is not None:
+			if resolved_value == TRUE:
+				send_time_exceeded = TRUE
+			else:
+				send_time_exceeded = FALSE
+
 		# Create object containing key value pairs with the data we have collected
 		# Append this object to the gateways list
 		# Is to be sent to pystache renderer in handle_input function
 		gateways.append({
 			TEMPLATE_KEY_NAME: self.name,
-			TEMPLATE_KEY_ROUTES: routes
+			TEMPLATE_KEY_ROUTES: routes,
+			GATEWAY_KEY_SEND_TIME_EXCEEDED: send_time_exceeded
 		})
 
 	# Main processing method
@@ -814,6 +848,7 @@ class Gateway(Typed):
 			
 			self.process_ctx()
 			self.process_assignments()
+			self.validate_and_process_not_route_members()
 			self.process_members()
 
 			self.res = self.members # Indicating that this element (Gateway) has been processed

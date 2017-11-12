@@ -123,6 +123,8 @@ predefined_vlan_keys = [
 	VLAN_KEY_INDEX
 ]
 
+GATEWAY_KEY_SEND_TIME_EXCEEDED = "send_time_exceeded"
+
 GATEWAY_KEY_HOST 	= "host"
 GATEWAY_KEY_NET 	= "net"
 GATEWAY_KEY_NETMASK = "netmask"
@@ -130,6 +132,7 @@ GATEWAY_KEY_NEXTHOP = "nexthop"
 GATEWAY_KEY_IFACE 	= "iface"
 GATEWAY_KEY_COST 	= "cost"
 
+# Valid keys for Gateway routes
 predefined_gateway_keys = [
 	GATEWAY_KEY_HOST,
 	GATEWAY_KEY_NET,
