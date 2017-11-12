@@ -103,22 +103,26 @@ void register_plugin_nacl() {
 	{{/function_names}}
 	{{/pushes}}
 	{{#has_gateways}}
+	{{#gateways}}
 
 	// Router
 
 	INFO("NaCl", "Setup routing");
 	Router<IP4>::Routing_table routing_table {
-		{{#gateways}}
 		{{#routes}}
 		{ {{#net}}{{.}}{{/net}}{{#host}}{{.}}{{/host}}, {{#netmask}}{{.}}, {{/netmask}}{{#nexthop}}{{.}}{{/nexthop}}{{^nexthop}}0{{/nexthop}}{{#iface}}, {{.}}{{/iface}}{{#cost}}, {{.}}{{/cost}}{{^cost}}, 1{{/cost}} }{{#comma}},{{/comma}}
 		{{/routes}}
-		{{/gateways}}
 	};
 	nacl_router_obj = std::make_unique<Router<IP4>>(routing_table);
+	{{#send_time_exceeded}}
+	// Set send_time_exceeded:
+	nacl_router_obj->send_time_exceeded = {{.}};
+	{{/send_time_exceeded}}
 	// Set ip forwarding on every iface mentioned in routing_table
 	{{#ip_forward_ifaces}}
 	{{iface}}.set_forward_delg(nacl_router_obj->forward_delg());
 	{{/ip_forward_ifaces}}
+	{{/gateways}}
 	{{/has_gateways}}
 	{{#enable_ct}}
 
