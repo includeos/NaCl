@@ -106,9 +106,51 @@ class Element(object):
 	def get_class_name(self):
 		return self.__class__.__name__
 
+	def process_ctx(self):
+		# Handle the Element's value ctx object: Fill self.members dictionary
+		# Note: Gateway has its own process_ctx method
+
+		value = self.ctx.value() if hasattr(self.ctx, 'value') else self.ctx
+		class_name = self.get_class_name()
+
+		if value.obj() is not None:
+			for pair in value.obj().key_value_list().key_value_pair():
+				orig_key 	= pair.key().getText()
+				key 		= orig_key.lower()
+				pair_value 	= pair.value()
+
+				if (isinstance(self, Iface) and key not in predefined_iface_keys) or \
+					(isinstance(self, Vlan) and key not in predefined_vlan_keys) or \
+					(isinstance(self, Conntrack) and key not in predefined_conntrack_keys):
+					sys.exit("line " + get_line_and_column(pair.key()) + " Invalid " + class_name + \
+						" member " + orig_key)
+
+				if self.members.get(key) is not None:
+					sys.exit("line " + get_line_and_column(pair.key()) + " " + class_name + " member " + key + " has already been set")
+
+				if isinstance(self, Iface) and key in chains:
+					self.process_push(key, pair.value())
+				else:
+					self.members[key] = pair_value
+		elif isinstance(self, Iface) and value.value_name() is not None:
+			# configuration type (dhcp, dhcp-with-fallback, static)
+			config = value.value_name().getText().lower()
+			if config in predefined_config_types:
+				self.members[IFACE_KEY_CONFIG] = value
+			else:
+				sys.exit("line " + get_line_and_column(value) + " Invalid Iface value " + value.value_name().getText())
+		else:
+			if isinstance(self, Iface):
+				sys.exit("line " + get_line_and_column(value) + " An Iface has to contain key value pairs, or be set to a configuration type (" + \
+					", ".join(predefined_config_types) + ")")
+			else:
+				sys.exit("line " + get_line_and_column(value) + " A " + class_name + " has to contain key value pairs")
+
 	def process_assignments(self):
 		# Loop through elements that are assignments
 		# Find assignments (f.ex. x.y: <value> or x.y.z: <value>) that refers to this Element
+
+		class_name = self.get_class_name()
 
 		for i, key in enumerate(elements):
 			if key.startswith(self.name + DOT):
@@ -125,8 +167,6 @@ class Element(object):
 				name_parts = element.ctx.value_name().getText().split(DOT)
 				orig_member = name_parts[1]
 				member = orig_member.lower()
-
-				class_name = self.get_class_name()
 
 				if len(name_parts) != 2:
 					sys.exit("line " + get_line_and_column(element.ctx) + " Invalid " + class_name + " member " + key)
@@ -273,25 +313,6 @@ class Conntrack(Typed):
 	def __init__(self, idx, name, ctx, base_type, type_t):
 		super(Conntrack, self).__init__(idx, name, ctx, base_type, type_t)
 
-	def process_ctx(self):
-		value = self.ctx.value()
-
-		if value.obj() is not None:
-			for pair in value.obj().key_value_list().key_value_pair():
-				orig_key 	= pair.key().getText()
-				key 		= orig_key.lower()
-				pair_value 	= pair.value()
-
-				if key not in predefined_conntrack_keys:
-					sys.exit("line " + get_line_and_column(pair.key()) + " Invalid Conntrack member " + orig_key)
-
-				if self.members.get(key) is not None:
-					sys.exit("line " + get_line_and_column(pair.key()) + " Conntrack member " + key + " has already been set")
-
-				self.members[key] = pair_value
-		else:
-			sys.exit("line " + get_line_and_column(value) + " A Conntrack has to contain key value pairs")
-
 	def add_conntrack(self):
 		conntracks.append({
 			TEMPLATE_KEY_NAME: 		self.name,
@@ -359,37 +380,6 @@ class Iface(Typed):
 			sys.exit("line " + get_line_and_column(value_ctx) + " This is not supported: " + value_ctx.getText())
 
 		self.add_push(chain, functions)
-
-	def process_ctx(self):
-		# Handle the Iface's value ctx object: Fill self.members dictionary
-
-		value = self.ctx.value()
-		if value.obj() is not None:
-			for pair in value.obj().key_value_list().key_value_pair():
-				orig_key 	= pair.key().getText()
-				key 		= orig_key.lower()
-				pair_value 	= pair.value()
-
-				if key not in predefined_iface_keys:
-					sys.exit("line " + get_line_and_column(pair.key()) + " Invalid Iface member " + orig_key)
-
-				if self.members.get(key) is not None:
-					sys.exit("line " + get_line_and_column(pair.key()) + " Iface member " + key + " has already been set")
-
-				if key in chains:
-					self.process_push(key, pair.value())
-				else:
-					self.members[key] = pair_value
-		elif value.value_name() is not None:
-			# configuration type (dhcp, dhcp-with-fallback, static)
-			config = value.value_name().getText().lower()
-			if config in predefined_config_types:
-				self.members[IFACE_KEY_CONFIG] = value
-			else:
-				sys.exit("line " + get_line_and_column(value) + " Invalid Iface value " + value.value_name().getText())
-		else:
-			sys.exit("line " + get_line_and_column(value) + " An Iface has to contain key value pairs, or be set to a configuration type (" + \
-				", ".join(predefined_config_types) + ")")
 
 	def validate_members(self):
 		if self.members.get(IFACE_KEY_INDEX) is None:
@@ -610,27 +600,6 @@ class Vlan(Typed):
 		# gateway
 		# index
 
-	def process_ctx(self):
-		# Handle the Vlan's value ctx object: Fill self.members dictionary
-
-		value = self.ctx.value() if hasattr(self.ctx, 'value') else self.ctx
-
-		if value.obj() is not None:
-			for pair in value.obj().key_value_list().key_value_pair():
-				orig_key 	= pair.key().getText()
-				key 		= orig_key.lower()
-				pair_value 	= pair.value()
-
-				if key not in predefined_vlan_keys:
-					sys.exit("line " + get_line_and_column(pair.key()) + " Invalid Vlan member " + orig_key)
-
-				if self.members.get(key) is not None:
-					sys.exit("line " + get_line_and_column(pair.key()) + " Vlan member " + key + " has already been set")
-
-				self.members[key] = pair_value
-		else:
-			sys.exit("line " + get_line_and_column(value) + " A Vlan has to contain key value pairs")
-
 	def validate_members(self):
 		if self.members.get(VLAN_KEY_INDEX) is None or self.members.get(VLAN_KEY_ADDRESS) is None or \
 			self.members.get(VLAN_KEY_NETMASK) is None:
@@ -705,18 +674,21 @@ class Gateway(Typed):
 		return route_obj
 
 	def process_ctx(self):
+		# Handle the Element's value ctx object: Fill self.members dictionary
+
 		value = self.ctx.value()
 
 		if value.obj() is not None:
 			for route_pair in value.obj().key_value_list().key_value_pair():
 				name = route_pair.key().getText()
+
 				if self.members.get(name) is not None:
 					sys.exit("line " + get_line_and_column(route_pair) + " Route " + name + " has already been set")
 
 				if route_pair.value().obj() is None:
 					sys.exit("line " + get_line_and_column(route_pair.value()) + " A Gateway's routes must be objects (" + \
 						"containing key value pairs)")
-				
+
 				# Add pystache route obj to members dictionary
 				key = route_pair.key().getText()
 				self.members[key] = self.get_pystache_route_obj(key, route_pair.value().obj())
@@ -725,59 +697,13 @@ class Gateway(Typed):
 				if val.obj() is None:
 					sys.exit("line " + get_line_and_column(val) + " A Gateway that constitutes a list must be a list of " + \
 						"objects (containing key value pairs)")
-				
+
 				# Add pystache route obj to members dictionary
 				# When unnamed routes, use index as key
 				self.members[i] = self.get_pystache_route_obj(str(i), val.obj())
 		else:
 			sys.exit("line " + get_line_and_column(value) + " A Gateway must contain key value pairs (in which " + \
 				"each pair's value is an object), or it must contain a list of objects")
-
-	def process_members(self):
-		routes = []
-		index = 0
-		num_routes = len(self.members)
-		for i, route in self.members.iteritems():
-			if GATEWAY_KEY_NETMASK not in route or \
-				GATEWAY_KEY_IFACE not in route or \
-				(GATEWAY_KEY_NET not in route and GATEWAY_KEY_HOST not in route):
-				sys.exit("line " + get_line_and_column(route.get("ctx")) + " A Gateway route must specify " + \
-					GATEWAY_KEY_IFACE + ", " + GATEWAY_KEY_NETMASK + " and either " + GATEWAY_KEY_NET + " or " + GATEWAY_KEY_HOST)
-
-			# Add iface_name to ip_forward_ifaces pystache list if it is not in the
-			# list already
-			iface_name = route.get(GATEWAY_KEY_IFACE)
-			if iface_name is not None and not any(ip_forward_iface[TEMPLATE_KEY_IFACE] == iface_name for ip_forward_iface in ip_forward_ifaces):
-				ip_forward_ifaces.append({TEMPLATE_KEY_IFACE: iface_name})
-
-			# Add iface_name to enable_ct_ifaces pystache list if it is not in the
-			# list already
-			if iface_name is not None and not any(enable_ct_iface[TEMPLATE_KEY_IFACE] == iface_name for enable_ct_iface in enable_ct_ifaces):
-				enable_ct_ifaces.append({TEMPLATE_KEY_IFACE: iface_name})
-
-			route[TEMPLATE_KEY_COMMA] = (index < (num_routes - 1))
-			index += 1
-
-			routes.append(route)
-			# routes.append({
-			#	'host': ,
-			#	'net': ,
-			#	'netmask': ,
-			#	'nexthop': ,
-			#	'iface': ,
-			#	'cost':
-			# })
-
-		self.add_gateway(routes)
-
-	def add_gateway(self, routes):
-		# Create object containing key value pairs with the data we have collected
-		# Append this object to the gateways list
-		# Is to be sent to pystache renderer in handle_input function
-		gateways.append({
-			TEMPLATE_KEY_NAME: self.name,
-			TEMPLATE_KEY_ROUTES: routes
-		})
 
 	# Called in Element's process_assignments method
 	def process_gateway_assignment(self, element):
@@ -834,6 +760,52 @@ class Gateway(Typed):
 					sys.exit("line " + get_line_and_column(element.ctx.value()) + " No Iface with the name " + iface_name + " exists")
 
 				route[route_member] = iface_name
+
+	def process_members(self):
+		routes = []
+		index = 0
+		num_routes = len(self.members)
+		for i, route in self.members.iteritems():
+			if GATEWAY_KEY_NETMASK not in route or \
+				GATEWAY_KEY_IFACE not in route or \
+				(GATEWAY_KEY_NET not in route and GATEWAY_KEY_HOST not in route):
+				sys.exit("line " + get_line_and_column(route.get("ctx")) + " A Gateway route must specify " + \
+					GATEWAY_KEY_IFACE + ", " + GATEWAY_KEY_NETMASK + " and either " + GATEWAY_KEY_NET + " or " + GATEWAY_KEY_HOST)
+
+			# Add iface_name to ip_forward_ifaces pystache list if it is not in the
+			# list already
+			iface_name = route.get(GATEWAY_KEY_IFACE)
+			if iface_name is not None and not any(ip_forward_iface[TEMPLATE_KEY_IFACE] == iface_name for ip_forward_iface in ip_forward_ifaces):
+				ip_forward_ifaces.append({TEMPLATE_KEY_IFACE: iface_name})
+
+			# Add iface_name to enable_ct_ifaces pystache list if it is not in the
+			# list already
+			if iface_name is not None and not any(enable_ct_iface[TEMPLATE_KEY_IFACE] == iface_name for enable_ct_iface in enable_ct_ifaces):
+				enable_ct_ifaces.append({TEMPLATE_KEY_IFACE: iface_name})
+
+			route[TEMPLATE_KEY_COMMA] = (index < (num_routes - 1))
+			index += 1
+
+			routes.append(route)
+			# routes.append({
+			#	'host': ,
+			#	'net': ,
+			#	'netmask': ,
+			#	'nexthop': ,
+			#	'iface': ,
+			#	'cost':
+			# })
+
+		self.add_gateway(routes)
+
+	def add_gateway(self, routes):
+		# Create object containing key value pairs with the data we have collected
+		# Append this object to the gateways list
+		# Is to be sent to pystache renderer in handle_input function
+		gateways.append({
+			TEMPLATE_KEY_NAME: self.name,
+			TEMPLATE_KEY_ROUTES: routes
+		})
 
 	# Main processing method
 	def process(self):
