@@ -60,7 +60,21 @@ else
 	echo "Conntrack: Failed"
 fi
 
-# 5. examples/iface.nacl
+# 5. examples/gateway_with_send_time_exceeded.nacl
+
+cat ../examples/gateway_with_send_time_exceeded.nacl | ../NaCl.py nacl_content.cpp
+DIFFERENCE=`diff nacl_content.cpp ../goldenfiles/gateway_with_send_time_exceeded.cpp`
+
+echo "$DIFFERENCE" > diff_output.txt
+
+if [ -z "$DIFFERENCE" ]
+then
+	echo "Gateway with send time exceeded: Success"
+else
+	echo "Gateway with send time exceeded: Failed"
+fi
+
+# 6. examples/iface.nacl
 
 cat ../examples/iface.nacl | ../NaCl.py nacl_content.cpp
 DIFFERENCE=`diff nacl_content.cpp ../goldenfiles/iface.cpp`
@@ -74,7 +88,7 @@ else
 	echo "Iface: Failed"
 fi
 
-# 6. examples/log.nacl
+# 7. examples/log.nacl
 
 cat ../examples/log.nacl | ../NaCl.py nacl_content.cpp
 DIFFERENCE=`diff nacl_content.cpp ../goldenfiles/log.cpp`
@@ -88,7 +102,7 @@ else
 	echo "Log: Failed"
 fi
 
-# 7. examples/nacl.nacl
+# 8. examples/nacl.nacl
 
 cat ../examples/nacl.nacl | ../NaCl.py nacl_content.cpp
 DIFFERENCE=`diff nacl_content.cpp ../goldenfiles/nacl.cpp`
@@ -102,7 +116,7 @@ else
 	echo "Nacl: Failed"
 fi
 
-# 8. examples/nacl_one_liner.nacl
+# 9. examples/nacl_one_liner.nacl
 
 cat ../examples/nacl_one_liner.nacl | ../NaCl.py nacl_content.cpp
 DIFFERENCE=`diff nacl_content.cpp ../goldenfiles/nacl_one_liner.cpp`
@@ -116,7 +130,7 @@ else
 	echo "Nacl one liner: Failed"
 fi
 
-# 9. examples/nat_and_gateway.nacl
+# 10. examples/nat_and_gateway.nacl
 
 cat ../examples/nat_and_gateway.nacl | ../NaCl.py nacl_content.cpp
 DIFFERENCE=`diff nacl_content.cpp ../goldenfiles/nat_and_gateway.cpp`
@@ -130,7 +144,7 @@ else
 	echo "Nat and gateway: Failed"
 fi
 
-# 10. examples/vlan.nacl
+# 11. examples/vlan.nacl
 
 cat ../examples/vlan.nacl | ../NaCl.py nacl_content.cpp
 DIFFERENCE=`diff nacl_content.cpp ../goldenfiles/vlan.cpp`
