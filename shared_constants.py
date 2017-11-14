@@ -203,6 +203,11 @@ LOG 	= 'log'
 SNAT 	= 'snat'
 DNAT 	= 'dnat'
 
+valid_default_filter_verdicts = [
+	ACCEPT,
+	DROP
+]
+
 MASQUERADE = "masquerade"
 
 # IncludeOS (C++) Filter return values
