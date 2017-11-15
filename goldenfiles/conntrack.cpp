@@ -21,8 +21,8 @@ auto& tcp_pckt = static_cast<tcp::Packet&>(pckt);
 if (tcp_pckt.dst_port() == 80) {
 return Filter_verdict::ACCEPT;
 }
-return Filter_verdict::DROP;
 }
+return Filter_verdict::DROP;
 
 	}
 };

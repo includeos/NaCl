@@ -18,9 +18,11 @@ Iface eth1 {
 	index: 1
 }
 
-Filter::TCP my_filter {
-	if (tcp.dport == 80) {
-		accept
+Filter::IP my_filter {
+	Filter::TCP {
+		if (tcp.dport == 80) {
+			accept
+		}
 	}
 
 	drop
