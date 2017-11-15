@@ -364,7 +364,6 @@ class Iface(Typed):
 	def process_push(self, chain, value_ctx):
 		if self.chains.get(chain) is not None:
 			sys.exit("line " + get_line_and_column(value_ctx) + " Iface chain " + chain + " has already been set")
-		self.chains[chain] = chain # Mark as set
 
 		functions = []
 		if value_ctx.list_t() is not None:
@@ -379,6 +378,7 @@ class Iface(Typed):
 		else:
 			sys.exit("line " + get_line_and_column(value_ctx) + " This is not supported: " + value_ctx.getText())
 
+		self.chains[chain] = chain # Mark as set
 		self.add_push(chain, functions)
 
 	def validate_members(self):
@@ -883,6 +883,13 @@ class Function(Element):
 		 			# Then we know that this function is called in the C++ code
 		 			# And the function should be added to the correct pystache list
 		 			type_t_lower = self.type_t.lower()
+
+					# Display an error message if the function is a Filter and does not end in a default verdict
+					if type_t_lower == TYPE_FILTER:
+						elements = list(self.ctx.body().body_element())
+						last_element = elements[len(elements) - 1]
+						if last_element.action() is None or last_element.action().getText() not in valid_default_filter_verdicts:
+							sys.exit("line " + get_line_and_column(self.ctx) + " Missing default verdict at the end of this Filter")
 
 		 			if type_t_lower == TYPE_FILTER:
 		 				filters.append(pystache_function_obj)
