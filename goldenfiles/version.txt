@@ -1,5 +1,2 @@
-NaCl commit: abdf470
-(November 13 2017)
-
-NaCl commit before gateway_with_send_time_exceeded: 571262a
-(November 9 2017)
+NaCl commit: 14e56fa
+(November 15 2017)
