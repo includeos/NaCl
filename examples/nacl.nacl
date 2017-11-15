@@ -4,7 +4,7 @@ Iface eth0 {
 	netmask: 		eth0_netmask,
 	gateway: 		eth0_gateway,
 	dns: 			eth0_dns,
-	postrouting: 	main_icmp_filter
+	postrouting: 	ip_filter_encapsulating_main_icmp_filter
 }
 
 Iface eth1 {
@@ -67,6 +67,11 @@ some_map: {
 
 ACKLIMIT: 	88
 TTL_RANGE:	10-201
+
+Filter::IP ip_filter_encapsulating_main_tcp_filter {
+	main_tcp_filter
+	accept
+}
 
 Filter::TCP main_tcp_filter {
 	if (ip.daddr == eth3.address or ip.daddr == eth1.address or ip.daddr == eth4.address or tcp.sport == testing_out_port_map.e4.e4-3.e4-3-2) {
@@ -151,7 +156,7 @@ eth1.index: 10
 
 eth0.input: [
 	main_ip_filter,
-	main_tcp_filter
+	ip_filter_encapsulating_main_tcp_filter
 ]
 
 p: [ 80, 90, 1080 ]
@@ -288,11 +293,14 @@ Filter::ICMP hierarchy_test_3 {
 
 eth_test_1.address: 10.0.0.130
 eth_test_1.dns: 9.9.9.9
-eth_test_1.prerouting: [
-	eth_test_filter,
-	tcp_filter,
+eth_test_1.prerouting: encapsulating_ip_filter_2
+
+Filter::IP encapsulating_ip_filter_2 {
+	eth_test_filter
+	tcp_filter
 	main_icmp_filter
-]
+	accept
+}
 
 Filter::IP eth_test_filter {
 	if (ip.saddr == eth_test_2.address or ip.saddr == eth_test_2.dns or ip.saddr == eth_test_2.netmask or ip.saddr == eth_test_2.gateway) {
@@ -308,21 +316,24 @@ Iface eth_test_1 {
 	index: 0,
 	gateway: 10.0.0.1,
 	netmask: 255.255.255.0,
-	input: [
-		eth_test_filter,
-		tcp_filter,
-		main_icmp_filter,
-		main_ip_filter,
-		icmp_filter,
-		ip_filter_equals,
-		ip_filter_not_equals,
-		hierarchy_test_3,
-		hierarchy_test_2,
-		hierarchy_test,
-		an_udp_filter,
-		an_ip_filter,
-		main_tcp_filter
-	]
+	input: encapsulating_ip_filter
+}
+
+Filter::IP encapsulating_ip_filter {
+	eth_test_filter
+	tcp_filter
+	main_icmp_filter
+	main_ip_filter
+	icmp_filter
+	ip_filter_equals
+	ip_filter_not_equals
+	hierarchy_test_3
+	hierarchy_test_2
+	hierarchy_test
+	an_udp_filter
+	an_ip_filter
+	main_tcp_filter
+	accept
 }
 
 Iface eth_test_2 {
@@ -341,6 +352,11 @@ Filter::TCP tcp_filter {
 }
 
 cidr_test: 244.20.10.0/24
+
+Filter::IP ip_filter_encapsulating_main_icmp_filter {
+	main_icmp_filter
+	accept
+}
 
 Filter::ICMP main_icmp_filter {
 	if (not (icmp.type == timestamp-request and not ip.saddr in saddr_range) and not ip.ttl > 30) {
