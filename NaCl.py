@@ -886,6 +886,10 @@ class Function(Element):
 
 					# Display an error message if the function is a Filter and does not end in a default verdict
 					if type_t_lower == TYPE_FILTER:
+						if self.subtype.lower() != IP:
+							sys.exit("line " + get_line_and_column(self.ctx) + " Only a function of subtype IP can be pushed onto an Iface's chain. " + \
+								"However, you can create and call Filters of any subtype inside an IP Filter")
+
 						elements = list(self.ctx.body().body_element())
 						last_element = elements[len(elements) - 1]
 						if last_element.action() is None or last_element.action().getText() not in valid_default_filter_verdicts:
