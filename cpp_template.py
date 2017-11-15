@@ -387,13 +387,6 @@ def transpile_body_elements_cpp(type_t, subtype, body_elements):
 
 # Main function - starting point to transpile a NaCl function:
 def transpile_function_cpp(type_t, subtype, ctx, parent_subtype=""):
-	# Display an error message if the function is a Filter and does not end in a default verdict
-	if type_t == TYPE_FILTER:
-		elements = list(ctx.body().body_element())
-		last_element = elements[len(elements) - 1]
-		if last_element.action() is None or last_element.action().getText() not in valid_default_filter_verdicts:
-			sys.exit("line " + get_line_and_column(ctx) + " Missing default verdict at the end of this Filter")
-
 	# Return a string with all the code
 	content = ""
 
