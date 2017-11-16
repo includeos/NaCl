@@ -74,6 +74,7 @@ TEMPLATE_KEY_ROUTES 		= "routes"
 TEMPLATE_KEY_CONTENT		= "content"
 TEMPLATE_KEY_IFACE_INDEX 	= "iface_index"
 TEMPLATE_KEY_VLANS 			= "vlans"
+TEMPLATE_KEY_IS_GATEWAY_PUSH = "is_gateway_push"
 
 def transpile_function(language, type_t, subtype, ctx):
 	if language == CPP:
@@ -82,6 +83,10 @@ def transpile_function(language, type_t, subtype, ctx):
 def resolve_value(language, ctx):
 	if language == CPP:
 		return resolve_value_cpp(ctx)
+
+def get_router_name(language):
+	if language == CPP:
+		return INCLUDEOS_ROUTER_OBJ_NAME
 
 # -------------------- Element --------------------
 
@@ -508,7 +513,7 @@ class Iface(Typed):
 			snats.append({ TEMPLATE_KEY_IFACE: self.name })
 
 		pushes.append({
-			TEMPLATE_KEY_IFACE:				self.name,
+			TEMPLATE_KEY_NAME:				self.name,
 			TEMPLATE_KEY_CHAIN: 			chain,
 			TEMPLATE_KEY_FUNCTION_NAMES: 	function_names
 		})
@@ -651,9 +656,9 @@ class Gateway(Typed):
 				sys.exit("line " + get_line_and_column(pair.key()) + " Member " + key + \
 					" has already been set for route " + name)
 
-			if key not in predefined_gateway_keys:
+			if key not in predefined_gateway_route_keys:
 				sys.exit("line " + get_line_and_column(pair.key()) + " " + orig_key + " is not a valid Gateway route member. " + \
-					"Valid members are: " + ", ".join(predefined_gateway_keys))
+					"Valid members are: " + ", ".join(predefined_gateway_route_keys))
 
 			if key != GATEWAY_KEY_IFACE:
 				route_obj[key] = resolve_value(LANGUAGE, pair.value())
@@ -683,7 +688,10 @@ class Gateway(Typed):
 				orig_name = route_pair.key().getText()
 				name = orig_name.lower()
 
-				if name == GATEWAY_KEY_SEND_TIME_EXCEEDED:
+				if route_pair.value().obj() is None and name not in predefined_gateway_keys:
+					sys.exit("line " + get_line_and_column(route_pair) + " Invalid Gateway member " + orig_name)
+
+				if name == GATEWAY_KEY_SEND_TIME_EXCEEDED or name == GATEWAY_KEY_FORWARD:
 					if self.not_route_members.get(name) is not None:
 						sys.exit("line " + get_line_and_column(route_pair) + " " + name + " has already been set")
 					self.not_route_members[name] = route_pair.value()
@@ -726,7 +734,7 @@ class Gateway(Typed):
 
 		if num_name_parts == 2:
 			# members:
-			if member != GATEWAY_KEY_SEND_TIME_EXCEEDED:
+			if member != GATEWAY_KEY_SEND_TIME_EXCEEDED and member != GATEWAY_KEY_FORWARD:
 				# Then the user is adding an additional route to this Gateway
 				# F.ex. gateway.r6: <value>
 				if self.members.get(member) is None:
@@ -738,7 +746,6 @@ class Gateway(Typed):
 					sys.exit("line " + get_line_and_column(element.ctx) + " Gateway member " + member + " has already been set")
 			# not_route_members:
 			else:
-				# only send_time_exceeded for now
 				if self.not_route_members.get(member) is None:
 					self.not_route_members[member] = element.ctx.value()
 				else:
@@ -755,9 +762,9 @@ class Gateway(Typed):
 				sys.exit("line " + get_line_and_column(element.ctx) + " Member " + route_member + " in route " + member + \
 					" has already been set")
 
-			if route_member not in predefined_gateway_keys:
+			if route_member not in predefined_gateway_route_keys:
 				sys.exit("line " + get_line_and_column(element.ctx) + " " + route_member + " is not a valid Gateway route member. " + \
-					"Valid members are: " + ", ".join(predefined_gateway_keys))
+					"Valid members are: " + ", ".join(predefined_gateway_route_keys))
 
 			if route_member != GATEWAY_KEY_IFACE:
 				route[route_member] = resolve_value(LANGUAGE, element.ctx.value())
@@ -776,15 +783,57 @@ class Gateway(Typed):
 
 				route[route_member] = iface_name
 
+	def process_push(self, chain, value_ctx):
+		functions = []
+		if value_ctx.list_t() is not None:
+			# More than one function pushed onto chain
+			for list_value in value_ctx.list_t().value_list().value():
+				if list_value.value_name() is None:
+					sys.exit("line " + get_line_and_column(list_value) + " This is not supported: " + value_ctx.getText())
+				functions.append(list_value.value_name())
+		elif value_ctx.value_name() is not None:
+			# Only one function pushed onto chain
+			functions = [ value_ctx.value_name() ]
+		else:
+			sys.exit("line " + get_line_and_column(value_ctx) + " This is not supported: " + value_ctx.getText())
+
+		self.add_push(chain, functions)
+
+	def add_push(self, chain, functions):
+		# chain: string with name of chain
+		# functions: list containing value_name ctxs, where each name corresponds to the name of a NaCl function
+
+		function_names = []
+		num_functions = len(functions)
+		for i, function in enumerate(functions):
+			name = function.getText()
+			element = elements.get(name)
+			if element is None or element.base_type != BASE_TYPE_FUNCTION:
+				sys.exit("line " + get_line_and_column(function) + " No function with the name " + name + " exists")
+
+			if element.type_t.lower() == TYPE_NAT:
+				sys.exit("line " + get_line_and_column(function) + " A Nat function cannot be pushed onto a Gateway's forward chain")
+
+			function_names.append({TEMPLATE_KEY_FUNCTION_NAME: name, TEMPLATE_KEY_COMMA: (i < (num_functions - 1))})
+
+		pushes.append({
+			TEMPLATE_KEY_IS_GATEWAY_PUSH: 	True,
+			TEMPLATE_KEY_NAME:				get_router_name(LANGUAGE),
+			TEMPLATE_KEY_CHAIN: 			chain,
+			TEMPLATE_KEY_FUNCTION_NAMES: 	function_names
+		})
+
 	def validate_and_process_not_route_members(self):
 		for key, value_ctx in self.not_route_members.iteritems():
-			resolved_value = resolve_value(LANGUAGE, value_ctx)
-			self.not_route_members[key] = resolved_value
-
 			if key == GATEWAY_KEY_SEND_TIME_EXCEEDED:
+				resolved_value = resolve_value(LANGUAGE, value_ctx)
+				self.not_route_members[key] = resolved_value
+
 				if resolved_value != TRUE and resolved_value != FALSE:
 					sys.exit("line " + get_line_and_column(value_ctx) + " Invalid value of " + key + \
 						" (" + resolved_value + "). Must be set to " + TRUE + " or " + FALSE)
+			elif key == GATEWAY_KEY_FORWARD:
+				self.process_push(key, value_ctx)
 
 	def process_members(self):
 		routes = []

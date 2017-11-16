@@ -76,14 +76,12 @@ IFACE_KEY_CONFIG 		= "config"
 
 IFACE_KEY_PREROUTING 	= "prerouting"
 IFACE_KEY_INPUT 		= "input"
-# IFACE_KEY_FORWARD 	= "forward"
 IFACE_KEY_OUTPUT 		= "output"
 IFACE_KEY_POSTROUTING 	= "postrouting"
 
 chains = [
 	IFACE_KEY_PREROUTING,
 	IFACE_KEY_INPUT,
-	# IFACE_KEY_FORWARD,
 	IFACE_KEY_OUTPUT,
 	IFACE_KEY_POSTROUTING
 ]
@@ -123,7 +121,8 @@ predefined_vlan_keys = [
 	VLAN_KEY_INDEX
 ]
 
-GATEWAY_KEY_SEND_TIME_EXCEEDED = "send_time_exceeded"
+GATEWAY_KEY_SEND_TIME_EXCEEDED 	= "send_time_exceeded"
+GATEWAY_KEY_FORWARD 			= "forward"
 
 GATEWAY_KEY_HOST 	= "host"
 GATEWAY_KEY_NET 	= "net"
@@ -133,13 +132,19 @@ GATEWAY_KEY_IFACE 	= "iface"
 GATEWAY_KEY_COST 	= "cost"
 
 # Valid keys for Gateway routes
-predefined_gateway_keys = [
+predefined_gateway_route_keys = [
 	GATEWAY_KEY_HOST,
 	GATEWAY_KEY_NET,
 	GATEWAY_KEY_NETMASK,
 	GATEWAY_KEY_NEXTHOP,
 	GATEWAY_KEY_IFACE,
 	GATEWAY_KEY_COST
+]
+
+# Valid Gateway keys for members that are not objects (routes)
+predefined_gateway_keys = [
+	GATEWAY_KEY_SEND_TIME_EXCEEDED,
+	GATEWAY_KEY_FORWARD
 ]
 
 CONNTRACK_KEY_LIMIT 	= "limit"
@@ -162,7 +167,8 @@ CT 		= "ct"
 TO_UNSIGNED = "TO_UNSIGNED"
 TO_STRING = "TO_STRING"
 
-NAT_OBJ_NAME 	= "nacl_natty_obj"
+INCLUDEOS_NAT_OBJ_NAME 	= "nacl_natty_obj"
+INCLUDEOS_ROUTER_OBJ_NAME = "nacl_router_obj"
 
 # Pckt variable names, used in transpiled text/code
 TCP_PCKT 		= "tcp_pckt"

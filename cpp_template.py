@@ -147,7 +147,7 @@ class Action_handler:
 		else:
 			sys.exit("line " + get_line_and_column(action_ctx) + " No arguments provided to " + type_nat)
 
-		return NAT_OBJ_NAME + ARROW + type_nat + "(" + parameters + ");\n" + \
+		return INCLUDEOS_NAT_OBJ_NAME + ARROW + type_nat + "(" + parameters + ");\n" + \
 			self.transpile_accept_cpp([], subtype, action_ctx)
 
 	def transpile_snat_cpp(self, parameter_ctx_list, subtype, action_ctx):
