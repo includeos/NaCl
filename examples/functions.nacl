@@ -1,0 +1,135 @@
+Iface eth0 {
+    address: 10.0.0.50,
+    netmask: 255.255.255.0,
+    gateway: 10.0.0.1,
+    index: 0,
+    input: my_ip_filter
+}
+
+Filter::IP my_ip_filter {
+    if (ct.state == established) {
+        accept
+    }
+
+    if (ip.protocol == icmp) {
+        log("ICMP protocol\n")
+    }
+
+    if (ip.protocol == udp) {
+        log("UDP protocol\n")
+    }
+
+    if (ip.protocol == tcp) {
+        log("TCP protocol\n")
+    }
+
+    first_icmp_filter
+    first_udp_filter
+    first_tcp_filter
+    second_icmp_filter
+    second_udp_filter
+    second_tcp_filter
+
+    log("Default verdict: Accepting\n")
+    accept
+}
+
+Filter::ICMP first_icmp_filter {
+    log("1 ICMP filter reached\n")
+
+    if (icmp.type == echo-request) {
+        log("1 ICMP: type == echo-request\n")
+    }
+
+    if (icmp.type == echo-reply) {
+        log("1 ICMP: type == echo-reply\n")
+    }
+
+    if (ip.saddr != 10.0.0.45) {
+        log("1 ICMP: IP saddr != 10.0.0.45\n")
+    }
+
+    Filter::IP {
+        log("1 ICMP: IP Filter inside ICMP Filter reached\n")
+
+        if (ip.daddr != 10.0.0.45) {
+            log("1 ICMP: IP daddr != 10.0.0.45\n")
+        }
+    }
+}
+
+Filter::ICMP second_icmp_filter {
+    log("2 ICMP filter reached\n")
+
+    if (icmp.type != destination-unreachable) {
+        log("2 ICMP: type != destination-unreachable\n")
+    }
+
+    if (ip.saddr != 10.0.0.60) {
+        log("2 ICMP: IP saddr != 10.0.0.60\n")
+    }
+}
+
+Filter::UDP first_udp_filter {
+    log("1 UDP filter reached\n")
+
+    if (udp.sport != 100) {
+        log("1 UDP: sport != 100\n")
+    }
+
+    if (ip.saddr != 10.0.0.100) {
+        log("1 UDP: IP saddr != 10.0.0.100\n")
+    }
+
+    Filter::IP {
+        log("1 UDP: IP Filter inside UDP Filter reached\n")
+
+        if (ip.daddr != 10.0.0.45) {
+            log("1 UDP: IP daddr != 10.0.0.45\n")
+        }
+    }
+}
+
+Filter::UDP second_udp_filter {
+    log("2 UDP filter reached\n")
+
+    if (udp.checksum > 10) {
+        log("2 UDP: checksum > 10\n")
+    }
+
+    if (ip.checksum > 10) {
+        log("2 UDP: IP checksum > 10\n")
+    }
+}
+
+Filter::TCP first_tcp_filter {
+    log("1 TCP filter reached\n")
+
+    if (tcp.sport != 10) {
+        log("1 TCP: sport != 10\n")
+    }
+
+    if (ip.saddr != 10.0.0.100) {
+        log("1 TCP: IP saddr != 10.0.0.100\n")
+    }
+
+    Filter::IP {
+        log("1 TCP: IP Filter inside TCP Filter reached\n")
+
+        if (ip.daddr != 10.0.0.45) {
+            log("1 TCP: IP daddr != 10.0.0.45\n")
+        }
+    }
+}
+
+Filter::TCP second_tcp_filter {
+    log("2 TCP filter reached\n")
+
+    if (tcp.dport != 10) {
+        log("2 TCP: dport != 10\n")
+    }
+
+    if (ip.daddr != 10.0.0.10) {
+        log("2 TCP: IP daddr != 10.0.0.10\n")
+    }
+}
