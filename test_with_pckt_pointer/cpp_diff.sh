@@ -60,7 +60,21 @@ else
 	echo "Conntrack: Failed"
 fi
 
-# 5. examples/gateway_with_send_time_exceeded.nacl
+# 5. examples/functions.nacl
+
+cat ../examples/functions.nacl | ../NaCl.py nacl_content.cpp
+DIFFERENCE=`diff nacl_content.cpp ../goldenfiles_with_pckt_pointer/functions.cpp`
+
+echo "$DIFFERENCE" > diff_output.txt
+
+if [ -z "$DIFFERENCE" ]
+then
+	echo "Functions: Success"
+else
+	echo "Functions: Failed"
+fi
+
+# 6. examples/gateway_with_send_time_exceeded.nacl
 
 cat ../examples/gateway_with_send_time_exceeded.nacl | ../NaCl.py nacl_content.cpp
 DIFFERENCE=`diff nacl_content.cpp ../goldenfiles_with_pckt_pointer/gateway_with_send_time_exceeded.cpp`
@@ -74,7 +88,7 @@ else
 	echo "Gateway with send time exceeded: Failed"
 fi
 
-# 6. examples/iface.nacl
+# 7. examples/iface.nacl
 
 cat ../examples/iface.nacl | ../NaCl.py nacl_content.cpp
 DIFFERENCE=`diff nacl_content.cpp ../goldenfiles_with_pckt_pointer/iface.cpp`
@@ -88,7 +102,7 @@ else
 	echo "Iface: Failed"
 fi
 
-# 7. examples/log.nacl
+# 8. examples/log.nacl
 
 cat ../examples/log.nacl | ../NaCl.py nacl_content.cpp
 DIFFERENCE=`diff nacl_content.cpp ../goldenfiles_with_pckt_pointer/log.cpp`
@@ -102,7 +116,7 @@ else
 	echo "Log: Failed"
 fi
 
-# 8. examples/nacl.nacl
+# 9. examples/nacl.nacl
 
 cat ../examples/nacl.nacl | ../NaCl.py nacl_content.cpp
 DIFFERENCE=`diff nacl_content.cpp ../goldenfiles_with_pckt_pointer/nacl.cpp`
@@ -116,7 +130,7 @@ else
 	echo "Nacl: Failed"
 fi
 
-# 9. examples/nacl_one_liner.nacl
+# 10. examples/nacl_one_liner.nacl
 
 cat ../examples/nacl_one_liner.nacl | ../NaCl.py nacl_content.cpp
 DIFFERENCE=`diff nacl_content.cpp ../goldenfiles_with_pckt_pointer/nacl_one_liner.cpp`
@@ -130,7 +144,7 @@ else
 	echo "Nacl one liner: Failed"
 fi
 
-# 10. examples/nat_and_gateway.nacl
+# 11. examples/nat_and_gateway.nacl
 
 cat ../examples/nat_and_gateway.nacl | ../NaCl.py nacl_content.cpp
 DIFFERENCE=`diff nacl_content.cpp ../goldenfiles_with_pckt_pointer/nat_and_gateway.cpp`
@@ -144,7 +158,7 @@ else
 	echo "Nat and gateway: Failed"
 fi
 
-# 11. examples/vlan.nacl
+# 12. examples/vlan.nacl
 
 cat ../examples/vlan.nacl | ../NaCl.py nacl_content.cpp
 DIFFERENCE=`diff nacl_content.cpp ../goldenfiles_with_pckt_pointer/vlan.cpp`
