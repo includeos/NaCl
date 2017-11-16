@@ -190,6 +190,9 @@ cpp_pckt_classes = {
 	IP: 	INCLUDEOS_IP_PCKT_CLASS
 }
 
+INCLUDEOS_ICMP_RELEASE_METHOD = "release()"
+
+INCLUDEOS_DEREFERENCE_OP = "*"
 INCLUDEOS_REFERENCE_OP = "&"
 
 # IncludeOS class names
@@ -211,9 +214,21 @@ valid_default_filter_verdicts = [
 MASQUERADE = "masquerade"
 
 # IncludeOS (C++) Filter return values
-INCLUDEOS_FILTER_VERDICT_NS 	= "Filter_verdict::"
-INCLUDEOS_DROP 					= "return " + INCLUDEOS_FILTER_VERDICT_NS + "DROP;\n"
-INCLUDEOS_ACCEPT 				= "return " + INCLUDEOS_FILTER_VERDICT_NS + "ACCEPT;\n"
+INCLUDEOS_VERDICT_TYPE = "Filter_verdict_type::"
+INCLUDEOS_VERDICT_TYPE_DROP = INCLUDEOS_VERDICT_TYPE + "DROP"
+INCLUDEOS_VERDICT_TYPE_ACCEPT = INCLUDEOS_VERDICT_TYPE + "ACCEPT"
+
+def INCLUDEOS_DROP(subtype):
+	if subtype.lower() != ICMP:
+		return "return {std::move(" + IP_PCKT + "), " + INCLUDEOS_VERDICT_TYPE_DROP + "};\n"
+	else:
+		return "return {static_unique_ptr_cast<" + INCLUDEOS_IP_PCKT_CLASS + ">(" + ICMP_PCKT + DOT + "release()), " + INCLUDEOS_VERDICT_TYPE_DROP + "};\n"
+
+def INCLUDEOS_ACCEPT(subtype):
+	if subtype.lower() != ICMP:
+		return "return {std::move(" + IP_PCKT + "), " + INCLUDEOS_VERDICT_TYPE_ACCEPT + "};\n"
+	else:
+		return "return {static_unique_ptr_cast<" + INCLUDEOS_IP_PCKT_CLASS + ">(" + ICMP_PCKT + DOT + INCLUDEOS_ICMP_RELEASE_METHOD + "), " + INCLUDEOS_VERDICT_TYPE_ACCEPT + "};\n"
 
 INCLUDEOS_CT_ENTRY = "ct_entry"
 
@@ -337,7 +352,7 @@ INCLUDEOS_STATE_NEW 		= CT_STATE_NS + "NEW"
 INCLUDEOS_STATE_RELATED 	= CT_STATE_NS + "RELATED"
 INCLUDEOS_STATE_INVALID 	= CT_STATE_NS + "INVALID"
 
-INCLUDEOS_CT_ENTRY_NULLPTR_CHECK = "if (not " + INCLUDEOS_CT_ENTRY + ") {\n" + INCLUDEOS_DROP + "}\n"
+INCLUDEOS_CT_ENTRY_NULLPTR_CHECK = "if (not " + INCLUDEOS_CT_ENTRY + ") {\n" + INCLUDEOS_DROP(IP) + "}\n"
 
 # TCP flags (NaCl)
 
