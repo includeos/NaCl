@@ -1,0 +1,51 @@
+Iface eth0 {
+	address: 10.0.0.45,
+	netmask: 255.255.255.0,
+	index: 0,
+	prerouting: natting
+}
+
+Iface eth1 {
+	address: 10.10.10.50,
+	netmask: 255.255.255.0,
+	index: 1
+}
+
+Gateway gw {
+	send_time_exceeded: false,
+	forward: [ gw_first_forwarding_filter, gw_second_forwarding_filter ],
+	r1: {
+	    net: 10.0.0.0,
+	    netmask: 255.255.255.0,
+	    iface: eth0
+	},
+	r2: {
+		net: 10.10.10.0,
+	    netmask: 255.255.255.0,
+	    iface: eth1
+	},
+	r3: {
+		net: 0.0.0.0,
+	    netmask: 0.0.0.0,
+	    iface: eth0,
+	    nexthop: 10.0.0.1
+	}
+}
+
+Nat::TCP natting {
+	if (tcp.dport == 1500) {
+		dnat(eth1.address, 1500)
+	}
+}
+
+Filter::IP gw_first_forwarding_filter {
+	if (ip.daddr == 10.10.10.50) {
+		accept
+	}
+
+	drop
+}
+
+Filter::IP gw_second_forwarding_filter {
+	accept
+}

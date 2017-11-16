@@ -98,9 +98,11 @@ void register_plugin_nacl() {
 	{{/nats}}
 	{{#pushes}}
 
+	{{^is_gateway_push}}
 	{{#function_names}}
-	{{iface}}.ip_obj().{{chain}}_chain().chain.push_back({{function_name}});
+	{{name}}.ip_obj().{{chain}}_chain().chain.push_back({{function_name}});
 	{{/function_names}}
+	{{/is_gateway_push}}
 	{{/pushes}}
 	{{#has_gateways}}
 	{{#gateways}}
@@ -118,6 +120,13 @@ void register_plugin_nacl() {
 	// Set send_time_exceeded:
 	nacl_router_obj->send_time_exceeded = {{.}};
 	{{/send_time_exceeded}}
+	{{#pushes}}
+	{{#is_gateway_push}}
+	{{#function_names}}
+	{{name}}->{{chain}}_chain.chain.push_back({{function_name}});
+	{{/function_names}}
+	{{/is_gateway_push}}
+	{{/pushes}}
 	// Set ip forwarding on every iface mentioned in routing_table
 	{{#ip_forward_ifaces}}
 	{{iface}}.set_forward_delg(nacl_router_obj->forward_delg());

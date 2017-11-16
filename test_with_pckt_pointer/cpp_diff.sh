@@ -74,7 +74,21 @@ else
 	echo "Functions: Failed"
 fi
 
-# 6. examples/gateway_with_send_time_exceeded.nacl
+# 6. examples/gateway_with_forward_chain.nacl
+
+cat ../examples/gateway_with_forward_chain.nacl | ../NaCl.py nacl_content.cpp
+DIFFERENCE=`diff nacl_content.cpp ../goldenfiles_with_pckt_pointer/gateway_with_forward_chain.cpp`
+
+echo "$DIFFERENCE" > diff_output.txt
+
+if [ -z "$DIFFERENCE" ]
+then
+	echo "Gateway with forward chain: Success"
+else
+	echo "Gateway with forward chain: Failed"
+fi
+
+# 7. examples/gateway_with_send_time_exceeded.nacl
 
 cat ../examples/gateway_with_send_time_exceeded.nacl | ../NaCl.py nacl_content.cpp
 DIFFERENCE=`diff nacl_content.cpp ../goldenfiles_with_pckt_pointer/gateway_with_send_time_exceeded.cpp`
@@ -88,7 +102,7 @@ else
 	echo "Gateway with send time exceeded: Failed"
 fi
 
-# 7. examples/iface.nacl
+# 8. examples/iface.nacl
 
 cat ../examples/iface.nacl | ../NaCl.py nacl_content.cpp
 DIFFERENCE=`diff nacl_content.cpp ../goldenfiles_with_pckt_pointer/iface.cpp`
@@ -102,7 +116,7 @@ else
 	echo "Iface: Failed"
 fi
 
-# 8. examples/log.nacl
+# 9. examples/log.nacl
 
 cat ../examples/log.nacl | ../NaCl.py nacl_content.cpp
 DIFFERENCE=`diff nacl_content.cpp ../goldenfiles_with_pckt_pointer/log.cpp`
@@ -116,7 +130,7 @@ else
 	echo "Log: Failed"
 fi
 
-# 9. examples/nacl.nacl
+# 10. examples/nacl.nacl
 
 cat ../examples/nacl.nacl | ../NaCl.py nacl_content.cpp
 DIFFERENCE=`diff nacl_content.cpp ../goldenfiles_with_pckt_pointer/nacl.cpp`
@@ -130,7 +144,7 @@ else
 	echo "Nacl: Failed"
 fi
 
-# 10. examples/nacl_one_liner.nacl
+# 11. examples/nacl_one_liner.nacl
 
 cat ../examples/nacl_one_liner.nacl | ../NaCl.py nacl_content.cpp
 DIFFERENCE=`diff nacl_content.cpp ../goldenfiles_with_pckt_pointer/nacl_one_liner.cpp`
@@ -144,7 +158,7 @@ else
 	echo "Nacl one liner: Failed"
 fi
 
-# 11. examples/nat_and_gateway.nacl
+# 12. examples/nat_and_gateway.nacl
 
 cat ../examples/nat_and_gateway.nacl | ../NaCl.py nacl_content.cpp
 DIFFERENCE=`diff nacl_content.cpp ../goldenfiles_with_pckt_pointer/nat_and_gateway.cpp`
@@ -158,7 +172,7 @@ else
 	echo "Nat and gateway: Failed"
 fi
 
-# 12. examples/vlan.nacl
+# 13. examples/vlan.nacl
 
 cat ../examples/vlan.nacl | ../NaCl.py nacl_content.cpp
 DIFFERENCE=`diff nacl_content.cpp ../goldenfiles_with_pckt_pointer/vlan.cpp`
