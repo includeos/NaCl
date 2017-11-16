@@ -7,7 +7,10 @@ def get_pckt_name_cpp(subtype):
 	return pckt_names[subtype.lower()]
 
 def get_access_op_cpp(subtype):
-	return DOT
+	if subtype.lower() != IP:
+		return DOT
+	else:
+		return ARROW
 
 def get_pckt_cast_cpp(subtype, ctx):
 	subtype_lower = subtype.lower()
@@ -17,7 +20,10 @@ def get_pckt_cast_cpp(subtype, ctx):
 	pckt_name = pckt_names.get(subtype_lower)
 
 	if pckt_name is not None:
-		return AUTO + INCLUDEOS_REFERENCE_OP + " " + pckt_name + " = " + get_cast_cpp(subtype_lower, IP_PCKT, ctx)	
+		if pckt_name != ICMP_PCKT:
+			return AUTO + INCLUDEOS_REFERENCE_OP + " " + pckt_name + " = " + get_cast_cpp(subtype_lower, IP_PCKT, ctx)
+		else:
+			return AUTO + " " + pckt_name + " = " + get_cast_cpp(subtype_lower, IP_PCKT, ctx)
 	else:
 		sys.exit("line " + get_line_and_column(ctx) + " Invalid subtype " + subtype + \
 			", or pckt name or cpp pckt name not found")
@@ -30,9 +36,9 @@ def get_cast_cpp(cast_to_proto, pckt_name, ctx):
 	cpp_pckt_class = cpp_pckt_classes[proto]
 
 	if proto != ICMP and pckt_name != ICMP_PCKT:
-		return "static_cast<" + cpp_pckt_class + INCLUDEOS_REFERENCE_OP + ">(" + pckt_name + ");"
+		return "static_cast<" + cpp_pckt_class + INCLUDEOS_REFERENCE_OP + ">(" + INCLUDEOS_DEREFERENCE_OP + pckt_name + ");"
 	else:
-		return "*(" + cpp_pckt_class + "*) " + INCLUDEOS_REFERENCE_OP + pckt_name + ";"
+		return INCLUDEOS_ICMP_PCKT_CLASS + "(std::move(" + IP_PCKT + "));"
 
 def get_cout_convert_to_type_cpp(val_ctx):
 	if val_ctx.value_name() is None:

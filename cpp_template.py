@@ -97,14 +97,14 @@ class Action_handler:
 		if len(parameter_ctx_list) > 0:
 			sys.exit("line " + get_line_and_column(action_ctx) + " An accept action takes no parameters")
 
-		return INCLUDEOS_ACCEPT
+		return INCLUDEOS_ACCEPT(subtype)
 
 	def transpile_drop_cpp(self, parameter_ctx_list, subtype, action_ctx):
 		# This was the drop action, and this takes no parameters:
 		if len(parameter_ctx_list) > 0:
 			sys.exit("line " + get_line_and_column(action_ctx) + " A drop action takes no parameters")
-		
-		return INCLUDEOS_DROP
+
+		return INCLUDEOS_DROP(subtype)
 
 	def transpile_log_cpp(self, parameter_ctx_list, subtype, action_ctx):
 		content = "std::cout << "
@@ -138,12 +138,12 @@ class Action_handler:
 		if num_params == 1:
 			first = resolve_value_cpp(parameter_ctx_list[0])
 			# parameters = pckt_name + ", " + INCLUDEOS_CT_ENTRY + ", " + str(first)
-			parameters = IP_PCKT + ", " + INCLUDEOS_CT_ENTRY + ", " + str(first)
+			parameters = INCLUDEOS_DEREFERENCE_OP + IP_PCKT + ", " + INCLUDEOS_CT_ENTRY + ", " + str(first)
 		elif num_params > 1:
 			first 	= resolve_value_cpp(parameter_ctx_list[0])
 			second 	= resolve_value_cpp(parameter_ctx_list[1])
 			# parameters = pckt_name + ", " + INCLUDEOS_CT_ENTRY + ", {" + str(first) + ", " + str(second) + "}"
-			parameters = IP_PCKT + ", " + INCLUDEOS_CT_ENTRY + ", {" + str(first) + ", " + str(second) + "}"
+			parameters = INCLUDEOS_DEREFERENCE_OP + IP_PCKT + ", " + INCLUDEOS_CT_ENTRY + ", {" + str(first) + ", " + str(second) + "}"
 		else:
 			sys.exit("line " + get_line_and_column(action_ctx) + " No arguments provided to " + type_nat)
 
@@ -342,13 +342,20 @@ def transpile_bool_expr_cpp(type_t, subtype, expr, op=""):
 def transpile_conditional_cpp(type_t, subtype, cond):
 	content = ""
 	bodies = cond.body()
+	num_bodies = len(bodies)
 
 	if hasattr(cond, 'If') and cond.If() is not None:
+		if num_bodies < 1:
+			sys.exit("line " + get_line_and_column(cond) + " Invalid syntax")
+
 		# If-body is always first (index 0)
 		content += cond.If().getText() + " " + transpile_bool_expr_cpp(type_t, subtype, cond) + \
 			" {\n" + transpile_body_elements_cpp(type_t, subtype, bodies[0].body_element()) + "}\n"
 
 	if hasattr(cond, 'Else') and cond.Else() is not None:
+		if num_bodies < 2:
+			sys.exit("line " + get_line_and_column(cond) + " Invalid syntax")
+
 		# Else-body is always second/last (index 1)
 		content += cond.Else().getText() + " {\n" + \
 			transpile_body_elements_cpp(type_t, subtype, bodies[1].body_element()) + "}\n"
@@ -393,7 +400,8 @@ def transpile_function_cpp(type_t, subtype, ctx, parent_subtype=""):
 	if parent_subtype == "":
 		content += INCLUDEOS_CT_ENTRY_NULLPTR_CHECK
 
-	is_ip = subtype.lower() == IP
+	subtype_lower = subtype.lower()
+	is_ip = subtype_lower == IP
 	parent_pckt_name = ""
 	parent_subtype = parent_subtype.lower()
 
@@ -415,7 +423,7 @@ def transpile_function_cpp(type_t, subtype, ctx, parent_subtype=""):
 		if parent_subtype == "" or parent_subtype == IP:
 			content += "if (" + IP_PCKT + get_access_op_cpp(IP) + protocol_method + " " + EQUALS + " " + protocol_val + ") {\n" + \
 				pckt_cast + "\n\n"
-		elif parent_subtype != "" and subtype.lower() != parent_subtype and parent_subtype != IP:
+		elif parent_subtype != "" and subtype_lower != parent_subtype and parent_subtype != IP:
 			# If subtype == parent_subtype, we don't need this if-check on protocol at all (has been tested above in the C++ code)
 			parent_pckt_name = get_pckt_name_cpp(parent_subtype)
 			parent_access_op = get_access_op_cpp(parent_subtype)
@@ -435,9 +443,14 @@ def transpile_function_cpp(type_t, subtype, ctx, parent_subtype=""):
 		content += transpile_body_elements_cpp(type_t, subtype, ctx.body().body_element())
 
 	# 3. After the main content:
+
+	# If this was an ICMP function: Release
+	if subtype_lower == ICMP:
+		content += IP_PCKT + " = static_unique_ptr_cast<" + INCLUDEOS_IP_PCKT_CLASS + ">(" + ICMP_PCKT + DOT + INCLUDEOS_ICMP_RELEASE_METHOD + ");\n"
+
 	if not is_ip:
 		# Finish the if added above
-		if subtype.lower() != parent_subtype:
+		if subtype_lower != parent_subtype:
 			content += "}\n"
 	
 	return content
