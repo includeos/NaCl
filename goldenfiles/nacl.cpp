@@ -15,501 +15,517 @@ namespace custom_made_classes_from_nacl {
 
 class Encapsulating_Ip_Filter : public nacl::Filter {
 public:
-	Filter_verdict operator()(IP4::IP_packet& pckt, Inet<IP4>& stack, Conntrack::Entry_ptr ct_entry) {
+	Filter_verdict<IP4> operator()(IP4::IP_packet_ptr pckt, Inet<IP4>& stack, Conntrack::Entry_ptr ct_entry) {
 		if (not ct_entry) {
-return Filter_verdict::DROP;
+return {nullptr, Filter_verdict_type::DROP};
 }
-if (pckt.ip_src() == IP4::addr{10,0,0,99} or pckt.ip_src() == IP4::addr{10,10,10,10} or pckt.ip_src() == IP4::addr{255,255,255,0} or pckt.ip_src() == IP4::addr{10,0,0,1}) {
-return Filter_verdict::ACCEPT;
+if (pckt->ip_src() == IP4::addr{10,0,0,99} or pckt->ip_src() == IP4::addr{10,10,10,10} or pckt->ip_src() == IP4::addr{255,255,255,0} or pckt->ip_src() == IP4::addr{10,0,0,1}) {
+return {std::move(pckt), Filter_verdict_type::ACCEPT};
 }
-return Filter_verdict::DROP;
-if (pckt.ip_protocol() == Protocol::TCP) {
-auto& tcp_pckt = static_cast<tcp::Packet&>(pckt);
+return {nullptr, Filter_verdict_type::DROP};
+if (pckt->ip_protocol() == Protocol::TCP) {
+auto& tcp_pckt = static_cast<tcp::Packet&>(*pckt);
 
 if ((tcp_pckt.ip_src() >= IP4::addr{10,10,20,3} and tcp_pckt.ip_src() <= IP4::addr{10,10,20,55}) and tcp_pckt.ack() > 30) {
-return Filter_verdict::ACCEPT;
+return {std::move(pckt), Filter_verdict_type::ACCEPT};
 }
 }
-if (pckt.ip_protocol() == Protocol::ICMPv4) {
-auto& icmp_pckt = *(icmp4::Packet*) &pckt;
+if (pckt->ip_protocol() == Protocol::ICMPv4) {
+auto icmp_pckt = icmp4::Packet(std::move(pckt));
 
 if (!(icmp_pckt.type() == icmp4::Type::TIMESTAMP and !((icmp_pckt.ip().ip_src() >= IP4::addr{126,21,28,44} and icmp_pckt.ip().ip_src() <= IP4::addr{126,21,29,10}))) and !(icmp_pckt.ip().ip_ttl() > 30)) {
-return Filter_verdict::DROP;
+return {nullptr, Filter_verdict_type::DROP};
 }
 if (ct_entry->state != Conntrack::State::ESTABLISHED) {
-return Filter_verdict::DROP;
+return {nullptr, Filter_verdict_type::DROP};
 }
-return Filter_verdict::ACCEPT;
+return {icmp_pckt.release(), Filter_verdict_type::ACCEPT};
+pckt = icmp_pckt.release();
 }
-if ((!((pckt.ip_src() == IP4::addr{140,50,200,55} or pckt.ip_src() == IP4::addr{255,255,255,0}) and pckt.ip_dst() < IP4::addr{10,0,0,45} and pckt.ip_src() < IP4::addr{10,0,0,45}) and (pckt.ip_checksum() < 400 or (true and pckt.ip_ttl() > 50)))) {
-if (pckt.ip_protocol() == Protocol::TCP) {
-auto& tcp_pckt = static_cast<tcp::Packet&>(pckt);
+if ((!((pckt->ip_src() == IP4::addr{140,50,200,55} or pckt->ip_src() == IP4::addr{255,255,255,0}) and pckt->ip_dst() < IP4::addr{10,0,0,45} and pckt->ip_src() < IP4::addr{10,0,0,45}) and (pckt->ip_checksum() < 400 or (true and pckt->ip_ttl() > 50)))) {
+if (pckt->ip_protocol() == Protocol::TCP) {
+auto& tcp_pckt = static_cast<tcp::Packet&>(*pckt);
 
 if (tcp_pckt.src_port() == 53) {
-return Filter_verdict::DROP;
+return {nullptr, Filter_verdict_type::DROP};
 }
 if (tcp_pckt.ip_dst() == IP4::addr{132,23,30,5}) {
-return Filter_verdict::DROP;
+return {nullptr, Filter_verdict_type::DROP};
 }
 if (tcp_pckt.ip_dst() == IP4::addr{132,23,30,5}) {
-return Filter_verdict::DROP;
+return {nullptr, Filter_verdict_type::DROP};
 }
 if (tcp_pckt.dst_port() == 80) {
 if (tcp_pckt.ip_version() == 6) {
-return Filter_verdict::DROP;
+return {nullptr, Filter_verdict_type::DROP};
 }
 else {
-return Filter_verdict::ACCEPT;
+return {std::move(pckt), Filter_verdict_type::ACCEPT};
 }
 }
 else {
-return Filter_verdict::ACCEPT;
+return {std::move(pckt), Filter_verdict_type::ACCEPT};
 }
 if (tcp_pckt.ip_dst() == IP4::addr{10,0,0,55}) {
-return Filter_verdict::DROP;
+return {nullptr, Filter_verdict_type::DROP};
 }
-return Filter_verdict::DROP;
+return {nullptr, Filter_verdict_type::DROP};
 }
-if (pckt.ip_protocol() == Protocol::ICMPv4) {
-auto& icmp_pckt = *(icmp4::Packet*) &pckt;
+if (pckt->ip_protocol() == Protocol::ICMPv4) {
+auto icmp_pckt = icmp4::Packet(std::move(pckt));
 
 if (icmp_pckt.ip().ip_dst() == IP4::addr{120,30,20,10}) {
-return Filter_verdict::ACCEPT;
+return {icmp_pckt.release(), Filter_verdict_type::ACCEPT};
 }
 if (icmp_pckt.ip().ip_dst() == IP4::addr{10,0,0,55}) {
-return Filter_verdict::DROP;
+return {nullptr, Filter_verdict_type::DROP};
 }
+pckt = icmp_pckt.release();
 }
-if (pckt.ip_protocol() == Protocol::UDP) {
-auto& udp_pckt = static_cast<PacketUDP&>(pckt);
+if (pckt->ip_protocol() == Protocol::UDP) {
+auto& udp_pckt = static_cast<PacketUDP&>(*pckt);
 
 if (udp_pckt.dst_port() == 443) {
-return Filter_verdict::ACCEPT;
+return {std::move(pckt), Filter_verdict_type::ACCEPT};
 }
 else {
 if ((udp_pckt.dst_port() == 50 or udp_pckt.dst_port() == 53 or udp_pckt.dst_port() == 77 or (udp_pckt.dst_port() >= 8080 and udp_pckt.dst_port() <= 8090) or udp_pckt.dst_port() == 46 or udp_pckt.dst_port() == 99 or (udp_pckt.dst_port() >= 65 and udp_pckt.dst_port() <= 68) or udp_pckt.dst_port() == 102) and udp_pckt.ip_checksum() > 4040) {
-return Filter_verdict::ACCEPT;
+return {std::move(pckt), Filter_verdict_type::ACCEPT};
 }
 }
 }
-if (pckt.ip_protocol() == Protocol::ICMPv4) {
-auto& icmp_pckt = *(icmp4::Packet*) &pckt;
+if (pckt->ip_protocol() == Protocol::ICMPv4) {
+auto icmp_pckt = icmp4::Packet(std::move(pckt));
 
 if (icmp_pckt.ip().ip_ttl() > 33 and icmp_pckt.type() != icmp4::Type::DEST_UNREACHABLE) {
-return Filter_verdict::DROP;
+return {nullptr, Filter_verdict_type::DROP};
 }
-return Filter_verdict::ACCEPT;
+return {icmp_pckt.release(), Filter_verdict_type::ACCEPT};
+pckt = icmp_pckt.release();
 }
 }
-if (pckt.ip_protocol() == Protocol::TCP) {
-auto& tcp_pckt = static_cast<tcp::Packet&>(pckt);
+if (pckt->ip_protocol() == Protocol::TCP) {
+auto& tcp_pckt = static_cast<tcp::Packet&>(*pckt);
 
 if (tcp_pckt.ip_dst() == IP4::addr{10,0,0,40} and tcp_pckt.dst_port() == 80) {
-return Filter_verdict::ACCEPT;
+return {std::move(pckt), Filter_verdict_type::ACCEPT};
 }
 }
-if ((pckt.ip_dst() == IP4::addr{10,0,0,40} or ip4::Cidr{120,30,20,0,24}.contains(pckt.ip_dst()) or pckt.ip_dst() == IP4::addr{140,20,10,13} or (pckt.ip_dst() >= IP4::addr{140,20,10,20} and pckt.ip_dst() <= IP4::addr{140,20,10,100}))) {
-if ((pckt.ip_src() >= IP4::addr{126,21,28,44} and pckt.ip_src() <= IP4::addr{126,21,29,10})) {
-return Filter_verdict::DROP;
+if ((pckt->ip_dst() == IP4::addr{10,0,0,40} or ip4::Cidr{120,30,20,0,24}.contains(pckt->ip_dst()) or pckt->ip_dst() == IP4::addr{140,20,10,13} or (pckt->ip_dst() >= IP4::addr{140,20,10,20} and pckt->ip_dst() <= IP4::addr{140,20,10,100}))) {
+if ((pckt->ip_src() >= IP4::addr{126,21,28,44} and pckt->ip_src() <= IP4::addr{126,21,29,10})) {
+return {nullptr, Filter_verdict_type::DROP};
 }
 else {
-return Filter_verdict::ACCEPT;
+return {std::move(pckt), Filter_verdict_type::ACCEPT};
 }
 }
-if (pckt.ip_protocol() == Protocol::TCP) {
-auto& tcp_pckt = static_cast<tcp::Packet&>(pckt);
+if (pckt->ip_protocol() == Protocol::TCP) {
+auto& tcp_pckt = static_cast<tcp::Packet&>(*pckt);
 
 if (tcp_pckt.dst_port() == 8080) {
-return Filter_verdict::ACCEPT;
+return {std::move(pckt), Filter_verdict_type::ACCEPT};
 }
 if (tcp_pckt.ip_dst() == IP4::addr{10,0,0,40} and tcp_pckt.dst_port() == 80) {
-return Filter_verdict::ACCEPT;
+return {std::move(pckt), Filter_verdict_type::ACCEPT};
 }
 }
-return Filter_verdict::ACCEPT;
-return Filter_verdict::DROP;
-if (pckt.ip_protocol() == Protocol::ICMPv4) {
-auto& icmp_pckt = *(icmp4::Packet*) &pckt;
+return {std::move(pckt), Filter_verdict_type::ACCEPT};
+return {nullptr, Filter_verdict_type::DROP};
+if (pckt->ip_protocol() == Protocol::ICMPv4) {
+auto icmp_pckt = icmp4::Packet(std::move(pckt));
 
 if (icmp_pckt.ip().ip_ttl() > 33 and icmp_pckt.type() != icmp4::Type::DEST_UNREACHABLE) {
-return Filter_verdict::DROP;
+return {nullptr, Filter_verdict_type::DROP};
 }
-return Filter_verdict::ACCEPT;
+return {icmp_pckt.release(), Filter_verdict_type::ACCEPT};
+pckt = icmp_pckt.release();
 }
-if ((pckt.ip_dst() == IP4::addr{10,0,0,40} or ip4::Cidr{120,30,20,0,24}.contains(pckt.ip_dst()) or pckt.ip_dst() == IP4::addr{140,20,10,13} or (pckt.ip_dst() >= IP4::addr{140,20,10,20} and pckt.ip_dst() <= IP4::addr{140,20,10,100}))) {
-if ((pckt.ip_src() >= IP4::addr{126,21,28,44} and pckt.ip_src() <= IP4::addr{126,21,29,10})) {
-return Filter_verdict::DROP;
+if ((pckt->ip_dst() == IP4::addr{10,0,0,40} or ip4::Cidr{120,30,20,0,24}.contains(pckt->ip_dst()) or pckt->ip_dst() == IP4::addr{140,20,10,13} or (pckt->ip_dst() >= IP4::addr{140,20,10,20} and pckt->ip_dst() <= IP4::addr{140,20,10,100}))) {
+if ((pckt->ip_src() >= IP4::addr{126,21,28,44} and pckt->ip_src() <= IP4::addr{126,21,29,10})) {
+return {nullptr, Filter_verdict_type::DROP};
 }
 else {
-return Filter_verdict::ACCEPT;
+return {std::move(pckt), Filter_verdict_type::ACCEPT};
 }
 }
-if (!((pckt.ip_dst() == IP4::addr{10,0,0,40} or ip4::Cidr{120,30,20,0,24}.contains(pckt.ip_dst()) or pckt.ip_dst() == IP4::addr{140,20,10,13} or (pckt.ip_dst() >= IP4::addr{140,20,10,20} and pckt.ip_dst() <= IP4::addr{140,20,10,100})))) {
-return Filter_verdict::DROP;
+if (!((pckt->ip_dst() == IP4::addr{10,0,0,40} or ip4::Cidr{120,30,20,0,24}.contains(pckt->ip_dst()) or pckt->ip_dst() == IP4::addr{140,20,10,13} or (pckt->ip_dst() >= IP4::addr{140,20,10,20} and pckt->ip_dst() <= IP4::addr{140,20,10,100})))) {
+return {nullptr, Filter_verdict_type::DROP};
 }
-if (!(ip4::Cidr{120,20,30,0,24}.contains(pckt.ip_dst()))) {
-return Filter_verdict::DROP;
+if (!(ip4::Cidr{120,20,30,0,24}.contains(pckt->ip_dst()))) {
+return {nullptr, Filter_verdict_type::DROP};
 }
-if (!((pckt.ip_dst() >= IP4::addr{10,20,30,1} and pckt.ip_dst() <= IP4::addr{10,20,30,40}))) {
-return Filter_verdict::DROP;
+if (!((pckt->ip_dst() >= IP4::addr{10,20,30,1} and pckt->ip_dst() <= IP4::addr{10,20,30,40}))) {
+return {nullptr, Filter_verdict_type::DROP};
 }
-if (!((pckt.ip_src() == IP4::addr{10,0,0,1} or ip4::Cidr{190,50,20,0,24}.contains(pckt.ip_src()) or (pckt.ip_src() >= IP4::addr{180,20,30,0} and pckt.ip_src() <= IP4::addr{180,20,30,50}) or (pckt.ip_src() >= IP4::addr{180,20,30,100} and pckt.ip_src() <= IP4::addr{180,20,30,150}) or pckt.ip_src() == IP4::addr{180,20,30,155}))) {
-return Filter_verdict::ACCEPT;
+if (!((pckt->ip_src() == IP4::addr{10,0,0,1} or ip4::Cidr{190,50,20,0,24}.contains(pckt->ip_src()) or (pckt->ip_src() >= IP4::addr{180,20,30,0} and pckt->ip_src() <= IP4::addr{180,20,30,50}) or (pckt->ip_src() >= IP4::addr{180,20,30,100} and pckt->ip_src() <= IP4::addr{180,20,30,150}) or pckt->ip_src() == IP4::addr{180,20,30,155}))) {
+return {std::move(pckt), Filter_verdict_type::ACCEPT};
 }
-if (pckt.ip_protocol() == Protocol::ICMPv4) {
-auto& icmp_pckt = *(icmp4::Packet*) &pckt;
+if (pckt->ip_protocol() == Protocol::ICMPv4) {
+auto icmp_pckt = icmp4::Packet(std::move(pckt));
 
 if (icmp_pckt.ip().ip_dst() == IP4::addr{10,0,0,55}) {
-return Filter_verdict::DROP;
+return {nullptr, Filter_verdict_type::DROP};
 }
 if (icmp_pckt.ip().ip_ttl() > 33 and icmp_pckt.type() != icmp4::Type::DEST_UNREACHABLE) {
-return Filter_verdict::DROP;
+return {nullptr, Filter_verdict_type::DROP};
 }
-return Filter_verdict::ACCEPT;
-return Filter_verdict::ACCEPT;
+return {icmp_pckt.release(), Filter_verdict_type::ACCEPT};
+pckt = icmp_pckt.release();
+return {icmp_pckt.release(), Filter_verdict_type::ACCEPT};
+pckt = icmp_pckt.release();
 if (icmp_pckt.ip().ip_ttl() > 33 and icmp_pckt.type() != icmp4::Type::DEST_UNREACHABLE) {
-return Filter_verdict::DROP;
+return {nullptr, Filter_verdict_type::DROP};
 }
-return Filter_verdict::ACCEPT;
+return {icmp_pckt.release(), Filter_verdict_type::ACCEPT};
+pckt = icmp_pckt.release();
 if (icmp_pckt.type() == icmp4::Type::TIMESTAMP) {
-return Filter_verdict::ACCEPT;
+return {icmp_pckt.release(), Filter_verdict_type::ACCEPT};
 }
-return Filter_verdict::ACCEPT;
-return Filter_verdict::ACCEPT;
+pckt = icmp_pckt.release();
+return {icmp_pckt.release(), Filter_verdict_type::ACCEPT};
+pckt = icmp_pckt.release();
+return {icmp_pckt.release(), Filter_verdict_type::ACCEPT};
+pckt = icmp_pckt.release();
 }
-if (pckt.ip_protocol() == Protocol::UDP) {
-auto& udp_pckt = static_cast<PacketUDP&>(pckt);
+if (pckt->ip_protocol() == Protocol::UDP) {
+auto& udp_pckt = static_cast<PacketUDP&>(*pckt);
 
 if (udp_pckt.ip_dst() == IP4::addr{10,0,0,55}) {
-return Filter_verdict::DROP;
+return {nullptr, Filter_verdict_type::DROP};
 }
 if ((udp_pckt.dst_port() == 50 or udp_pckt.dst_port() == 53 or udp_pckt.dst_port() == 77 or (udp_pckt.dst_port() >= 8080 and udp_pckt.dst_port() <= 8090) or udp_pckt.dst_port() == 46 or udp_pckt.dst_port() == 99 or (udp_pckt.dst_port() >= 65 and udp_pckt.dst_port() <= 68) or udp_pckt.dst_port() == 102) and udp_pckt.ip_checksum() > 4040) {
-return Filter_verdict::ACCEPT;
+return {std::move(pckt), Filter_verdict_type::ACCEPT};
 }
 }
-if (pckt.ip_protocol() == Protocol::ICMPv4) {
-auto& icmp_pckt = *(icmp4::Packet*) &pckt;
+if (pckt->ip_protocol() == Protocol::ICMPv4) {
+auto icmp_pckt = icmp4::Packet(std::move(pckt));
 
 if (icmp_pckt.ip().ip_ttl() > 33 and icmp_pckt.type() != icmp4::Type::DEST_UNREACHABLE) {
-return Filter_verdict::DROP;
+return {nullptr, Filter_verdict_type::DROP};
 }
-return Filter_verdict::ACCEPT;
+return {icmp_pckt.release(), Filter_verdict_type::ACCEPT};
+pckt = icmp_pckt.release();
 }
-if (pckt.ip_protocol() == Protocol::ICMPv4) {
-auto& icmp_pckt = *(icmp4::Packet*) &pckt;
+if (pckt->ip_protocol() == Protocol::ICMPv4) {
+auto icmp_pckt = icmp4::Packet(std::move(pckt));
 
 if (icmp_pckt.ip().ip_version() < 6 and icmp_pckt.type() == icmp4::Type::ECHO) {
-return Filter_verdict::ACCEPT;
+return {icmp_pckt.release(), Filter_verdict_type::ACCEPT};
 }
+pckt = icmp_pckt.release();
 }
-if (pckt.ip_protocol() == Protocol::UDP) {
-auto& udp_pckt = static_cast<PacketUDP&>(pckt);
+if (pckt->ip_protocol() == Protocol::UDP) {
+auto& udp_pckt = static_cast<PacketUDP&>(*pckt);
 
 if ((udp_pckt.dst_port() == 50 or udp_pckt.dst_port() == 53 or udp_pckt.dst_port() == 77 or (udp_pckt.dst_port() >= 8080 and udp_pckt.dst_port() <= 8090) or udp_pckt.dst_port() == 46 or udp_pckt.dst_port() == 99 or (udp_pckt.dst_port() >= 65 and udp_pckt.dst_port() <= 68) or udp_pckt.dst_port() == 102) and udp_pckt.ip_checksum() > 4040) {
-return Filter_verdict::ACCEPT;
+return {std::move(pckt), Filter_verdict_type::ACCEPT};
 }
 }
-if (pckt.ip_protocol() == Protocol::UDP) {
-auto& udp_pckt = static_cast<PacketUDP&>(pckt);
+if (pckt->ip_protocol() == Protocol::UDP) {
+auto& udp_pckt = static_cast<PacketUDP&>(*pckt);
 
 if (udp_pckt.ip_version() < 6 and udp_pckt.src_port() == 80) {
-return Filter_verdict::ACCEPT;
+return {std::move(pckt), Filter_verdict_type::ACCEPT};
 }
 }
-if (pckt.ip_protocol() == Protocol::TCP) {
-auto& tcp_pckt = static_cast<tcp::Packet&>(pckt);
+if (pckt->ip_protocol() == Protocol::TCP) {
+auto& tcp_pckt = static_cast<tcp::Packet&>(*pckt);
 
 if ((tcp_pckt.ip_src() >= IP4::addr{10,10,20,3} and tcp_pckt.ip_src() <= IP4::addr{10,10,20,55}) and tcp_pckt.ack() > 30) {
-return Filter_verdict::ACCEPT;
+return {std::move(pckt), Filter_verdict_type::ACCEPT};
 }
 }
-if (pckt.ip_protocol() == Protocol::TCP) {
-auto& tcp_pckt = static_cast<tcp::Packet&>(pckt);
+if (pckt->ip_protocol() == Protocol::TCP) {
+auto& tcp_pckt = static_cast<tcp::Packet&>(*pckt);
 
 if ((tcp_pckt.ip_src() >= IP4::addr{10,10,20,14} and tcp_pckt.ip_src() <= IP4::addr{10,10,20,60}) and tcp_pckt.ack() > 33) {
-return Filter_verdict::ACCEPT;
+return {std::move(pckt), Filter_verdict_type::ACCEPT};
 }
 }
-if (pckt.ip_dst() == IP4::addr{10,0,0,55}) {
-return Filter_verdict::DROP;
+if (pckt->ip_dst() == IP4::addr{10,0,0,55}) {
+return {nullptr, Filter_verdict_type::DROP};
 }
-if (pckt.ip_checksum() > 400) {
-return Filter_verdict::DROP;
+if (pckt->ip_checksum() > 400) {
+return {nullptr, Filter_verdict_type::DROP};
 }
-if (pckt.ip_protocol() == Protocol::UDP) {
-auto& udp_pckt = static_cast<PacketUDP&>(pckt);
+if (pckt->ip_protocol() == Protocol::UDP) {
+auto& udp_pckt = static_cast<PacketUDP&>(*pckt);
 
 if (udp_pckt.src_port() == 80) {
-return Filter_verdict::ACCEPT;
+return {std::move(pckt), Filter_verdict_type::ACCEPT};
 }
 }
-if (pckt.ip_dst() == IP4::addr{10,0,0,55}) {
-return Filter_verdict::DROP;
+if (pckt->ip_dst() == IP4::addr{10,0,0,55}) {
+return {nullptr, Filter_verdict_type::DROP};
 }
-if (pckt.ip_protocol() == Protocol::TCP) {
-auto& tcp_pckt = static_cast<tcp::Packet&>(pckt);
+if (pckt->ip_protocol() == Protocol::TCP) {
+auto& tcp_pckt = static_cast<tcp::Packet&>(*pckt);
 
 if (tcp_pckt.ip_dst() == IP4::addr{10,0,0,102} or tcp_pckt.ip_dst() == IP4::addr{10,0,0,80} or tcp_pckt.ip_dst() == IP4::addr{10,0,0,203} or tcp_pckt.src_port() == 2800) {
-return Filter_verdict::ACCEPT;
+return {std::move(pckt), Filter_verdict_type::ACCEPT};
 }
 if (tcp_pckt.dst_port() == 55) {
-return Filter_verdict::ACCEPT;
+return {std::move(pckt), Filter_verdict_type::ACCEPT};
 }
 if ((tcp_pckt.ip_dst() == IP4::addr{10,0,0,40} or ip4::Cidr{120,30,20,0,24}.contains(tcp_pckt.ip_dst()) or tcp_pckt.ip_dst() == IP4::addr{140,20,10,13} or (tcp_pckt.ip_dst() >= IP4::addr{140,20,10,20} and tcp_pckt.ip_dst() <= IP4::addr{140,20,10,100}))) {
 if ((tcp_pckt.ip_src() >= IP4::addr{126,21,28,44} and tcp_pckt.ip_src() <= IP4::addr{126,21,29,10})) {
-return Filter_verdict::DROP;
+return {nullptr, Filter_verdict_type::DROP};
 }
 else {
-return Filter_verdict::ACCEPT;
+return {std::move(pckt), Filter_verdict_type::ACCEPT};
 }
 }
 if ((tcp_pckt.ip_src() >= IP4::addr{10,10,20,3} and tcp_pckt.ip_src() <= IP4::addr{10,10,20,55}) and tcp_pckt.ack() > 30) {
-return Filter_verdict::ACCEPT;
+return {std::move(pckt), Filter_verdict_type::ACCEPT};
 }
 if (tcp_pckt.ip_version() == 4) {
-return Filter_verdict::ACCEPT;
+return {std::move(pckt), Filter_verdict_type::ACCEPT};
 }
 if (tcp_pckt.ack() <= 88) {
 if ((tcp_pckt.src_port() == 40 or tcp_pckt.src_port() == 443 or (tcp_pckt.src_port() >= 77 and tcp_pckt.src_port() <= 90) or tcp_pckt.src_port() == 44 or (tcp_pckt.src_port() >= 99 and tcp_pckt.src_port() <= 101) or tcp_pckt.src_port() == 100 or tcp_pckt.src_port() == 2800) or tcp_pckt.dst_port() == 80) {
-return Filter_verdict::ACCEPT;
+return {std::move(pckt), Filter_verdict_type::ACCEPT};
 }
 else {
 if ((tcp_pckt.ip_ttl() >= 10 and tcp_pckt.ip_ttl() <= 201) or ((tcp_pckt.ip_ttl() > 30 and tcp_pckt.ip_checksum() > 33) or ((tcp_pckt.dst_port() >= 20 and tcp_pckt.dst_port() <= 30) or tcp_pckt.ip_src() == IP4::addr{10,0,0,40}))) {
-return Filter_verdict::DROP;
+return {nullptr, Filter_verdict_type::DROP};
 }
 else {
 if (!((tcp_pckt.ip_dst() == IP4::addr{10,0,0,40} or ip4::Cidr{120,30,20,0,24}.contains(tcp_pckt.ip_dst()) or tcp_pckt.ip_dst() == IP4::addr{140,20,10,13} or (tcp_pckt.ip_dst() >= IP4::addr{140,20,10,20} and tcp_pckt.ip_dst() <= IP4::addr{140,20,10,100})))) {
-return Filter_verdict::DROP;
+return {nullptr, Filter_verdict_type::DROP};
 }
 if (!(ip4::Cidr{120,20,30,0,24}.contains(tcp_pckt.ip_dst()))) {
-return Filter_verdict::DROP;
+return {nullptr, Filter_verdict_type::DROP};
 }
 if (!((tcp_pckt.ip_dst() >= IP4::addr{10,20,30,1} and tcp_pckt.ip_dst() <= IP4::addr{10,20,30,40}))) {
-return Filter_verdict::DROP;
+return {nullptr, Filter_verdict_type::DROP};
 }
 if (!((tcp_pckt.ip_src() == IP4::addr{10,0,0,1} or ip4::Cidr{190,50,20,0,24}.contains(tcp_pckt.ip_src()) or (tcp_pckt.ip_src() >= IP4::addr{180,20,30,0} and tcp_pckt.ip_src() <= IP4::addr{180,20,30,50}) or (tcp_pckt.ip_src() >= IP4::addr{180,20,30,100} and tcp_pckt.ip_src() <= IP4::addr{180,20,30,150}) or tcp_pckt.ip_src() == IP4::addr{180,20,30,155}))) {
-return Filter_verdict::ACCEPT;
+return {std::move(pckt), Filter_verdict_type::ACCEPT};
 }
-return Filter_verdict::ACCEPT;
+return {std::move(pckt), Filter_verdict_type::ACCEPT};
 }
 }
 }
-return Filter_verdict::DROP;
+return {nullptr, Filter_verdict_type::DROP};
 }
-return Filter_verdict::ACCEPT;
+return {std::move(pckt), Filter_verdict_type::ACCEPT};
 
 	}
 };
 
 class Main_Ip_Filter : public nacl::Filter {
 public:
-	Filter_verdict operator()(IP4::IP_packet& pckt, Inet<IP4>& stack, Conntrack::Entry_ptr ct_entry) {
+	Filter_verdict<IP4> operator()(IP4::IP_packet_ptr pckt, Inet<IP4>& stack, Conntrack::Entry_ptr ct_entry) {
 		if (not ct_entry) {
-return Filter_verdict::DROP;
+return {nullptr, Filter_verdict_type::DROP};
 }
-if ((!((pckt.ip_src() == IP4::addr{140,50,200,55} or pckt.ip_src() == IP4::addr{255,255,255,0}) and pckt.ip_dst() < IP4::addr{10,0,0,45} and pckt.ip_src() < IP4::addr{10,0,0,45}) and (pckt.ip_checksum() < 400 or (true and pckt.ip_ttl() > 50)))) {
-if (pckt.ip_protocol() == Protocol::TCP) {
-auto& tcp_pckt = static_cast<tcp::Packet&>(pckt);
+if ((!((pckt->ip_src() == IP4::addr{140,50,200,55} or pckt->ip_src() == IP4::addr{255,255,255,0}) and pckt->ip_dst() < IP4::addr{10,0,0,45} and pckt->ip_src() < IP4::addr{10,0,0,45}) and (pckt->ip_checksum() < 400 or (true and pckt->ip_ttl() > 50)))) {
+if (pckt->ip_protocol() == Protocol::TCP) {
+auto& tcp_pckt = static_cast<tcp::Packet&>(*pckt);
 
 if (tcp_pckt.src_port() == 53) {
-return Filter_verdict::DROP;
+return {nullptr, Filter_verdict_type::DROP};
 }
 if (tcp_pckt.ip_dst() == IP4::addr{132,23,30,5}) {
-return Filter_verdict::DROP;
+return {nullptr, Filter_verdict_type::DROP};
 }
 if (tcp_pckt.ip_dst() == IP4::addr{132,23,30,5}) {
-return Filter_verdict::DROP;
+return {nullptr, Filter_verdict_type::DROP};
 }
 if (tcp_pckt.dst_port() == 80) {
 if (tcp_pckt.ip_version() == 6) {
-return Filter_verdict::DROP;
+return {nullptr, Filter_verdict_type::DROP};
 }
 else {
-return Filter_verdict::ACCEPT;
+return {std::move(pckt), Filter_verdict_type::ACCEPT};
 }
 }
 else {
-return Filter_verdict::ACCEPT;
+return {std::move(pckt), Filter_verdict_type::ACCEPT};
 }
 if (tcp_pckt.ip_dst() == IP4::addr{10,0,0,55}) {
-return Filter_verdict::DROP;
+return {nullptr, Filter_verdict_type::DROP};
 }
-return Filter_verdict::DROP;
+return {nullptr, Filter_verdict_type::DROP};
 }
-if (pckt.ip_protocol() == Protocol::ICMPv4) {
-auto& icmp_pckt = *(icmp4::Packet*) &pckt;
+if (pckt->ip_protocol() == Protocol::ICMPv4) {
+auto icmp_pckt = icmp4::Packet(std::move(pckt));
 
 if (icmp_pckt.ip().ip_dst() == IP4::addr{120,30,20,10}) {
-return Filter_verdict::ACCEPT;
+return {icmp_pckt.release(), Filter_verdict_type::ACCEPT};
 }
 if (icmp_pckt.ip().ip_dst() == IP4::addr{10,0,0,55}) {
-return Filter_verdict::DROP;
+return {nullptr, Filter_verdict_type::DROP};
 }
+pckt = icmp_pckt.release();
 }
-if (pckt.ip_protocol() == Protocol::UDP) {
-auto& udp_pckt = static_cast<PacketUDP&>(pckt);
+if (pckt->ip_protocol() == Protocol::UDP) {
+auto& udp_pckt = static_cast<PacketUDP&>(*pckt);
 
 if (udp_pckt.dst_port() == 443) {
-return Filter_verdict::ACCEPT;
+return {std::move(pckt), Filter_verdict_type::ACCEPT};
 }
 else {
 if ((udp_pckt.dst_port() == 50 or udp_pckt.dst_port() == 53 or udp_pckt.dst_port() == 77 or (udp_pckt.dst_port() >= 8080 and udp_pckt.dst_port() <= 8090) or udp_pckt.dst_port() == 46 or udp_pckt.dst_port() == 99 or (udp_pckt.dst_port() >= 65 and udp_pckt.dst_port() <= 68) or udp_pckt.dst_port() == 102) and udp_pckt.ip_checksum() > 4040) {
-return Filter_verdict::ACCEPT;
+return {std::move(pckt), Filter_verdict_type::ACCEPT};
 }
 }
 }
-if (pckt.ip_protocol() == Protocol::ICMPv4) {
-auto& icmp_pckt = *(icmp4::Packet*) &pckt;
+if (pckt->ip_protocol() == Protocol::ICMPv4) {
+auto icmp_pckt = icmp4::Packet(std::move(pckt));
 
 if (icmp_pckt.ip().ip_ttl() > 33 and icmp_pckt.type() != icmp4::Type::DEST_UNREACHABLE) {
-return Filter_verdict::DROP;
+return {nullptr, Filter_verdict_type::DROP};
 }
-return Filter_verdict::ACCEPT;
+return {icmp_pckt.release(), Filter_verdict_type::ACCEPT};
+pckt = icmp_pckt.release();
 }
 }
-if (pckt.ip_protocol() == Protocol::TCP) {
-auto& tcp_pckt = static_cast<tcp::Packet&>(pckt);
+if (pckt->ip_protocol() == Protocol::TCP) {
+auto& tcp_pckt = static_cast<tcp::Packet&>(*pckt);
 
 if (tcp_pckt.ip_dst() == IP4::addr{10,0,0,40} and tcp_pckt.dst_port() == 80) {
-return Filter_verdict::ACCEPT;
+return {std::move(pckt), Filter_verdict_type::ACCEPT};
 }
 }
-if ((pckt.ip_dst() == IP4::addr{10,0,0,40} or ip4::Cidr{120,30,20,0,24}.contains(pckt.ip_dst()) or pckt.ip_dst() == IP4::addr{140,20,10,13} or (pckt.ip_dst() >= IP4::addr{140,20,10,20} and pckt.ip_dst() <= IP4::addr{140,20,10,100}))) {
-if ((pckt.ip_src() >= IP4::addr{126,21,28,44} and pckt.ip_src() <= IP4::addr{126,21,29,10})) {
-return Filter_verdict::DROP;
+if ((pckt->ip_dst() == IP4::addr{10,0,0,40} or ip4::Cidr{120,30,20,0,24}.contains(pckt->ip_dst()) or pckt->ip_dst() == IP4::addr{140,20,10,13} or (pckt->ip_dst() >= IP4::addr{140,20,10,20} and pckt->ip_dst() <= IP4::addr{140,20,10,100}))) {
+if ((pckt->ip_src() >= IP4::addr{126,21,28,44} and pckt->ip_src() <= IP4::addr{126,21,29,10})) {
+return {nullptr, Filter_verdict_type::DROP};
 }
 else {
-return Filter_verdict::ACCEPT;
+return {std::move(pckt), Filter_verdict_type::ACCEPT};
 }
 }
-if (pckt.ip_protocol() == Protocol::TCP) {
-auto& tcp_pckt = static_cast<tcp::Packet&>(pckt);
+if (pckt->ip_protocol() == Protocol::TCP) {
+auto& tcp_pckt = static_cast<tcp::Packet&>(*pckt);
 
 if (tcp_pckt.dst_port() == 8080) {
-return Filter_verdict::ACCEPT;
+return {std::move(pckt), Filter_verdict_type::ACCEPT};
 }
 if (tcp_pckt.ip_dst() == IP4::addr{10,0,0,40} and tcp_pckt.dst_port() == 80) {
-return Filter_verdict::ACCEPT;
+return {std::move(pckt), Filter_verdict_type::ACCEPT};
 }
 }
-return Filter_verdict::ACCEPT;
-return Filter_verdict::DROP;
+return {std::move(pckt), Filter_verdict_type::ACCEPT};
+return {nullptr, Filter_verdict_type::DROP};
 
 	}
 };
 
 class Encapsulating_Ip_Filter_2 : public nacl::Filter {
 public:
-	Filter_verdict operator()(IP4::IP_packet& pckt, Inet<IP4>& stack, Conntrack::Entry_ptr ct_entry) {
+	Filter_verdict<IP4> operator()(IP4::IP_packet_ptr pckt, Inet<IP4>& stack, Conntrack::Entry_ptr ct_entry) {
 		if (not ct_entry) {
-return Filter_verdict::DROP;
+return {nullptr, Filter_verdict_type::DROP};
 }
-if (pckt.ip_src() == IP4::addr{10,0,0,99} or pckt.ip_src() == IP4::addr{10,10,10,10} or pckt.ip_src() == IP4::addr{255,255,255,0} or pckt.ip_src() == IP4::addr{10,0,0,1}) {
-return Filter_verdict::ACCEPT;
+if (pckt->ip_src() == IP4::addr{10,0,0,99} or pckt->ip_src() == IP4::addr{10,10,10,10} or pckt->ip_src() == IP4::addr{255,255,255,0} or pckt->ip_src() == IP4::addr{10,0,0,1}) {
+return {std::move(pckt), Filter_verdict_type::ACCEPT};
 }
-return Filter_verdict::DROP;
-if (pckt.ip_protocol() == Protocol::TCP) {
-auto& tcp_pckt = static_cast<tcp::Packet&>(pckt);
+return {nullptr, Filter_verdict_type::DROP};
+if (pckt->ip_protocol() == Protocol::TCP) {
+auto& tcp_pckt = static_cast<tcp::Packet&>(*pckt);
 
 if ((tcp_pckt.ip_src() >= IP4::addr{10,10,20,3} and tcp_pckt.ip_src() <= IP4::addr{10,10,20,55}) and tcp_pckt.ack() > 30) {
-return Filter_verdict::ACCEPT;
+return {std::move(pckt), Filter_verdict_type::ACCEPT};
 }
 }
-if (pckt.ip_protocol() == Protocol::ICMPv4) {
-auto& icmp_pckt = *(icmp4::Packet*) &pckt;
+if (pckt->ip_protocol() == Protocol::ICMPv4) {
+auto icmp_pckt = icmp4::Packet(std::move(pckt));
 
 if (!(icmp_pckt.type() == icmp4::Type::TIMESTAMP and !((icmp_pckt.ip().ip_src() >= IP4::addr{126,21,28,44} and icmp_pckt.ip().ip_src() <= IP4::addr{126,21,29,10}))) and !(icmp_pckt.ip().ip_ttl() > 30)) {
-return Filter_verdict::DROP;
+return {nullptr, Filter_verdict_type::DROP};
 }
 if (ct_entry->state != Conntrack::State::ESTABLISHED) {
-return Filter_verdict::DROP;
+return {nullptr, Filter_verdict_type::DROP};
 }
-return Filter_verdict::ACCEPT;
+return {icmp_pckt.release(), Filter_verdict_type::ACCEPT};
+pckt = icmp_pckt.release();
 }
-return Filter_verdict::ACCEPT;
+return {std::move(pckt), Filter_verdict_type::ACCEPT};
 
 	}
 };
 
 class Ip_Filter_Encapsulating_Main_Tcp_Filter : public nacl::Filter {
 public:
-	Filter_verdict operator()(IP4::IP_packet& pckt, Inet<IP4>& stack, Conntrack::Entry_ptr ct_entry) {
+	Filter_verdict<IP4> operator()(IP4::IP_packet_ptr pckt, Inet<IP4>& stack, Conntrack::Entry_ptr ct_entry) {
 		if (not ct_entry) {
-return Filter_verdict::DROP;
+return {nullptr, Filter_verdict_type::DROP};
 }
-if (pckt.ip_protocol() == Protocol::TCP) {
-auto& tcp_pckt = static_cast<tcp::Packet&>(pckt);
+if (pckt->ip_protocol() == Protocol::TCP) {
+auto& tcp_pckt = static_cast<tcp::Packet&>(*pckt);
 
 if (tcp_pckt.ip_dst() == IP4::addr{10,0,0,102} or tcp_pckt.ip_dst() == IP4::addr{10,0,0,80} or tcp_pckt.ip_dst() == IP4::addr{10,0,0,203} or tcp_pckt.src_port() == 2800) {
-return Filter_verdict::ACCEPT;
+return {std::move(pckt), Filter_verdict_type::ACCEPT};
 }
 if (tcp_pckt.dst_port() == 55) {
-return Filter_verdict::ACCEPT;
+return {std::move(pckt), Filter_verdict_type::ACCEPT};
 }
 if ((tcp_pckt.ip_dst() == IP4::addr{10,0,0,40} or ip4::Cidr{120,30,20,0,24}.contains(tcp_pckt.ip_dst()) or tcp_pckt.ip_dst() == IP4::addr{140,20,10,13} or (tcp_pckt.ip_dst() >= IP4::addr{140,20,10,20} and tcp_pckt.ip_dst() <= IP4::addr{140,20,10,100}))) {
 if ((tcp_pckt.ip_src() >= IP4::addr{126,21,28,44} and tcp_pckt.ip_src() <= IP4::addr{126,21,29,10})) {
-return Filter_verdict::DROP;
+return {nullptr, Filter_verdict_type::DROP};
 }
 else {
-return Filter_verdict::ACCEPT;
+return {std::move(pckt), Filter_verdict_type::ACCEPT};
 }
 }
 if ((tcp_pckt.ip_src() >= IP4::addr{10,10,20,3} and tcp_pckt.ip_src() <= IP4::addr{10,10,20,55}) and tcp_pckt.ack() > 30) {
-return Filter_verdict::ACCEPT;
+return {std::move(pckt), Filter_verdict_type::ACCEPT};
 }
 if (tcp_pckt.ip_version() == 4) {
-return Filter_verdict::ACCEPT;
+return {std::move(pckt), Filter_verdict_type::ACCEPT};
 }
 if (tcp_pckt.ack() <= 88) {
 if ((tcp_pckt.src_port() == 40 or tcp_pckt.src_port() == 443 or (tcp_pckt.src_port() >= 77 and tcp_pckt.src_port() <= 90) or tcp_pckt.src_port() == 44 or (tcp_pckt.src_port() >= 99 and tcp_pckt.src_port() <= 101) or tcp_pckt.src_port() == 100 or tcp_pckt.src_port() == 2800) or tcp_pckt.dst_port() == 80) {
-return Filter_verdict::ACCEPT;
+return {std::move(pckt), Filter_verdict_type::ACCEPT};
 }
 else {
 if ((tcp_pckt.ip_ttl() >= 10 and tcp_pckt.ip_ttl() <= 201) or ((tcp_pckt.ip_ttl() > 30 and tcp_pckt.ip_checksum() > 33) or ((tcp_pckt.dst_port() >= 20 and tcp_pckt.dst_port() <= 30) or tcp_pckt.ip_src() == IP4::addr{10,0,0,40}))) {
-return Filter_verdict::DROP;
+return {nullptr, Filter_verdict_type::DROP};
 }
 else {
 if (!((tcp_pckt.ip_dst() == IP4::addr{10,0,0,40} or ip4::Cidr{120,30,20,0,24}.contains(tcp_pckt.ip_dst()) or tcp_pckt.ip_dst() == IP4::addr{140,20,10,13} or (tcp_pckt.ip_dst() >= IP4::addr{140,20,10,20} and tcp_pckt.ip_dst() <= IP4::addr{140,20,10,100})))) {
-return Filter_verdict::DROP;
+return {nullptr, Filter_verdict_type::DROP};
 }
 if (!(ip4::Cidr{120,20,30,0,24}.contains(tcp_pckt.ip_dst()))) {
-return Filter_verdict::DROP;
+return {nullptr, Filter_verdict_type::DROP};
 }
 if (!((tcp_pckt.ip_dst() >= IP4::addr{10,20,30,1} and tcp_pckt.ip_dst() <= IP4::addr{10,20,30,40}))) {
-return Filter_verdict::DROP;
+return {nullptr, Filter_verdict_type::DROP};
 }
 if (!((tcp_pckt.ip_src() == IP4::addr{10,0,0,1} or ip4::Cidr{190,50,20,0,24}.contains(tcp_pckt.ip_src()) or (tcp_pckt.ip_src() >= IP4::addr{180,20,30,0} and tcp_pckt.ip_src() <= IP4::addr{180,20,30,50}) or (tcp_pckt.ip_src() >= IP4::addr{180,20,30,100} and tcp_pckt.ip_src() <= IP4::addr{180,20,30,150}) or tcp_pckt.ip_src() == IP4::addr{180,20,30,155}))) {
-return Filter_verdict::ACCEPT;
+return {std::move(pckt), Filter_verdict_type::ACCEPT};
 }
-return Filter_verdict::ACCEPT;
+return {std::move(pckt), Filter_verdict_type::ACCEPT};
 }
 }
 }
-return Filter_verdict::DROP;
+return {nullptr, Filter_verdict_type::DROP};
 }
-return Filter_verdict::ACCEPT;
+return {std::move(pckt), Filter_verdict_type::ACCEPT};
 
 	}
 };
 
 class Ip_Filter_Encapsulating_Main_Icmp_Filter : public nacl::Filter {
 public:
-	Filter_verdict operator()(IP4::IP_packet& pckt, Inet<IP4>& stack, Conntrack::Entry_ptr ct_entry) {
+	Filter_verdict<IP4> operator()(IP4::IP_packet_ptr pckt, Inet<IP4>& stack, Conntrack::Entry_ptr ct_entry) {
 		if (not ct_entry) {
-return Filter_verdict::DROP;
+return {nullptr, Filter_verdict_type::DROP};
 }
-if (pckt.ip_protocol() == Protocol::ICMPv4) {
-auto& icmp_pckt = *(icmp4::Packet*) &pckt;
+if (pckt->ip_protocol() == Protocol::ICMPv4) {
+auto icmp_pckt = icmp4::Packet(std::move(pckt));
 
 if (!(icmp_pckt.type() == icmp4::Type::TIMESTAMP and !((icmp_pckt.ip().ip_src() >= IP4::addr{126,21,28,44} and icmp_pckt.ip().ip_src() <= IP4::addr{126,21,29,10}))) and !(icmp_pckt.ip().ip_ttl() > 30)) {
-return Filter_verdict::DROP;
+return {nullptr, Filter_verdict_type::DROP};
 }
 if (ct_entry->state != Conntrack::State::ESTABLISHED) {
-return Filter_verdict::DROP;
+return {nullptr, Filter_verdict_type::DROP};
 }
-return Filter_verdict::ACCEPT;
+return {icmp_pckt.release(), Filter_verdict_type::ACCEPT};
+pckt = icmp_pckt.release();
 }
-return Filter_verdict::ACCEPT;
+return {std::move(pckt), Filter_verdict_type::ACCEPT};
 
 	}
 };
@@ -595,13 +611,13 @@ void register_plugin_nacl() {
 
 	nacl_natty_obj = std::make_unique<nat::NAPT>(nacl_ct_obj);
 
-	auto masq = [](IP4::IP_packet& pckt, Inet<IP4>& stack, Conntrack::Entry_ptr entry)->auto {
-		nacl_natty_obj->masquerade(pckt, stack, entry);
-		return Filter_verdict::ACCEPT;
+	auto masq = [](IP4::IP_packet_ptr pckt, Inet<IP4>& stack, Conntrack::Entry_ptr entry)->auto {
+		nacl_natty_obj->masquerade(*pckt, stack, entry);
+		return Filter_verdict<IP4>{std::move(pckt), Filter_verdict_type::ACCEPT};
 	};
-	auto demasq = [](IP4::IP_packet& pckt, Inet<IP4>& stack, Conntrack::Entry_ptr entry)->auto {
-		nacl_natty_obj->demasquerade(pckt, stack, entry);
-		return Filter_verdict::ACCEPT;
+	auto demasq = [](IP4::IP_packet_ptr pckt, Inet<IP4>& stack, Conntrack::Entry_ptr entry)->auto {
+		nacl_natty_obj->demasquerade(*pckt, stack, entry);
+		return Filter_verdict<IP4>{std::move(pckt), Filter_verdict_type::ACCEPT};
 	};
 
 	INFO("NaCl", "Enable MASQUERADE on eth3");

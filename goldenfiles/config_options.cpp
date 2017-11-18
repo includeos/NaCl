@@ -11,38 +11,39 @@ namespace custom_made_classes_from_nacl {
 
 class My_Filter : public nacl::Filter {
 public:
-	Filter_verdict operator()(IP4::IP_packet& pckt, Inet<IP4>& stack, Conntrack::Entry_ptr ct_entry) {
+	Filter_verdict<IP4> operator()(IP4::IP_packet_ptr pckt, Inet<IP4>& stack, Conntrack::Entry_ptr ct_entry) {
 		if (not ct_entry) {
-return Filter_verdict::DROP;
+return {nullptr, Filter_verdict_type::DROP};
 }
-if (pckt.ip_protocol() == Protocol::ICMPv4) {
-auto& icmp_pckt = *(icmp4::Packet*) &pckt;
+if (pckt->ip_protocol() == Protocol::ICMPv4) {
+auto icmp_pckt = icmp4::Packet(std::move(pckt));
 
 if ((icmp_pckt.ip().ip_src() == IP4::addr{10,0,0,1} or icmp_pckt.ip().ip_src() == IP4::addr{10,0,0,2} or (icmp_pckt.ip().ip_src() >= IP4::addr{130,10,20,10} and icmp_pckt.ip().ip_src() <= IP4::addr{130,10,20,30}) or ip4::Cidr{140,0,0,0,24}.contains(icmp_pckt.ip().ip_src()))) {
 if (icmp_pckt.type() == icmp4::Type::ECHO) {
-return Filter_verdict::ACCEPT;
+return {icmp_pckt.release(), Filter_verdict_type::ACCEPT};
 }
 if (icmp_pckt.type() == icmp4::Type::DEST_UNREACHABLE) {
-return Filter_verdict::DROP;
+return {nullptr, Filter_verdict_type::DROP};
 }
 }
+pckt = icmp_pckt.release();
 }
-if (pckt.ip_protocol() == Protocol::TCP) {
-auto& tcp_pckt = static_cast<tcp::Packet&>(pckt);
+if (pckt->ip_protocol() == Protocol::TCP) {
+auto& tcp_pckt = static_cast<tcp::Packet&>(*pckt);
 
 if ((tcp_pckt.src_port() == 10 or tcp_pckt.src_port() == 20 or tcp_pckt.src_port() == 30 or (tcp_pckt.src_port() >= 40 and tcp_pckt.src_port() <= 50) or tcp_pckt.src_port() == 60)) {
-return Filter_verdict::DROP;
+return {nullptr, Filter_verdict_type::DROP};
 }
 if (tcp_pckt.dst_port() == 80) {
 if ((tcp_pckt.ip_src() == IP4::addr{10,0,0,1} or tcp_pckt.ip_src() == IP4::addr{10,0,0,2} or (tcp_pckt.ip_src() >= IP4::addr{130,10,20,10} and tcp_pckt.ip_src() <= IP4::addr{130,10,20,30}) or ip4::Cidr{140,0,0,0,24}.contains(tcp_pckt.ip_src()))) {
-return Filter_verdict::ACCEPT;
+return {std::move(pckt), Filter_verdict_type::ACCEPT};
 }
 }
 if (tcp_pckt.dst_port() == 40) {
-return Filter_verdict::DROP;
+return {nullptr, Filter_verdict_type::DROP};
 }
 }
-return Filter_verdict::DROP;
+return {nullptr, Filter_verdict_type::DROP};
 
 	}
 };

@@ -11,16 +11,16 @@ namespace custom_made_classes_from_nacl {
 
 class My_Filter : public nacl::Filter {
 public:
-	Filter_verdict operator()(IP4::IP_packet& pckt, Inet<IP4>& stack, Conntrack::Entry_ptr ct_entry) {
+	Filter_verdict<IP4> operator()(IP4::IP_packet_ptr pckt, Inet<IP4>& stack, Conntrack::Entry_ptr ct_entry) {
 		if (not ct_entry) {
-return Filter_verdict::DROP;
+return {nullptr, Filter_verdict_type::DROP};
 }
-if ((ip4::Cidr{143,23,5,12,24}.contains(pckt.ip_src()) or ip4::Cidr{120,32,34,102,32}.contains(pckt.ip_src()) or ip4::Cidr{34,53,42,40,24}.contains(pckt.ip_src()) or pckt.ip_src() == IP4::addr{10,0,0,20})) {
+if ((ip4::Cidr{143,23,5,12,24}.contains(pckt->ip_src()) or ip4::Cidr{120,32,34,102,32}.contains(pckt->ip_src()) or ip4::Cidr{34,53,42,40,24}.contains(pckt->ip_src()) or pckt->ip_src() == IP4::addr{10,0,0,20})) {
 std::cout << "Accepting\n";
-return Filter_verdict::ACCEPT;
+return {std::move(pckt), Filter_verdict_type::ACCEPT};
 }
 std::cout << "Dropping\n";
-return Filter_verdict::DROP;
+return {nullptr, Filter_verdict_type::DROP};
 
 	}
 };

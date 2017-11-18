@@ -14,22 +14,22 @@ namespace custom_made_classes_from_nacl {
 
 class Another_Filter : public nacl::Filter {
 public:
-	Filter_verdict operator()(IP4::IP_packet& pckt, Inet<IP4>& stack, Conntrack::Entry_ptr ct_entry) {
+	Filter_verdict<IP4> operator()(IP4::IP_packet_ptr pckt, Inet<IP4>& stack, Conntrack::Entry_ptr ct_entry) {
 		if (not ct_entry) {
-return Filter_verdict::DROP;
+return {nullptr, Filter_verdict_type::DROP};
 }
-return Filter_verdict::ACCEPT;
+return {std::move(pckt), Filter_verdict_type::ACCEPT};
 
 	}
 };
 
 class Eth0_Filter : public nacl::Filter {
 public:
-	Filter_verdict operator()(IP4::IP_packet& pckt, Inet<IP4>& stack, Conntrack::Entry_ptr ct_entry) {
+	Filter_verdict<IP4> operator()(IP4::IP_packet_ptr pckt, Inet<IP4>& stack, Conntrack::Entry_ptr ct_entry) {
 		if (not ct_entry) {
-return Filter_verdict::DROP;
+return {nullptr, Filter_verdict_type::DROP};
 }
-return Filter_verdict::DROP;
+return {nullptr, Filter_verdict_type::DROP};
 
 	}
 };

@@ -14,11 +14,11 @@ namespace custom_made_classes_from_nacl {
 
 class My_Filter : public nacl::Filter {
 public:
-	Filter_verdict operator()(IP4::IP_packet& pckt, Inet<IP4>& stack, Conntrack::Entry_ptr ct_entry) {
+	Filter_verdict<IP4> operator()(IP4::IP_packet_ptr pckt, Inet<IP4>& stack, Conntrack::Entry_ptr ct_entry) {
 		if (not ct_entry) {
-return Filter_verdict::DROP;
+return {nullptr, Filter_verdict_type::DROP};
 }
-return Filter_verdict::ACCEPT;
+return {std::move(pckt), Filter_verdict_type::ACCEPT};
 
 	}
 };
@@ -42,14 +42,14 @@ void register_plugin_nacl() {
 	auto& eth1_nic = eth1.nic();
 	auto& eth1_manager = VLAN_manager::get(1);
 	// For each vlan connected to this iface:
-	Super_stack::inet().create<IP4>(eth1_manager.add(eth1_nic, 0), 1, 0).network_config(IP4::addr{10,10,10,10}, IP4::addr{255,255,255,0}, IP4::addr{10,0,0,1});
-	Super_stack::inet().create<IP4>(eth1_manager.add(eth1_nic, 1), 1, 1).network_config(IP4::addr{10,20,10,10}, IP4::addr{255,255,255,0}, IP4::addr{10,0,0,1});
+	Super_stack::inet().create<IP4>(eth1_manager.add(eth1_nic, 10), 1, 10).network_config(IP4::addr{10,10,10,10}, IP4::addr{255,255,255,0}, IP4::addr{10,0,0,1});
+	Super_stack::inet().create<IP4>(eth1_manager.add(eth1_nic, 20), 1, 20).network_config(IP4::addr{10,20,10,10}, IP4::addr{255,255,255,0}, IP4::addr{10,0,0,1});
 
 	// For each iface:
 	auto& eth0_nic = eth0.nic();
 	auto& eth0_manager = VLAN_manager::get(0);
 	// For each vlan connected to this iface:
-	Super_stack::inet().create<IP4>(eth0_manager.add(eth0_nic, 0), 0, 0).network_config(IP4::addr{10,10,10,10}, IP4::addr{255,255,255,0}, IP4::addr{10,0,0,1});
+	Super_stack::inet().create<IP4>(eth0_manager.add(eth0_nic, 10), 0, 10).network_config(IP4::addr{10,10,10,10}, IP4::addr{255,255,255,0}, IP4::addr{10,0,0,1});
 
 	custom_made_classes_from_nacl::My_Filter my_filter;
 
@@ -83,13 +83,13 @@ void register_plugin_nacl() {
 
 	nacl_natty_obj = std::make_unique<nat::NAPT>(nacl_ct_obj);
 
-	auto masq = [](IP4::IP_packet& pckt, Inet<IP4>& stack, Conntrack::Entry_ptr entry)->auto {
-		nacl_natty_obj->masquerade(pckt, stack, entry);
-		return Filter_verdict::ACCEPT;
+	auto masq = [](IP4::IP_packet_ptr pckt, Inet<IP4>& stack, Conntrack::Entry_ptr entry)->auto {
+		nacl_natty_obj->masquerade(*pckt, stack, entry);
+		return Filter_verdict<IP4>{std::move(pckt), Filter_verdict_type::ACCEPT};
 	};
-	auto demasq = [](IP4::IP_packet& pckt, Inet<IP4>& stack, Conntrack::Entry_ptr entry)->auto {
-		nacl_natty_obj->demasquerade(pckt, stack, entry);
-		return Filter_verdict::ACCEPT;
+	auto demasq = [](IP4::IP_packet_ptr pckt, Inet<IP4>& stack, Conntrack::Entry_ptr entry)->auto {
+		nacl_natty_obj->demasquerade(*pckt, stack, entry);
+		return Filter_verdict<IP4>{std::move(pckt), Filter_verdict_type::ACCEPT};
 	};
 
 	INFO("NaCl", "Enable MASQUERADE on eth1");

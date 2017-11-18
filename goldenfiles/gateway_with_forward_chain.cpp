@@ -13,6 +13,31 @@ std::unique_ptr<nat::NAPT> nacl_natty_obj;
 
 namespace custom_made_classes_from_nacl {
 
+class Gw_Second_Forwarding_Filter : public nacl::Filter {
+public:
+	Filter_verdict<IP4> operator()(IP4::IP_packet_ptr pckt, Inet<IP4>& stack, Conntrack::Entry_ptr ct_entry) {
+		if (not ct_entry) {
+return {nullptr, Filter_verdict_type::DROP};
+}
+return {std::move(pckt), Filter_verdict_type::ACCEPT};
+
+	}
+};
+
+class Gw_First_Forwarding_Filter : public nacl::Filter {
+public:
+	Filter_verdict<IP4> operator()(IP4::IP_packet_ptr pckt, Inet<IP4>& stack, Conntrack::Entry_ptr ct_entry) {
+		if (not ct_entry) {
+return {nullptr, Filter_verdict_type::DROP};
+}
+if (pckt->ip_dst() == IP4::addr{10,10,10,50}) {
+return {std::move(pckt), Filter_verdict_type::ACCEPT};
+}
+return {nullptr, Filter_verdict_type::DROP};
+
+	}
+};
+
 class Natting : public nacl::Filter {
 public:
 	Filter_verdict<IP4> operator()(IP4::IP_packet_ptr pckt, Inet<IP4>& stack, Conntrack::Entry_ptr ct_entry) {
@@ -43,8 +68,11 @@ void register_plugin_nacl() {
 	auto& eth0 = Inet4::stack<0>();
 	eth0.network_config(IP4::addr{10,0,0,45}, IP4::addr{255,255,255,0}, 0);
 
+	custom_made_classes_from_nacl::Gw_Second_Forwarding_Filter gw_second_forwarding_filter;
+	custom_made_classes_from_nacl::Gw_First_Forwarding_Filter gw_first_forwarding_filter;
 
 	custom_made_classes_from_nacl::Natting natting;
+
 
 	eth0.ip_obj().prerouting_chain().chain.push_back(natting);
 
@@ -57,6 +85,10 @@ void register_plugin_nacl() {
 		{ IP4::addr{0,0,0,0}, IP4::addr{0,0,0,0}, IP4::addr{10,0,0,1}, eth0, 1 }
 	};
 	nacl_router_obj = std::make_unique<Router<IP4>>(routing_table);
+	// Set send_time_exceeded:
+	nacl_router_obj->send_time_exceeded = false;
+	nacl_router_obj->forward_chain.chain.push_back(gw_first_forwarding_filter);
+	nacl_router_obj->forward_chain.chain.push_back(gw_second_forwarding_filter);
 	// Set ip forwarding on every iface mentioned in routing_table
 	eth0.set_forward_delg(nacl_router_obj->forward_delg());
 	eth1.set_forward_delg(nacl_router_obj->forward_delg());

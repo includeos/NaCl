@@ -15,21 +15,21 @@ namespace custom_made_classes_from_nacl {
 
 class Natting : public nacl::Filter {
 public:
-	Filter_verdict operator()(IP4::IP_packet& pckt, Inet<IP4>& stack, Conntrack::Entry_ptr ct_entry) {
+	Filter_verdict<IP4> operator()(IP4::IP_packet_ptr pckt, Inet<IP4>& stack, Conntrack::Entry_ptr ct_entry) {
 		if (not ct_entry) {
-return Filter_verdict::DROP;
+return {nullptr, Filter_verdict_type::DROP};
 }
-if (pckt.ip_protocol() == Protocol::TCP) {
-auto& tcp_pckt = static_cast<tcp::Packet&>(pckt);
+if (pckt->ip_protocol() == Protocol::TCP) {
+auto& tcp_pckt = static_cast<tcp::Packet&>(*pckt);
 
 if (tcp_pckt.dst_port() == 1500) {
-nacl_natty_obj->dnat(pckt, ct_entry, {IP4::addr{10,10,10,50}, 1500});
-return Filter_verdict::ACCEPT;
+nacl_natty_obj->dnat(*pckt, ct_entry, {IP4::addr{10,10,10,50}, 1500});
+return {std::move(pckt), Filter_verdict_type::ACCEPT};
 }
 }
 
 		// At the end of a Nat we want to accept the packet that hasn't been DNATed or SNATed
-		return Filter_verdict::ACCEPT;
+		return {std::move(pckt), Filter_verdict_type::ACCEPT};
 	}
 };
 
@@ -77,9 +77,9 @@ void register_plugin_nacl() {
 
 	nacl_natty_obj = std::make_unique<nat::NAPT>(nacl_ct_obj);
 
-	auto snat_translate = [](IP4::IP_packet& pckt, Inet<IP4>&, Conntrack::Entry_ptr entry)-> auto {
-		nacl_natty_obj->snat(pckt, entry);
-		return Filter_verdict::ACCEPT;
+	auto snat_translate = [](IP4::IP_packet_ptr pckt, Inet<IP4>&, Conntrack::Entry_ptr entry)-> auto {
+		nacl_natty_obj->snat(*pckt, entry);
+		return Filter_verdict<IP4>{std::move(pckt), Filter_verdict_type::ACCEPT};
 	};
 	eth0.ip_obj().postrouting_chain().chain.push_back(snat_translate);
 }
