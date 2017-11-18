@@ -104,7 +104,7 @@ class Action_handler:
 		if len(parameter_ctx_list) > 0:
 			sys.exit("line " + get_line_and_column(action_ctx) + " A drop action takes no parameters")
 
-		return INCLUDEOS_DROP(subtype)
+		return INCLUDEOS_DROP
 
 	def transpile_log_cpp(self, parameter_ctx_list, subtype, action_ctx):
 		content = "std::cout << "
@@ -446,7 +446,7 @@ def transpile_function_cpp(type_t, subtype, ctx, parent_subtype=""):
 
 	# If this was an ICMP function: Release
 	if subtype_lower == ICMP:
-		content += IP_PCKT + " = static_unique_ptr_cast<" + INCLUDEOS_IP_PCKT_CLASS + ">(" + ICMP_PCKT + DOT + INCLUDEOS_ICMP_RELEASE_METHOD + ");\n"
+		content += IP_PCKT + " = " + ICMP_PCKT + DOT + INCLUDEOS_ICMP_RELEASE_METHOD + ";\n"
 
 	if not is_ip:
 		# Finish the if added above
