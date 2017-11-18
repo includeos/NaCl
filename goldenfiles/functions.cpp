@@ -13,7 +13,7 @@ class My_Ip_Filter : public nacl::Filter {
 public:
 	Filter_verdict<IP4> operator()(IP4::IP_packet_ptr pckt, Inet<IP4>& stack, Conntrack::Entry_ptr ct_entry) {
 		if (not ct_entry) {
-return {std::move(pckt), Filter_verdict_type::DROP};
+return {nullptr, Filter_verdict_type::DROP};
 }
 if (ct_entry->state == Conntrack::State::ESTABLISHED) {
 return {std::move(pckt), Filter_verdict_type::ACCEPT};
@@ -44,7 +44,7 @@ std::cout << "1 ICMP: IP Filter inside ICMP Filter reached\n";
 if (icmp_pckt.ip().ip_dst() != IP4::addr{10,0,0,45}) {
 std::cout << "1 ICMP: IP daddr != 10.0.0.45\n";
 }
-pckt = static_unique_ptr_cast<IP4::IP_packet>(icmp_pckt.release());
+pckt = icmp_pckt.release();
 }
 if (pckt->ip_protocol() == Protocol::UDP) {
 auto& udp_pckt = static_cast<PacketUDP&>(*pckt);
@@ -86,7 +86,7 @@ std::cout << "2 ICMP: type != destination-unreachable\n";
 if (icmp_pckt.ip().ip_src() != IP4::addr{10,0,0,60}) {
 std::cout << "2 ICMP: IP saddr != 10.0.0.60\n";
 }
-pckt = static_unique_ptr_cast<IP4::IP_packet>(icmp_pckt.release());
+pckt = icmp_pckt.release();
 }
 if (pckt->ip_protocol() == Protocol::UDP) {
 auto& udp_pckt = static_cast<PacketUDP&>(*pckt);
