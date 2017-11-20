@@ -181,4 +181,28 @@ void register_plugin_nacl() {
 	{{/snats}}
 	{{/has_snats}}
 	{{/has_nats}}
+	{{#has_load_balancers}}
+
+	/* Load balancers
+	{{#load_balancers}}
+
+	Name: {{name}}
+	Layer: {{layer}}
+
+	Clients iface: {{clients_iface_name}}
+	Clients port: {{port}}
+	Clients wait queue limit: {{wait_queue_limit}}
+	Clients session limit: {{session_limit}}
+
+	Servers iface: {{servers_iface_name}}
+	Servers algorithm: {{algorithm}}
+	Servers pool:
+	{{#pool}}
+
+	Node address: {{address}}
+	Node port: {{port}}
+	{{/pool}}
+	{{/load_balancers}}
+	*/
+	{{/has_load_balancers}}
 }
