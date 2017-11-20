@@ -17,8 +17,8 @@ Load_balancer lb {
     clients: {
         iface: outside,
         port: 80,
-        wait_queue_limit: 900,
-        session_limit: 500
+        wait_queue_limit: 1000,
+        session_limit: 1000
     },
     servers: {
         iface: inside,

@@ -293,6 +293,7 @@ class Element(object):
 						", ".join(predefined_lb_node_keys))
 
 				n = {}
+				n[TEMPLATE_KEY_INDEX] = i
 				for pair in node.obj().key_value_list().key_value_pair():
 					node_key = pair.key().getText().lower()
 					if node_key not in predefined_lb_node_keys:
@@ -1092,6 +1093,7 @@ class Load_balancer(Typed):
 		pystache_pool = []
 		for s in pool:
 			pystache_pool.append({
+				TEMPLATE_KEY_INDEX: 			s.get(TEMPLATE_KEY_INDEX),
 				TEMPLATE_KEY_LB_NODE_ADDRESS: 	s.get(LB_NODE_KEY_ADDRESS),
 				TEMPLATE_KEY_LB_NODE_PORT: 		s.get(LB_KEY_PORT)
 			})
