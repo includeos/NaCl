@@ -1,10 +1,10 @@
-#! /usr/local/bin/python
-
+#! /usr/bin/env python
+import sys
+sys.path.append('bin')
 from antlr4 import *
 from NaClLexer import *
 from NaClParser import *
 from NaClVisitor import *
-import sys
 import os
 
 import pystache
@@ -352,7 +352,7 @@ class Untyped(Element):
 					# Then this element is an obj and other assignments can add to this element
 					# We need to validate that no other assignments are overwriting one of the element's
 					# values:
-					
+
 					self.process_obj(self.members, self.ctx.value().obj())
 					self.process_assignments()
 
@@ -402,7 +402,7 @@ class Conntrack(Typed):
 class Iface(Typed):
 	def __init__(self, idx, name, ctx, base_type, type_t):
 		super(Iface, self).__init__(idx, name, ctx, base_type, type_t)
-		
+
 		self.config_is_dhcp = False
 		self.config_is_dhcp_fallback = False
 		self.config_is_static = False
@@ -550,7 +550,7 @@ class Iface(Typed):
 	def add_push(self, chain, functions):
 		# chain: string with name of chain
 		# functions: list containing value_name ctxs, where each name corresponds to the name of a NaCl function
-		
+
 		add_snat = False
 		function_names = []
 		num_functions = len(functions)
@@ -611,11 +611,11 @@ class Iface(Typed):
 			TEMPLATE_KEY_NAME: 		self.name,
 			TEMPLATE_KEY_TITLE: 	self.name.title(),
 			TEMPLATE_KEY_INDEX: 	self.members.get(IFACE_KEY_INDEX),
-			
+
 			TEMPLATE_KEY_CONFIG_IS_STATIC: 			self.config_is_static,
 			TEMPLATE_KEY_CONFIG_IS_DHCP: 			self.config_is_dhcp,
 			TEMPLATE_KEY_CONFIG_IS_DHCP_FALLBACK: 	self.config_is_dhcp_fallback,
-			
+
 			TEMPLATE_KEY_ADDRESS: 	self.members.get(IFACE_KEY_ADDRESS),
 			TEMPLATE_KEY_NETMASK:	self.members.get(IFACE_KEY_NETMASK),
 			TEMPLATE_KEY_GATEWAY: 	self.members.get(IFACE_KEY_GATEWAY),
@@ -676,7 +676,7 @@ class Vlan(Typed):
 	def process(self):
 		if self.res is None:
 			# Then process
-		
+
 			self.process_ctx()
 			self.process_assignments()
 			self.validate_members()
@@ -953,7 +953,7 @@ class Gateway(Typed):
 	def process(self):
 		if self.res is None:
 			# Then process:
-			
+
 			self.process_ctx()
 			self.process_assignments()
 			self.validate_and_process_not_route_members()
@@ -1142,7 +1142,7 @@ class Load_balancer(Typed):
 # -------------------- Function --------------------
 
 class Function(Element):
-	def __init__(self, idx, name, ctx, base_type, type_t, subtype):		
+	def __init__(self, idx, name, ctx, base_type, type_t, subtype):
 		super(Function, self).__init__(idx, name, ctx, base_type)
 		self.type_t 	= type_t
 		self.subtype 	= subtype
@@ -1203,13 +1203,13 @@ def handle_input():
 
 	# Process / transpile / fill the pystache lists
 	function_elements = []
-	
+
 	for key, e in elements.iteritems():
 		if e.base_type != BASE_TYPE_FUNCTION:
 			e.process()
 		else:
 			function_elements.append(e)
-	
+
 	# Have processed all elements except function elements when arrive here
 	for e in function_elements:
 		e.process()
@@ -1273,7 +1273,7 @@ def save_element(base_type, ctx):
 	if base_type == BASE_TYPE_UNTYPED_INIT:
 		elements[name] = Untyped(idx, name, ctx, base_type)
 		return
-	
+
 	type_t_ctx = ctx.type_t()
 	type_t = type_t_ctx.getText()
 
