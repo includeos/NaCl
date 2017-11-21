@@ -35,6 +35,13 @@ my_map: {
 	e1: 10
 }
 
+my_map.e2.e2-3: 50
+
+my_map.e2: {
+	e2-1: 30,
+	e2-2: 40
+}
+
 vlan1.address: 20.20.20.10
 vlan1.netmask: 255.255.255.0
 

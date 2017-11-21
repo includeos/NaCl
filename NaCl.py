@@ -130,6 +130,10 @@ class Element(object):
 		# Note: Gateway has its own process_ctx method
 
 		value = self.ctx.value() if hasattr(self.ctx, 'value') else self.ctx
+		class_name = self.get_class_name()
+		is_iface = isinstance(self, Iface)
+		is_vlan = isinstance(self, Vlan)
+		is_conntrack = isinstance(self, Conntrack)
 
 		# Using Untyped methods (placed in Element) since depth is more than 1 level deep
 		if isinstance(self, Load_balancer):
@@ -138,28 +142,26 @@ class Element(object):
 			self.process_obj(self.members, value.obj())
 			return
 
-		class_name = self.get_class_name()
-
 		if value.obj() is not None:
 			for pair in value.obj().key_value_list().key_value_pair():
 				orig_key 	= pair.key().getText()
 				key 		= orig_key.lower()
 				pair_value 	= pair.value()
 
-				if (isinstance(self, Iface) and key not in predefined_iface_keys) or \
-					(isinstance(self, Vlan) and key not in predefined_vlan_keys) or \
-					(isinstance(self, Conntrack) and key not in predefined_conntrack_keys):
+				if (is_iface and key not in predefined_iface_keys) or \
+					(is_vlan and key not in predefined_vlan_keys) or \
+					(is_conntrack and key not in predefined_conntrack_keys):
 					sys.exit("line " + get_line_and_column(pair.key()) + " Invalid " + class_name + \
 						" member " + orig_key)
 
 				if self.members.get(key) is not None:
 					sys.exit("line " + get_line_and_column(pair.key()) + " " + class_name + " member " + key + " has already been set")
 
-				if isinstance(self, Iface) and key in chains:
+				if is_iface and key in chains:
 					self.process_push(key, pair.value())
 				else:
 					self.members[key] = pair_value
-		elif isinstance(self, Iface) and value.value_name() is not None:
+		elif is_iface and value.value_name() is not None:
 			# configuration type (dhcp, dhcp-with-fallback, static)
 			config = value.value_name().getText().lower()
 			if config in predefined_config_types:
@@ -167,7 +169,7 @@ class Element(object):
 			else:
 				sys.exit("line " + get_line_and_column(value) + " Invalid Iface value " + value.value_name().getText())
 		else:
-			if isinstance(self, Iface):
+			if is_iface:
 				sys.exit("line " + get_line_and_column(value) + " An Iface has to contain key value pairs, or be set to a configuration type (" + \
 					", ".join(predefined_config_types) + ")")
 			else:
@@ -178,25 +180,36 @@ class Element(object):
 		# Find assignments (f.ex. x.y: <value> or x.y.z: <value>) that refers to this Element
 
 		class_name = self.get_class_name()
+		is_lb_or_untyped = isinstance(self, Untyped) or isinstance(self, Load_balancer)
+		is_gateway = isinstance(self, Gateway)
 
-		for i, key in enumerate(elements):
-			if key.startswith(self.name + DOT):
-				# Then we know we have to do with a value_name
-				element = elements.get(key)
+		# Handle assignments in the order of number of name parts to facilitate that you can have two assignments
+		# where one is creating a member with an object as a value, while the other adds another element (key and value)
+		# to that members object
 
-				if isinstance(self, Untyped) or isinstance(self, Load_balancer):
-					self.process_untyped_assignment(element)
-					continue
-				elif isinstance(self, Gateway):
-					self.process_gateway_assignment(element)
-					continue
+		# Get the keys of all the assignment elements that manipulates this Element's members
+		# If the name of the assignment element (= dictionary key) starts with the name of this Element and a DOT,
+		# we know we have to do with an assignment element that manipulates this Element
+		assignments_to_process = [key for key in elements if key.startswith(self.name + DOT)]
 
-				name_parts = element.ctx.value_name().getText().split(DOT)
+		if len(assignments_to_process) > 1:
+			# Sorting the list based on length of element.name of each assignment element (shortest first)
+			assignments_to_process = sorted(assignments_to_process, key=lambda k: len(k.split(DOT)))
+
+		for key in assignments_to_process:
+			element = elements.get(key)
+
+			if is_lb_or_untyped:
+				self.process_assignment(element)
+			elif is_gateway:
+				self.process_gateway_assignment(element)
+			else:
+				name_parts = key.split(DOT)
 				orig_member = name_parts[1]
 				member = orig_member.lower()
 
 				if len(name_parts) != 2:
-					sys.exit("line " + get_line_and_column(element.ctx) + " Invalid " + class_name + " member " + key)
+					sys.exit("line " + get_line_and_column(element.ctx) + " Invalid " + class_name + " member " + element.name)
 
 				if (isinstance(self, Iface) and member not in predefined_iface_keys) or \
 					(isinstance(self, Vlan) and member not in predefined_vlan_keys) or \
@@ -215,14 +228,32 @@ class Element(object):
 					else:
 						sys.exit("line " + get_line_and_column(element.ctx) + " " + class_name + " member " + member + " has already been set")
 
-	# ---------- Methods related to dictionary self.members (Untyped and Load_balancer) ----------
+	# ---------- Methods related to dictionary self.members for Untyped and Load_balancer ----------
+
+	def process_assignment(self, element):
+		# Could be either Untyped or Load_balancer
+
+		# Remove first part (the name of this element)
+		assignment_name_parts = element.name.split(DOT)
+		assignment_name_parts.pop(0)
+
+		# Check if this key has already been set in this element
+		# In that case: Error: Value already set
+		if self.get_dictionary_val(self.members, list(assignment_name_parts), element.ctx) is not None:
+			sys.exit("line " + get_line_and_column(element.ctx) + " Member " + element.name + " has already been set")
+		else:
+			# Add to members dictionary
+			num_name_parts = len(assignment_name_parts)
+			parent_key = "" if len(assignment_name_parts) < 2 else assignment_name_parts[num_name_parts - 2]
+
+			self.add_dictionary_val(self.members, assignment_name_parts, element.ctx.value(), num_name_parts, parent_key)
 
 	# Called when resolving values
-	def get_member_value(self, key_list):
+	def get_member_value(self, key_list, error_ctx):
 		self.process() # Make sure this element has been processed (self.res is not None)
-		return self.get_dictionary_val(self.members, key_list)
+		return self.get_dictionary_val(self.members, key_list, error_ctx)
 
-	def get_dictionary_val(self, dictionary, key_list):
+	def get_dictionary_val(self, dictionary, key_list, error_ctx):
 		level_key = key_list[0]
 
 		# End of recursion condition
@@ -235,95 +266,29 @@ class Element(object):
 		# Recursion
 		for key in dictionary:
 			if key == level_key:
+				new_dict = dictionary.get(key)
+				if new_dict is None or not isinstance(new_dict, dict):
+					line_and_column = "1:0" if error_ctx is None else get_line_and_column(error_ctx)
+					sys.exit("line " + line_and_column + " " + level_key + "." + key_list[1] + " does not exist")
+
 				key_list.pop(0) # Remove first key (level_key) - has been found
-				return self.get_dictionary_val(dictionary[key], key_list)
-
-	def validate_lb_key(self, key, parent_key, level, ctx):
-		class_name = self.get_class_name()
-
-		if level == 1:
-			if key not in predefined_lb_keys:
-				sys.exit("line " + get_line_and_column(ctx) + " Invalid " + class_name + " member " + key)
-		elif level == 2:
-			if parent_key == "":
-				sys.exit("line " + get_line_and_column(ctx) + " Internal error: Parent key of " + key + " has not been given")
-			if parent_key == LB_KEY_CLIENTS and key not in predefined_lb_clients_keys:
-				sys.exit("line " + get_line_and_column(ctx) + " Invalid " + class_name + " member " + key + " in " + self.name + "." + parent_key)
-			if parent_key == LB_KEY_SERVERS and key not in predefined_lb_servers_keys:
-				sys.exit("line " + get_line_and_column(ctx) + " Invalid " + class_name + " member " + key + " in " + self.name + "." + parent_key)
-		else:
-			sys.exit("line " + get_line_and_column(ctx) + " Invalid " + class_name + " member " + key)
-
-	def resolve_lb_value(self, dictionary, key, value):
-		if key == LB_KEY_LAYER:
-			found_element_value = value.getText().lower()
-
-			if value.value_name() is None or found_element_value not in valid_lb_layers:
-				sys.exit("line " + get_line_and_column(value) + " Invalid " + LB_KEY_LAYER + " value (" + value.getText() + ")")
-
-			dictionary[key] = found_element_value
-		elif key == LB_KEY_IFACE:
-			# Then the Iface element's name is to be added, not the resolved Iface
-			found_element_value = value.getText()
-
-			if value.value_name() is None:
-				sys.exit("line " + get_line_and_column(value) + " " + class_name + " member " + LB_KEY_IFACE + " contains an invalid value (" + found_element_value + ")")
-
-			element = elements.get(found_element_value)
-			if element is None or (hasattr(element, 'type_t') and element.type_t.lower() != TYPE_IFACE):
-				sys.exit("line " + get_line_and_column(value) + " No Iface with the name " + found_element_value + " exists")
-
-			dictionary[key] = found_element_value
-		elif key == LB_SERVERS_KEY_ALGORITHM:
-			found_element_value = value.getText().lower()
-
-			if value.value_name() is None or found_element_value not in valid_lb_servers_algos:
-				sys.exit("line " + get_line_and_column(value) + " Invalid algorithm " + value.getText())
-
-			dictionary[key] = found_element_value
-		elif key == LB_SERVERS_KEY_POOL:
-			if value.list_t() is None:
-				sys.exit("line " + get_line_and_column(value) + " Invalid " + LB_SERVERS_KEY_POOL + " value. It needs to be a list of objects containing " + \
-					", ".join(predefined_lb_node_keys))
-
-			pool = []
-			for i, node in enumerate(value.list_t().value_list().value()):
-				if node.obj() is None:
-					sys.exit("line " + get_line_and_column(node) + " Invalid " + LB_SERVERS_KEY_POOL + " value. It needs to be a list of objects containing " + \
-						", ".join(predefined_lb_node_keys))
-
-				n = {}
-				n[TEMPLATE_KEY_INDEX] = i
-				for pair in node.obj().key_value_list().key_value_pair():
-					node_key = pair.key().getText().lower()
-					if node_key not in predefined_lb_node_keys:
-						sys.exit("line " + get_line_and_column(pair.key()) + " Invalid member in node " + str(i) + " in " + LB_KEY_SERVERS + "." + LB_SERVERS_KEY_POOL)
-					n[node_key] = resolve_value(LANGUAGE, pair.value())
-				pool.append(n)
-
-			dictionary[key] = pool
-		else:
-			dictionary[key] = resolve_value(LANGUAGE, value)
+				return self.get_dictionary_val(new_dict, key_list, error_ctx)
 
 	def add_dictionary_val(self, dictionary, key_list, value, level=1, parent_key=""):
-		level_key = key_list[0]
-
 		is_lb = isinstance(self, Load_balancer)
-
-		if is_lb:
-			level_key = level_key.lower()
-			self.validate_lb_key(level_key, parent_key, level, value) # sys.exit on error
+		level_key = key_list[0] if not is_lb else key_list[0].lower()
 
 		# End of recursion condition
 		if len(key_list) == 1:
 			if value.obj() is not None:
 				# Then the value is a new dictionary
 				dictionary[level_key] = {} # Create new dictionary
-				return self.process_obj(dictionary[level_key], value.obj(), level, parent_key)
+				return self.process_obj(dictionary[level_key], value.obj(), (level + 1), level_key)
 			else:
 				if not is_lb:
 					dictionary[level_key] = resolve_value(LANGUAGE, value)
 				else:
+					self.validate_lb_key(level_key, parent_key, level, value) # sys.exit on error
 					self.resolve_lb_value(dictionary, level_key, value)
 				return
 
@@ -333,7 +298,7 @@ class Element(object):
 		for key in dictionary:
 			if key == level_key:
 				key_list.pop(0) # Remove first key (level_key) - has been found
-				return self.add_dictionary_val(dictionary[key], key_list, value, (level + 1), level_key)
+				return self.add_dictionary_val(dictionary[key], key_list, value, level, level_key)
 
 	def process_obj(self, dictionary, ctx, level=1, parent_key=""):
 		# Could be either Untyped or Load_balancer
@@ -342,10 +307,7 @@ class Element(object):
 		is_lb = isinstance(self, Load_balancer)
 
 		for pair in ctx.key_value_list().key_value_pair():
-			key = pair.key().getText()
-
-			if is_lb:
-				key = key.lower()
+			key = pair.key().getText() if not is_lb else pair.key().getText().lower()
 
 			if dictionary.get(key) is not None:
 				sys.exit("line " + get_line_and_column(pair.key()) + " Member " + key + " has already been set")
@@ -366,24 +328,6 @@ class Element(object):
 				dictionary[key] = {} # creating new dictionary
 				# loop through the obj and fill the new dictionary
 				self.process_obj(dictionary[key], pair.value().obj(), (level + 1), key)
-
-	# Called in Element's process_assignments method
-	def process_untyped_assignment(self, element):
-		# Could be either Untyped or Load_balancer
-
-		# Remove first part (the name of this element)
-		assignment_name_parts = element.name.split(DOT)
-		assignment_name_parts.pop(0)
-
-		# Check if this key has already been set in this element
-		# In that case: Error: Value already set
-		if self.get_dictionary_val(self.members, list(assignment_name_parts)) is not None:
-			sys.exit("line " + get_line_and_column(element.ctx) + " Member " + element.name + " has already been set")
-		else:
-			# Add to members dictionary
-			num_name_parts = len(assignment_name_parts)
-			parent_key = "" if len(assignment_name_parts) < 2 else assignment_name_parts[num_name_parts - 2]
-			self.add_dictionary_val(self.members, assignment_name_parts, element.ctx.value(), num_name_parts, parent_key)
 
 # < Element
 
@@ -836,7 +780,7 @@ class Gateway(Typed):
 
 	# Called in Element's process_assignments method
 	def process_gateway_assignment(self, element):
-		name_parts = element.ctx.value_name().getText().split(DOT)
+		name_parts = element.name.split(DOT)
 		orig_member = name_parts[1]
 		member = orig_member.lower()
 		num_name_parts = len(name_parts)
@@ -1110,6 +1054,75 @@ class Load_balancer(Typed):
 			TEMPLATE_KEY_LB_POOL: 				pystache_pool
 		})
 
+	# Called in Element
+	def validate_lb_key(self, key, parent_key, level, ctx):
+		class_name = self.get_class_name()
+
+		if level == 1:
+			if key not in predefined_lb_keys:
+				sys.exit("line " + get_line_and_column(ctx) + " Invalid " + class_name + " member " + key)
+		elif level == 2:
+			if parent_key == "":
+				sys.exit("line " + get_line_and_column(ctx) + " Internal error: Parent key of " + key + " has not been given")
+			if parent_key == LB_KEY_CLIENTS and key not in predefined_lb_clients_keys:
+				sys.exit("line " + get_line_and_column(ctx) + " Invalid " + class_name + " member " + key + " in " + self.name + "." + parent_key)
+			if parent_key == LB_KEY_SERVERS and key not in predefined_lb_servers_keys:
+				sys.exit("line " + get_line_and_column(ctx) + " Invalid " + class_name + " member " + key + " in " + self.name + "." + parent_key)
+		else:
+			sys.exit("line " + get_line_and_column(ctx) + " Invalid " + class_name + " member " + key)
+
+	# Called in Element
+	def resolve_lb_value(self, dictionary, key, value):
+		if key == LB_KEY_LAYER:
+			found_element_value = value.getText().lower()
+
+			if value.value_name() is None or found_element_value not in valid_lb_layers:
+				sys.exit("line " + get_line_and_column(value) + " Invalid " + LB_KEY_LAYER + " value (" + value.getText() + ")")
+
+			dictionary[key] = found_element_value
+		elif key == LB_KEY_IFACE:
+			# Then the Iface element's name is to be added, not the resolved Iface
+			found_element_value = value.getText()
+
+			if value.value_name() is None:
+				sys.exit("line " + get_line_and_column(value) + " " + class_name + " member " + LB_KEY_IFACE + " contains an invalid value (" + found_element_value + ")")
+
+			element = elements.get(found_element_value)
+			if element is None or (hasattr(element, 'type_t') and element.type_t.lower() != TYPE_IFACE):
+				sys.exit("line " + get_line_and_column(value) + " No Iface with the name " + found_element_value + " exists")
+
+			dictionary[key] = found_element_value
+		elif key == LB_SERVERS_KEY_ALGORITHM:
+			found_element_value = value.getText().lower()
+
+			if value.value_name() is None or found_element_value not in valid_lb_servers_algos:
+				sys.exit("line " + get_line_and_column(value) + " Invalid algorithm " + value.getText())
+
+			dictionary[key] = found_element_value
+		elif key == LB_SERVERS_KEY_POOL:
+			if value.list_t() is None:
+				sys.exit("line " + get_line_and_column(value) + " Invalid " + LB_SERVERS_KEY_POOL + " value. It needs to be a list of objects containing " + \
+					", ".join(predefined_lb_node_keys))
+
+			pool = []
+			for i, node in enumerate(value.list_t().value_list().value()):
+				if node.obj() is None:
+					sys.exit("line " + get_line_and_column(node) + " Invalid " + LB_SERVERS_KEY_POOL + " value. It needs to be a list of objects containing " + \
+						", ".join(predefined_lb_node_keys))
+
+				n = {}
+				n[TEMPLATE_KEY_INDEX] = i
+				for pair in node.obj().key_value_list().key_value_pair():
+					node_key = pair.key().getText().lower()
+					if node_key not in predefined_lb_node_keys:
+						sys.exit("line " + get_line_and_column(pair.key()) + " Invalid member in node " + str(i) + " in " + LB_KEY_SERVERS + "." + LB_SERVERS_KEY_POOL)
+					n[node_key] = resolve_value(LANGUAGE, pair.value())
+				pool.append(n)
+
+			dictionary[key] = pool
+		else:
+			dictionary[key] = resolve_value(LANGUAGE, value)
+
 	def process(self):
 		if self.res is None:
 			# Then process
@@ -1272,7 +1285,7 @@ def save_element(base_type, ctx):
 		return
 
 	# BASE_TYPE_TYPED_INIT
-	
+
 	type_t_lower = type_t.lower()
 	if type_t_lower == TYPE_IFACE:
 		elements[name] = Iface(idx, name, ctx, base_type, type_t)
