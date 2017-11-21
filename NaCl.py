@@ -1137,6 +1137,8 @@ class Load_balancer(Typed):
 
 		return self.res
 
+# < Load_balancer
+
 # -------------------- Function --------------------
 
 class Function(Element):
