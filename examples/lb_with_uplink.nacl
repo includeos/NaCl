@@ -46,9 +46,9 @@ Load_balancer lb {
 lb.layer: tcp
 lb.clients: {
     iface: outside,
-    port: 90,
-    wait_queue_limit: 500,
-    session_limit: 400
+    port: 80,
+    wait_queue_limit: 1000,
+    session_limit: 1000
 }
 
 lb.servers.iface: inside

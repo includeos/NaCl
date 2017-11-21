@@ -21,7 +21,7 @@ void register_plugin_nacl() {
 	// Load balancers
 
 	inside.tcp().set_MSL(15s);
-	nacl_lb_obj = new microLB::Balancer(outside, 90, inside);
+	nacl_lb_obj = new microLB::Balancer(outside, 80, inside);
 
 	Socket socket_0{ IP4::addr{10,0,0,1}, 6001 };
 	nacl_lb_obj->nodes.add_node(inside, socket_0, nacl_lb_obj->get_pool_signal());
@@ -40,9 +40,9 @@ void register_plugin_nacl() {
 	Layer: tcp
 
 	Clients iface: outside
-	Clients port: 90
-	Clients wait queue limit: 500
-	Clients session limit: 400
+	Clients port: 80
+	Clients wait queue limit: 1000
+	Clients session limit: 1000
 
 	Servers iface: inside
 	Servers algorithm: round_robin
