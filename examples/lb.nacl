@@ -2,14 +2,14 @@ Iface outside {
     address: 10.20.17.71,
     netmask: 255.255.255.0,
     gateway: 10.20.17.1,
-    index: 0 # 1 if uplink
+    index: 0
 }
 
 Iface inside {
     address: 10.20.17.72,
     netmask: 255.255.255.0,
     gateway: 10.20.17.1,
-    index: 1 # 2 if uplink
+    index: 1
 }
 
 Load_balancer lb {
