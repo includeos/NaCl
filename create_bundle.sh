@@ -1,4 +1,4 @@
-antlr4 -Dlanguage=Python2 NaCl.g4 -visitor -o bin
+#!/bin/bash
 
 TARFILE="nacl_bin.tar.gz"
 tar -zcvf $TARFILE bin
