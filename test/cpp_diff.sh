@@ -14,6 +14,7 @@ declare -a examples=(
 	"gateway_with_send_time_exceeded"
 	"iface"
 	"lb"
+	"lb_assignment_functionality"
 	"lb_with_uplink"
 	"log"
 	"nacl"

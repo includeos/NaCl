@@ -20,7 +20,15 @@ Iface inside {
 }
 
 Load_balancer lb {
+    layer: tcp,
+    clients: {
+        iface: outside,
+        port: 80,
+        wait_queue_limit: 1000,
+        session_limit: 1000
+    },
     servers: {
+        iface: inside,
         algorithm: round_robin,
         pool: [
             {
@@ -42,13 +50,3 @@ Load_balancer lb {
         ]
     }
 }
-
-lb.layer: tcp
-lb.clients: {
-    iface: outside,
-    port: 80,
-    wait_queue_limit: 1000,
-    session_limit: 1000
-}
-
-lb.servers.iface: inside
