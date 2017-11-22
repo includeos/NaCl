@@ -10,10 +10,10 @@ static microLB::Balancer* nacl_lb_obj = nullptr;
 void register_plugin_nacl() {
 	INFO("NaCl", "Registering NaCl plugin");
 
-	auto& inside = Inet4::stack<2>();
-	inside.network_config(IP4::addr{10,0,0,44}, IP4::addr{255,255,255,0}, IP4::addr{10,0,0,1});
 	auto& outside = Inet4::stack<1>();
 	outside.network_config(IP4::addr{10,0,0,43}, IP4::addr{255,255,255,0}, IP4::addr{10,0,0,1});
+	auto& inside = Inet4::stack<2>();
+	inside.network_config(IP4::addr{10,0,0,44}, IP4::addr{255,255,255,0}, IP4::addr{10,0,0,1});
 	auto& uplink = Inet4::stack<0>();
 	uplink.network_config(IP4::addr{10,0,0,42}, IP4::addr{255,255,255,0}, IP4::addr{10,0,0,1});
 

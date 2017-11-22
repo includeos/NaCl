@@ -1,0 +1,58 @@
+Iface outside {
+    address: 10.20.17.71,
+    netmask: 255.255.255.0,
+    gateway: 10.20.17.1,
+    index: 0
+}
+
+Iface inside {
+    address: 10.20.17.72,
+    netmask: 255.255.255.0,
+    gateway: 10.20.17.1,
+    index: 1
+}
+
+Load_balancer lb {
+    servers: {
+        algorithm: round_robin,
+        pool: node_pool
+        # pool: [ my_first_node, my_second_node ]
+    }
+}
+
+lb.layer: tcp
+
+lb.clients: {
+    iface: outside,
+    port: 80,
+    wait_queue_limit: 1000,
+    session_limit: 1000
+}
+
+lb.servers.iface: inside
+
+my_first_node: {
+    address: 10.20.17.81,
+    port: 80
+}
+
+my_second_node: {
+    address: 10.20.17.82,
+    port: 80
+}
+
+node_pool: [
+    my_first_node,
+    my_second_node
+]
+
+# node_pool: [
+#    {
+#        address: 10.20.17.81,
+#        port: 80
+#    },
+#    {
+#        address: 10.20.17.82,
+#        port: 80
+#    }
+# ]

@@ -1100,23 +1100,48 @@ class Load_balancer(Typed):
 
 			dictionary[key] = found_element_value
 		elif key == LB_SERVERS_KEY_POOL:
-			if value.list_t() is None:
-				sys.exit("line " + get_line_and_column(value) + " Invalid " + LB_SERVERS_KEY_POOL + " value. It needs to be a list of objects containing " + \
+			if value.list_t() is None and value.value_name() is None:
+				sys.exit("line " + get_line_and_column(value) + " Invalid " + LB_SERVERS_KEY_POOL + \
+					" value. It needs to be a list of objects or the name of a list of objects containing " + \
 					", ".join(predefined_lb_node_keys))
+
+			if value.value_name() is not None:
+				element_name = value.value_name().getText()
+				e = elements.get(element_name)
+				if e is None:
+					sys.exit("line " + get_line_and_column(value) + " No element with the name " + element_name + " exists")
+				if e.ctx.value().list_t() is None:
+					sys.exit("line " + get_line_and_column(value) + " Element " + element_name + " does not consist of a list")
+				value = e.ctx.value()
 
 			pool = []
 			for i, node in enumerate(value.list_t().value_list().value()):
-				if node.obj() is None:
+				if node.obj() is None and node.value_name() is None:
 					sys.exit("line " + get_line_and_column(node) + " Invalid " + LB_SERVERS_KEY_POOL + " value. It needs to be a list of objects containing " + \
 						", ".join(predefined_lb_node_keys))
+
+				if node.value_name() is not None:
+					element_name = node.value_name().getText()
+					e = elements.get(element_name)
+					if e is None:
+						sys.exit("line " + get_line_and_column(node) + " No element with the name " + element_name + " exists")
+					if e.ctx.value().obj() is None:
+						sys.exit("line " + get_line_and_column(node) + " Element " + element_name + " is not an object")
+					node = e.ctx.value()
 
 				n = {}
 				n[TEMPLATE_KEY_INDEX] = i
 				for pair in node.obj().key_value_list().key_value_pair():
 					node_key = pair.key().getText().lower()
 					if node_key not in predefined_lb_node_keys:
-						sys.exit("line " + get_line_and_column(pair.key()) + " Invalid member in node " + str(i) + " in " + LB_KEY_SERVERS + "." + LB_SERVERS_KEY_POOL)
+						sys.exit("line " + get_line_and_column(pair.key()) + " Invalid member in node " + str(i) + " in " + \
+							LB_KEY_SERVERS + "." + LB_SERVERS_KEY_POOL)
 					n[node_key] = resolve_value(LANGUAGE, pair.value())
+
+				if n.get(LB_NODE_KEY_ADDRESS) is None or n.get(LB_KEY_PORT) is None:
+					sys.exit("line " + get_line_and_column(node) + " An object in a " + LB_SERVERS_KEY_POOL + \
+						" needs to specify " + ", ".join(predefined_lb_node_keys))
+
 				pool.append(n)
 
 			dictionary[key] = pool
