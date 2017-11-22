@@ -176,16 +176,21 @@ void register_plugin_nacl() {
 	{{iface}}.ip_obj().postrouting_chain().chain.push_back(masq);
 	{{/masquerades}}
 	{{/has_masquerades}}
-	{{#has_snats}}
+	{{#has_auto_natting_ifaces}}
 
 	auto snat_translate = [](IP4::IP_packet_ptr pckt, Inet<IP4>&, Conntrack::Entry_ptr entry)-> auto {
 		nacl_natty_obj->snat(*pckt, entry);
 		return Filter_verdict<IP4>{std::move(pckt), Filter_verdict_type::ACCEPT};
 	};
-	{{#snats}}
+	auto dnat_translate = [](IP4::IP_packet_ptr pckt, Inet<IP4>&, Conntrack::Entry_ptr entry)-> auto {
+		nacl_natty_obj->dnat(*pckt, entry);
+		return Filter_verdict<IP4>{std::move(pckt), Filter_verdict_type::ACCEPT};
+	};
+	{{#auto_natting_ifaces}}
+	{{iface}}.ip_obj().prerouting_chain().chain.push_back(dnat_translate);
 	{{iface}}.ip_obj().postrouting_chain().chain.push_back(snat_translate);
-	{{/snats}}
-	{{/has_snats}}
+	{{/auto_natting_ifaces}}
+	{{/has_auto_natting_ifaces}}
 	{{/has_nats}}
 	{{#has_load_balancers}}
 
