@@ -11,6 +11,9 @@
 {{#has_vlans}}
 #include <net/vlan>
 {{/has_vlans}}
+{{#has_load_balancers}}
+#include <microLB>
+{{/has_load_balancers}}
 
 using namespace net;
 
@@ -23,6 +26,9 @@ std::shared_ptr<Conntrack> nacl_ct_obj;
 {{#has_nats}}
 std::unique_ptr<nat::NAPT> nacl_natty_obj;
 {{/has_nats}}
+{{#has_load_balancers}}
+static microLB::Balancer* nacl_lb_obj = nullptr;
+{{/has_load_balancers}}
 {{#has_functions}}
 
 namespace custom_made_classes_from_nacl {
@@ -181,4 +187,37 @@ void register_plugin_nacl() {
 	{{/snats}}
 	{{/has_snats}}
 	{{/has_nats}}
+	{{#has_load_balancers}}
+
+	// Load balancers
+	{{#load_balancers}}
+
+	{{servers_iface_name}}.tcp().set_MSL(15s);
+	nacl_lb_obj = new microLB::Balancer({{clients_iface_name}}, {{port}}, {{servers_iface_name}});
+	{{#pool}}
+
+	Socket socket_{{index}}{ {{address}}, {{port}} };
+	nacl_lb_obj->nodes.add_node({{servers_iface_name}}, socket_{{index}}, nacl_lb_obj->get_pool_signal());
+	{{/pool}}
+
+	/*
+	Name: {{name}}
+	Layer: {{layer}}
+
+	Clients iface: {{clients_iface_name}}
+	Clients port: {{port}}
+	Clients wait queue limit: {{wait_queue_limit}}
+	Clients session limit: {{session_limit}}
+
+	Servers iface: {{servers_iface_name}}
+	Servers algorithm: {{algorithm}}
+	Servers pool:
+	{{#pool}}
+
+	Node address: {{address}}
+	Node port: {{port}}
+	{{/pool}}
+	{{/load_balancers}}
+	*/
+	{{/has_load_balancers}}
 }

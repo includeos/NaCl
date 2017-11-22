@@ -284,7 +284,7 @@ def resolve_member_value_from_element_cpp(element, member_list, ctx):
 			") does not have any named attributes")
 
 	if element.base_type == BASE_TYPE_UNTYPED_INIT:
-		val = element.get_member_value(member_list)
+		val = element.get_member_value(member_list, ctx)
 		if val is None:
 			sys.exit("line " + get_line_and_column(ctx) + " Could not identify " + element.name + "." + ".".join(member_list))
 		

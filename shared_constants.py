@@ -41,19 +41,21 @@ TRUE 	= "true"
 FALSE 	= "false"
 
 # Possible NaCl types
-TYPE_IFACE 		= "iface"
-TYPE_VLAN 		= "vlan"
-TYPE_GATEWAY 	= "gateway"
-TYPE_CONNTRACK 	= "conntrack"
-TYPE_FILTER 	= "filter"
-TYPE_REWRITE 	= "rewrite"
-TYPE_NAT 		= "nat"
+TYPE_IFACE 			= "iface"
+TYPE_VLAN 			= "vlan"
+TYPE_GATEWAY 		= "gateway"
+TYPE_CONNTRACK 		= "conntrack"
+TYPE_LOAD_BALANCER 	= "load_balancer"
+TYPE_FILTER 		= "filter"
+TYPE_REWRITE 		= "rewrite"
+TYPE_NAT 			= "nat"
 
 valid_nacl_types = [
 	TYPE_IFACE,
 	TYPE_VLAN,
 	TYPE_GATEWAY,
 	TYPE_CONNTRACK,
+	TYPE_LOAD_BALANCER,
 	TYPE_FILTER,
 	TYPE_REWRITE,
 	TYPE_NAT
@@ -108,6 +110,8 @@ predefined_config_types = [
 	STATIC_CONFIG
 ]
 
+# ---- Vlan keys ----
+
 VLAN_KEY_ADDRESS 	= IFACE_KEY_ADDRESS
 VLAN_KEY_NETMASK 	= IFACE_KEY_NETMASK
 VLAN_KEY_GATEWAY 	= IFACE_KEY_GATEWAY
@@ -120,6 +124,8 @@ predefined_vlan_keys = [
 	VLAN_KEY_GATEWAY,
 	VLAN_KEY_INDEX
 ]
+
+# ---- Gateway keys ----
 
 GATEWAY_KEY_SEND_TIME_EXCEEDED 	= "send_time_exceeded"
 GATEWAY_KEY_FORWARD 			= "forward"
@@ -147,6 +153,8 @@ predefined_gateway_keys = [
 	GATEWAY_KEY_FORWARD
 ]
 
+# ---- Conntrack keys ----
+
 CONNTRACK_KEY_LIMIT 	= "limit"
 CONNTRACK_KEY_RESERVE 	= "reserve"
 
@@ -155,6 +163,58 @@ predefined_conntrack_keys = [
 	CONNTRACK_KEY_RESERVE
 ]
 
+# ---- Load_balancer keys ----
+
+LB_KEY_LAYER = "layer"
+LB_KEY_CLIENTS = "clients"
+LB_KEY_SERVERS = "servers"
+
+predefined_lb_keys = [
+	LB_KEY_LAYER,
+	LB_KEY_CLIENTS,
+	LB_KEY_SERVERS
+]
+
+LB_KEY_IFACE = "iface"
+LB_KEY_PORT = "port"
+
+LB_CLIENTS_KEY_WAIT_QUEUE_LIMIT = "wait_queue_limit"
+LB_CLIENTS_KEY_SESSION_LIMIT = "session_limit"
+
+predefined_lb_clients_keys = [
+	LB_KEY_IFACE,
+	LB_KEY_PORT,
+	LB_CLIENTS_KEY_WAIT_QUEUE_LIMIT,
+	LB_CLIENTS_KEY_SESSION_LIMIT
+]
+
+LB_SERVERS_KEY_ALGORITHM = "algorithm"
+LB_SERVERS_KEY_POOL = "pool"
+
+predefined_lb_servers_keys = [
+	LB_KEY_IFACE,
+	LB_SERVERS_KEY_ALGORITHM,
+	LB_SERVERS_KEY_POOL
+]
+
+LB_NODE_KEY_ADDRESS = "address"
+
+predefined_lb_node_keys = [
+	LB_NODE_KEY_ADDRESS,
+	LB_KEY_PORT
+]
+
+# Load balancer algorithms
+# Note: Only round_robin is supported in microLB for now (the algo/algorithm field is ignored)
+ROUND_ROBIN = "round_robin"
+# FEWEST_CONNECTIONS = "fewest_connections"
+valid_lb_servers_algos = [
+	ROUND_ROBIN
+	# FEWEST_CONNECTIONS
+]
+
+# ---- General ----
+
 AUTO = "auto"
 
 TCP 	= "tcp"
@@ -162,6 +222,14 @@ UDP 	= "udp"
 IP 		= "ip"
 ICMP 	= "icmp"
 CT 		= "ct"
+
+# Load balancer layers
+
+valid_lb_layers = [
+	TCP
+]
+
+# ---- General ----
 
 # Constants related to the log action (std::cout)
 TO_UNSIGNED = "TO_UNSIGNED"

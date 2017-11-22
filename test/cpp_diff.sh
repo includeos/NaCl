@@ -13,6 +13,8 @@ declare -a examples=(
 	"gateway_with_forward_chain"
 	"gateway_with_send_time_exceeded"
 	"iface"
+	"lb"
+	"lb_with_uplink"
 	"log"
 	"nacl"
 	"nacl_one_liner"
