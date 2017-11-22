@@ -1,10 +1,10 @@
 #! /usr/bin/env python
-import sys
-sys.path.append('bin')
+
 from antlr4 import *
 from NaClLexer import *
 from NaClParser import *
 from NaClVisitor import *
+import sys
 import os
 
 import pystache
