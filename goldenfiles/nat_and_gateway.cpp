@@ -79,5 +79,10 @@ void register_plugin_nacl() {
 		nacl_natty_obj->snat(*pckt, entry);
 		return Filter_verdict<IP4>{std::move(pckt), Filter_verdict_type::ACCEPT};
 	};
+	auto dnat_translate = [](IP4::IP_packet_ptr pckt, Inet<IP4>&, Conntrack::Entry_ptr entry)-> auto {
+		nacl_natty_obj->dnat(*pckt, entry);
+		return Filter_verdict<IP4>{std::move(pckt), Filter_verdict_type::ACCEPT};
+	};
+	eth0.ip_obj().prerouting_chain().chain.push_back(dnat_translate);
 	eth0.ip_obj().postrouting_chain().chain.push_back(snat_translate);
 }

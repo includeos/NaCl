@@ -27,13 +27,13 @@ TEMPLATE_KEY_LOAD_BALANCERS 	= "load_balancers"
 TEMPLATE_KEY_IP_FORWARD_IFACES 	= "ip_forward_ifaces"
 TEMPLATE_KEY_ENABLE_CT_IFACES 	= "enable_ct_ifaces"
 TEMPLATE_KEY_MASQUERADES 		= "masquerades"
-TEMPLATE_KEY_SNATS 				= "snats"
+TEMPLATE_KEY_AUTO_NATTING_IFACES = "auto_natting_ifaces"
 
 TEMPLATE_KEY_HAS_GATEWAYS 		= "has_gateways"
 TEMPLATE_KEY_HAS_NATS 			= "has_nats"
 TEMPLATE_KEY_HAS_MASQUERADES 	= "has_masquerades"
 TEMPLATE_KEY_HAS_VLANS 			= "has_vlans"
-TEMPLATE_KEY_HAS_SNATS 			= "has_snats"
+TEMPLATE_KEY_HAS_AUTO_NATTING_IFACES = "has_auto_natting_ifaces"
 TEMPLATE_KEY_HAS_FUNCTIONS 		= "has_functions"
 TEMPLATE_KEY_HAS_LOAD_BALANCERS = "has_load_balancers"
 
@@ -53,7 +53,7 @@ load_balancers 		= []
 ip_forward_ifaces 	= []
 enable_ct_ifaces 	= []
 masquerades 		= []
-snats 				= []
+auto_natting_ifaces = []
 
 gateway_exists 		= False
 conntrack_exists 	= False
@@ -551,7 +551,7 @@ class Iface(Typed):
 		# chain: string with name of chain
 		# functions: list containing value_name ctxs, where each name corresponds to the name of a NaCl function
 
-		add_snat = False
+		add_auto_natting = False
 		function_names = []
 		num_functions = len(functions)
 		for i, function in enumerate(functions):
@@ -563,13 +563,15 @@ class Iface(Typed):
 			# If a Nat function is pushed onto an Iface's chain,
 			# push the snat_translate lambda in cpp_template.mustache
 			# onto the same Iface's postrouting chain
+			# and push the dnat_translate lambda in cpp_template.mustache
+			# onto the same Iface's prerouting chain
 			if element.type_t.lower() == TYPE_NAT:
-				add_snat = True
+				add_auto_natting = True
 
 			function_names.append({TEMPLATE_KEY_FUNCTION_NAME: name, TEMPLATE_KEY_COMMA: (i < (num_functions - 1))})
 
-		if add_snat:
-			snats.append({ TEMPLATE_KEY_IFACE: self.name })
+		if add_auto_natting:
+			auto_natting_ifaces.append({ TEMPLATE_KEY_IFACE: self.name })
 
 		pushes.append({
 			TEMPLATE_KEY_NAME:				self.name,
@@ -1252,12 +1254,12 @@ def handle_input():
 		TEMPLATE_KEY_IP_FORWARD_IFACES:		ip_forward_ifaces,
 		TEMPLATE_KEY_ENABLE_CT_IFACES:		enable_ct_ifaces,
 		TEMPLATE_KEY_MASQUERADES: 			masquerades,
-		TEMPLATE_KEY_SNATS: 				snats,
+		TEMPLATE_KEY_AUTO_NATTING_IFACES: 	auto_natting_ifaces,
 		TEMPLATE_KEY_HAS_GATEWAYS: 			(len(gateways) > 0),
 		TEMPLATE_KEY_HAS_NATS: 				(len(nats) > 0 or len(masquerades) > 0),
 		TEMPLATE_KEY_HAS_MASQUERADES:		(len(masquerades) > 0),
 		TEMPLATE_KEY_HAS_VLANS: 			(len(ifaces_with_vlans) > 0),
-		TEMPLATE_KEY_HAS_SNATS: 			(len(snats) > 0),
+		TEMPLATE_KEY_HAS_AUTO_NATTING_IFACES: (len(auto_natting_ifaces) > 0),
 		TEMPLATE_KEY_HAS_FUNCTIONS: 		(len(nats) > 0 or len(filters) > 0),
 		TEMPLATE_KEY_ENABLE_CT: 			(len(nats) > 0 or len(filters) > 0 or len(gateways) > 0),
 		TEMPLATE_KEY_HAS_LOAD_BALANCERS: 	(len(load_balancers) > 0)
