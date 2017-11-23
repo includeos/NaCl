@@ -1091,32 +1091,25 @@ class Load_balancer(Typed):
 
 	# Called in Element
 	def resolve_lb_value(self, dictionary, key, value):
-		if key == LB_KEY_LAYER:
-			found_element_value = value.getText().lower()
+		found_element_value = value.getText()
 
+		if key == LB_KEY_LAYER or key == LB_SERVERS_KEY_ALGORITHM:
+			found_element_value = found_element_value.lower()
+
+		if key == LB_KEY_LAYER:
 			if value.value_name() is None or found_element_value not in valid_lb_layers:
 				sys.exit("line " + get_line_and_column(value) + " Invalid " + LB_KEY_LAYER + " value (" + value.getText() + ")")
-
-			dictionary[key] = found_element_value
 		elif key == LB_KEY_IFACE:
 			# Then the Iface element's name is to be added, not the resolved Iface
-			found_element_value = value.getText()
-
 			if value.value_name() is None:
-				sys.exit("line " + get_line_and_column(value) + " " + class_name + " member " + LB_KEY_IFACE + " contains an invalid value (" + found_element_value + ")")
-
+				sys.exit("line " + get_line_and_column(value) + " " + class_name + " member " + LB_KEY_IFACE + " contains an invalid value (" + \
+					found_element_value + ")")
 			element = elements.get(found_element_value)
 			if element is None or (hasattr(element, 'type_t') and element.type_t.lower() != TYPE_IFACE):
 				sys.exit("line " + get_line_and_column(value) + " No Iface with the name " + found_element_value + " exists")
-
-			dictionary[key] = found_element_value
 		elif key == LB_SERVERS_KEY_ALGORITHM:
-			found_element_value = value.getText().lower()
-
 			if value.value_name() is None or found_element_value not in valid_lb_servers_algos:
 				sys.exit("line " + get_line_and_column(value) + " Invalid algorithm " + value.getText())
-
-			dictionary[key] = found_element_value
 		elif key == LB_SERVERS_KEY_POOL:
 			if value.list_t() is None and value.value_name() is None:
 				sys.exit("line " + get_line_and_column(value) + " Invalid " + LB_SERVERS_KEY_POOL + \
@@ -1162,9 +1155,12 @@ class Load_balancer(Typed):
 
 				pool.append(n)
 
-			dictionary[key] = pool
+			found_element_value = pool
 		else:
-			dictionary[key] = resolve_value(LANGUAGE, value)
+			found_element_value = resolve_value(LANGUAGE, value)
+
+		# Add found value
+		dictionary[key] = found_element_value
 
 	def process(self):
 		if self.res is None:
