@@ -9,6 +9,8 @@ declare -a examples=(
 	"cidr"
 	"config_options"
 	"conntrack"
+	"conntrack_with_timeout"
+	"conntrack_with_timeout_assignments"
 	"functions"
 	"gateway_with_forward_chain"
 	"gateway_with_send_time_exceeded"
