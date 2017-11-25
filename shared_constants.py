@@ -169,14 +169,42 @@ predefined_gateway_keys = [
 	GATEWAY_KEY_FORWARD
 ]
 
+# ---- General ----
+
+AUTO = "auto"
+
+TCP 	= "tcp"
+UDP 	= "udp"
+IP 		= "ip"
+ICMP 	= "icmp"
+CT 		= "ct"
+
 # ---- Conntrack keys ----
 
 CONNTRACK_KEY_LIMIT 	= "limit"
 CONNTRACK_KEY_RESERVE 	= "reserve"
+CONNTRACK_KEY_TIMEOUT 	= "timeout"
 
 predefined_conntrack_keys = [
 	CONNTRACK_KEY_LIMIT,
-	CONNTRACK_KEY_RESERVE
+	CONNTRACK_KEY_RESERVE,
+	CONNTRACK_KEY_TIMEOUT
+]
+
+CONNTRACK_TIMEOUT_KEY_ESTABLISHED = "established"
+CONNTRACK_TIMEOUT_KEY_UNCONFIRMED = "unconfirmed"
+CONNTRACK_TIMEOUT_KEY_CONFIRMED = "confirmed"
+
+predefined_conntrack_timeout_keys = [
+	CONNTRACK_TIMEOUT_KEY_ESTABLISHED,
+	CONNTRACK_TIMEOUT_KEY_UNCONFIRMED,
+	CONNTRACK_TIMEOUT_KEY_CONFIRMED
+]
+
+predefined_conntrack_timeout_inner_keys = [
+	TCP,
+	UDP,
+	ICMP
 ]
 
 # ---- Load_balancer keys ----
@@ -228,16 +256,6 @@ valid_lb_servers_algos = [
 	ROUND_ROBIN
 	# FEWEST_CONNECTIONS
 ]
-
-# ---- General ----
-
-AUTO = "auto"
-
-TCP 	= "tcp"
-UDP 	= "udp"
-IP 		= "ip"
-ICMP 	= "icmp"
-CT 		= "ct"
 
 # Load balancer layers
 

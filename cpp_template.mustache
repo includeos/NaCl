@@ -165,6 +165,17 @@ void register_plugin_nacl() {
 	{{#conntracks}}
 	{{#limit}}nacl_ct_obj->maximum_entries = {{.}};{{/limit}}
 	{{#reserve}}nacl_ct_obj->reserve({{.}});{{/reserve}}
+	{{#timeouts}}
+	{{#tcp}}
+	nacl_ct_obj->timeout.{{type}}.tcp = Conntrack::Timeout_duration{ {{tcp}} };
+	{{/tcp}}
+	{{#udp}}
+	nacl_ct_obj->timeout.{{type}}.udp = Conntrack::Timeout_duration{ {{udp}} };
+	{{/udp}}
+	{{#icmp}}
+	nacl_ct_obj->timeout.{{type}}.icmp = Conntrack::Timeout_duration{ {{icmp}} };
+	{{/icmp}}
+	{{/timeouts}}
 	{{/conntracks}}
 	{{#enable_ct_ifaces}}
 

@@ -1,0 +1,33 @@
+Conntrack my_conntrack {
+	limit: 20000,
+	reserve: 10000,
+	timeout: {
+		established: {
+			tcp: 100,
+			udp: 200,
+			icmp: 300
+		},
+		unconfirmed: {
+			tcp: 400,
+			udp: 500,
+			icmp: 600
+		},
+		confirmed: {
+			tcp: 700,
+			udp: 800,
+			icmp: 900
+		}
+	}
+}
+
+Iface eth0 {
+	index: 0,
+	address: 10.0.0.45,
+	netmask: 255.255.255.0,
+	gateway: 10.0.0.1,
+	prerouting: my_filter
+}
+
+Filter::IP my_filter {
+	accept
+}
