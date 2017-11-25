@@ -106,6 +106,9 @@ TEMPLATE_KEY_LB_POOL 				= "pool"
 TEMPLATE_KEY_LB_NODE_ADDRESS 		= TEMPLATE_KEY_ADDRESS
 TEMPLATE_KEY_LB_NODE_PORT 			= TEMPLATE_KEY_LB_PORT
 
+TEMPLATE_KEY_CONNTRACK_TIMEOUTS 	= "timeouts"
+TEMPLATE_KEY_CONNTRACK_TYPE 		= "type"
+
 def transpile_function(language, type_t, subtype, ctx):
 	if language == CPP:
 		return transpile_function_cpp(type_t, subtype, ctx)
@@ -149,10 +152,9 @@ class Element(object):
 		class_name = self.get_class_name()
 		is_iface = isinstance(self, Iface)
 		is_vlan = isinstance(self, Vlan)
-		is_conntrack = isinstance(self, Conntrack)
 
 		# Using Untyped methods (placed in Element) since depth is more than 1 level deep
-		if isinstance(self, Load_balancer):
+		if isinstance(self, Load_balancer) or isinstance(self, Conntrack):
 			if value.obj() is None:
 				sys.exit("line " + get_line_and_column(value) + " A " + class_name + " must be an object")
 			self.process_obj(self.members, value.obj())
@@ -165,8 +167,7 @@ class Element(object):
 				pair_value 	= pair.value()
 
 				if (is_iface and key not in predefined_iface_keys) or \
-					(is_vlan and key not in predefined_vlan_keys) or \
-					(is_conntrack and key not in predefined_conntrack_keys):
+					(is_vlan and key not in predefined_vlan_keys):
 					sys.exit("line " + get_line_and_column(pair.key()) + " Invalid " + class_name + \
 						" member " + orig_key)
 
@@ -196,7 +197,8 @@ class Element(object):
 		# Find assignments (f.ex. x.y: <value> or x.y.z: <value>) that refers to this Element
 
 		class_name = self.get_class_name()
-		is_lb_or_untyped = isinstance(self, Untyped) or isinstance(self, Load_balancer)
+		is_lb_untyped_or_conntrack = isinstance(self, Untyped) or isinstance(self, Load_balancer) or \
+			isinstance(self, Conntrack)
 		is_gateway = isinstance(self, Gateway)
 
 		# Handle assignments in the order of number of name parts to facilitate that you can have two assignments
@@ -215,7 +217,7 @@ class Element(object):
 		for key in assignments_to_process:
 			element = elements.get(key)
 
-			if is_lb_or_untyped:
+			if is_lb_untyped_or_conntrack:
 				self.process_assignment(element)
 			elif is_gateway:
 				self.process_gateway_assignment(element)
@@ -247,7 +249,7 @@ class Element(object):
 	# ---------- Methods related to dictionary self.members for Untyped and Load_balancer ----------
 
 	def process_assignment(self, element):
-		# Could be either Untyped or Load_balancer
+		# Could be either Untyped, Load_balancer or Conntrack
 
 		# Remove first part (the name of this element)
 		assignment_name_parts = element.name.split(DOT)
@@ -292,7 +294,8 @@ class Element(object):
 
 	def add_dictionary_val(self, dictionary, key_list, value, level=1, parent_key=""):
 		is_lb = isinstance(self, Load_balancer)
-		level_key = key_list[0] if not is_lb else key_list[0].lower()
+		is_conntrack = isinstance(self, Conntrack)
+		level_key = key_list[0] if not is_lb and not is_conntrack else key_list[0].lower()
 
 		# End of recursion condition
 		if len(key_list) == 1:
@@ -301,11 +304,14 @@ class Element(object):
 				dictionary[level_key] = {} # Create new dictionary
 				return self.process_obj(dictionary[level_key], value.obj(), (level + 1), level_key)
 			else:
-				if not is_lb:
-					dictionary[level_key] = resolve_value(LANGUAGE, value)
-				else:
+				if is_lb:
 					self.validate_lb_key(level_key, parent_key, level, value) # sys.exit on error
 					self.resolve_lb_value(dictionary, level_key, value)
+				elif is_conntrack:
+					self.validate_conntrack_key(level_key, parent_key, level, value) # sys.exit on error
+					self.resolve_conntrack_value(dictionary, level_key, value)
+				else:
+					dictionary[level_key] = resolve_value(LANGUAGE, value)
 				return
 
 		if level_key not in dictionary:
@@ -317,13 +323,14 @@ class Element(object):
 				return self.add_dictionary_val(dictionary[key], key_list, value, level, level_key)
 
 	def process_obj(self, dictionary, ctx, level=1, parent_key=""):
-		# Could be either Untyped or Load_balancer
-		# Level only relevant for Load_balancer
+		# Could be either Untyped, Load_balancer or Conntrack
+		# Level only relevant for Load_balancer and Conntrack
 
 		is_lb = isinstance(self, Load_balancer)
+		is_conntrack = isinstance(self, Conntrack)
 
 		for pair in ctx.key_value_list().key_value_pair():
-			key = pair.key().getText() if not is_lb else pair.key().getText().lower()
+			key = pair.key().getText() if not is_lb and not is_conntrack else pair.key().getText().lower()
 
 			if dictionary.get(key) is not None:
 				sys.exit("line " + get_line_and_column(pair.key()) + " Member " + key + " has already been set")
@@ -331,13 +338,17 @@ class Element(object):
 			# Validate key
 			if is_lb:
 				self.validate_lb_key(key, parent_key, level, pair.key()) # sys.exit on error
+			elif is_conntrack:
+				self.validate_conntrack_key(key, parent_key, level, pair.key()) # sys.exit on error
 
 			# End of recursion:
 			if pair.value().obj() is None:
-				if not is_lb:
-					dictionary[key] = resolve_value(LANGUAGE, pair.value())
-				else:
+				if is_lb:
 					self.resolve_lb_value(dictionary, key, pair.value())
+				elif is_conntrack:
+					self.resolve_conntrack_value(dictionary, key, pair.value())
+				else:
+					dictionary[key] = resolve_value(LANGUAGE, pair.value())
 			else:
 				# Recursion:
 				# Then we have an obj inside an obj
@@ -387,18 +398,75 @@ class Typed(Element):
 
 # < Typed
 
-# -------------------- Iface --------------------
+# -------------------- Conntrack --------------------
 
 class Conntrack(Typed):
 	def __init__(self, idx, name, ctx, base_type, type_t):
 		super(Conntrack, self).__init__(idx, name, ctx, base_type, type_t)
 
 	def add_conntrack(self):
+		timeout = self.members.get(CONNTRACK_KEY_TIMEOUT)
+		timeouts = []
+
+		if timeout is not None:
+			class_name = self.get_class_name()
+
+			if not isinstance(timeout, dict):
+				sys.exit("line " + get_line_and_column(self.ctx) + " Invalid " + CONNTRACK_KEY_TIMEOUT + \
+					" value of " + class_name + " (needs to be an object)")
+
+			for conntrack_type in timeout:
+				t = timeout.get(conntrack_type)
+
+				if not isinstance(t, dict):
+					sys.exit("line " + get_line_and_column(self.ctx) + " Invalid " + conntrack_type + \
+						" value of " + class_name + " (needs to be an object)")
+
+				tcp_timeout = t.get(TCP)
+				udp_timeout = t.get(UDP)
+				icmp_timeout = t.get(ICMP)
+
+				timeouts.append({
+					TEMPLATE_KEY_CONNTRACK_TYPE: conntrack_type,
+					TCP: tcp_timeout,
+					UDP: udp_timeout,
+					ICMP: icmp_timeout
+				})
+
 		conntracks.append({
-			TEMPLATE_KEY_NAME: 		self.name,
-			CONNTRACK_KEY_LIMIT: 	resolve_value(LANGUAGE, self.members.get(CONNTRACK_KEY_LIMIT)),
-			CONNTRACK_KEY_RESERVE: 	resolve_value(LANGUAGE, self.members.get(CONNTRACK_KEY_RESERVE))
+			TEMPLATE_KEY_NAME: 					self.name,
+			CONNTRACK_KEY_LIMIT: 				self.members.get(CONNTRACK_KEY_LIMIT),
+			CONNTRACK_KEY_RESERVE: 				self.members.get(CONNTRACK_KEY_RESERVE),
+			TEMPLATE_KEY_CONNTRACK_TIMEOUTS: 	timeouts
 		})
+
+	# Called in Element
+	def validate_conntrack_key(self, key, parent_key, level, ctx):
+		class_name = self.get_class_name()
+
+		if level == 1:
+			if key not in predefined_conntrack_keys:
+				sys.exit("line " + get_line_and_column(ctx) + " Invalid " + class_name + " member " + key)
+			return
+
+		if parent_key == "":
+			sys.exit("line " + get_line_and_column(ctx) + " Internal error: Parent key of " + key + " has not been given")
+
+		if level == 2:
+			if parent_key == CONNTRACK_KEY_TIMEOUT and key not in predefined_conntrack_timeout_keys:
+				sys.exit("line " + get_line_and_column(ctx) + " Invalid " + class_name + " member " + key + " in " + self.name + "." + parent_key)
+		elif level == 3:
+			if parent_key not in predefined_conntrack_timeout_keys:
+				sys.exit("line " + get_line_and_column(ctx) + " Internal error: Invalid parent key " + parent_key + " of " + key)
+			if key not in predefined_conntrack_timeout_inner_keys:
+				sys.exit("line " + get_line_and_column(ctx) + " Invalid " + class_name + " member " + key)
+		else:
+			sys.exit("line " + get_line_and_column(ctx) + " Invalid " + class_name + " member " + key)
+
+	# Called in Element
+	def resolve_conntrack_value(self, dictionary, key, value):
+		# Add found value
+		dictionary[key] = resolve_value(LANGUAGE, value)
 
 	# Main processing method
 	def process(self):
@@ -414,6 +482,10 @@ class Conntrack(Typed):
 			# self.res = resolve_value(LANGUAGE, ...)
 
 		return self.res
+
+# < Conntrack
+
+# -------------------- Iface --------------------
 
 class Iface(Typed):
 	def __init__(self, idx, name, ctx, base_type, type_t):
