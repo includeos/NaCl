@@ -1366,6 +1366,24 @@ def handle_input():
 
 # -------------------- 1. Visiting --------------------
 
+invalid_names = [
+	TCP,
+	UDP,
+	ICMP,
+	CT,
+	IP
+]
+
+def validate_name(name_ctx):
+	name_parts = name_ctx.getText().split(DOT)
+	name = name_parts[0]
+
+	if "-" in name:
+		sys.exit("line " + get_line_and_column(name_ctx) + " Invalid character (-) in name " + name)
+
+	if name.lower() in invalid_names:
+		sys.exit("line " + get_line_and_column(name_ctx) + " Invalid name " + name)
+
 def save_element(base_type, ctx):
 	if base_type != BASE_TYPE_TYPED_INIT and base_type != BASE_TYPE_UNTYPED_INIT and base_type != BASE_TYPE_FUNCTION:
 		sys.exit("line " + get_line_and_column(ctx) + " NaCl elements of base type " + base_type + " are not handled")
@@ -1375,6 +1393,8 @@ def save_element(base_type, ctx):
 		sys.exit("line " + get_line_and_column(ctx) + " Missing name of element")
 	if name_ctx.getText() in elements:
 		sys.exit("line " + get_line_and_column(name_ctx) + " Element " + name_ctx.getText() + " has already been defined")
+
+	validate_name(name_ctx)
 
 	name = name_ctx.getText()
 	idx = len(elements)
@@ -1416,8 +1436,6 @@ def save_element(base_type, ctx):
 		global conntrack_exists
 		if conntrack_exists:
 			sys.exit("line " + get_line_and_column(type_t_ctx) + " A Conntrack has already been defined")
-		if name.lower() == CT:
-			sys.exit("line " + get_line_and_column(name_ctx) + " Invalid name (" + name + ") of Conntrack object")
 		elements[name] = Conntrack(idx, name, ctx, base_type, type_t)
 		conntrack_exists = True
 	else:
