@@ -1,5 +1,9 @@
 # NaCl
 
+NaCl is a configuration language for IncludeOS that you can use to add for example interfaces and firewall rules to your service.
+
+Documentation: http://includeos.readthedocs.io/en/latest/NaCl.html
+
 1. Install antlr4 exactly like described under Quick start: http://www.antlr.org/
 2. `pip install antlr4-python2-runtime`
 3. `pip install pystache`
