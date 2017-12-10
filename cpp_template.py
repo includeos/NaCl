@@ -37,6 +37,7 @@ class Action_handler:
 			ACCEPT,
 			DROP,
 			LOG,
+			SYSLOG,
 			SNAT,
 			DNAT
 		}
@@ -45,13 +46,25 @@ class Action_handler:
 			ACCEPT: self.transpile_accept_cpp,
 			DROP: 	self.transpile_drop_cpp,
 			LOG: 	self.transpile_log_cpp,
+			SYSLOG: self.transpile_syslog_cpp,
 			SNAT:	self.transpile_snat_cpp,
 			DNAT: 	self.transpile_dnat_cpp
 		}
 
 		self.legal_actions = {
-			TYPE_FILTER: 	[ ACCEPT, DROP, LOG ],
-			TYPE_NAT: 		[ DNAT, SNAT, LOG ]
+			TYPE_FILTER: 	[ ACCEPT, DROP, LOG, SYSLOG ],
+			TYPE_NAT: 		[ DNAT, SNAT, LOG, SYSLOG ]
+		}
+
+		self.cpp_syslog_severities = {
+			EMERG: 		INCLUDEOS_SYSLOG_SEVERITY_EMERG,
+			ALERT: 		INCLUDEOS_SYSLOG_SEVERITY_ALERT,
+			CRIT: 		INCLUDEOS_SYSLOG_SEVERITY_CRIT,
+			ERR: 		INCLUDEOS_SYSLOG_SEVERITY_ERR,
+			WARNING: 	INCLUDEOS_SYSLOG_SEVERITY_WARNING,
+			NOTICE: 	INCLUDEOS_SYSLOG_SEVERITY_NOTICE,
+			INFO: 		INCLUDEOS_SYSLOG_SEVERITY_INFO,
+			DEBUG: 		INCLUDEOS_SYSLOG_SEVERITY_DEBUG
 		}
 
 	def transpile_action(self, language, type_t, subtype, action_ctx):
@@ -72,7 +85,7 @@ class Action_handler:
 			return self.transpile_function_call_cpp(name, parameters, type_t, subtype, action_ctx)
 
 		# If get here, name is the name of an action in self.actions
-		
+
 		actions = self.legal_actions[type_t.lower()]
 
 		if name_lower not in actions:
@@ -142,6 +155,39 @@ class Action_handler:
 					content += " << "
 
 		return content + ";\n"
+
+	def transpile_syslog_cpp(self, parameter_ctx_list, subtype, action_ctx):
+		main_string = "\""
+		parameters_string = ""
+
+		if len(parameter_ctx_list) < 2:
+			sys.exit("line " + get_line_and_column(action_ctx) + " Too few arguments (syslog takes at least 2)")
+
+		severity_ctx = parameter_ctx_list[0]
+		severity = severity_ctx.getText().lower()
+
+		if severity_ctx.value_name() is None or severity not in self.cpp_syslog_severities:
+			sys.exit("line " + get_line_and_column(severity_ctx) + " Invalid syslog severity level. Valid severity levels are " + \
+				", ".join(self.cpp_syslog_severities))
+
+		for i, p in enumerate(parameter_ctx_list):
+			if i > 0:
+				if p.string() is not None:
+					string = resolve_value_cpp(p, subtype)
+					main_string += string[1:-1] # Not including first and last character of string (")
+				else:
+					t = get_cout_convert_to_type_cpp(p)
+					if t == TO_UNSIGNED:
+						main_string += "%u"
+						parameters_string += ", " + resolve_value_cpp(p, subtype)
+					elif t == TO_STRING:
+						main_string += "%s"
+						parameters_string += ", " + resolve_value_cpp(p, subtype) + ".to_string().c_str()"
+					else:
+						sys.exit("line " + get_line_and_column(p) + " Internal error: Syslog conversion for " + t + \
+							" has not been implemented")
+
+		return "Syslog::syslog(" + self.cpp_syslog_severities[severity] + ", " + main_string + "\"" + parameters_string + ");\n"
 
 	def transpile_nat_cpp(self, type_nat, parameter_ctx_list, subtype, action_ctx):
 		if type_nat != SNAT and type_nat != DNAT:
