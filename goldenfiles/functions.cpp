@@ -20,6 +20,7 @@
 #include <net/inet4>
 #include <net/ip4/cidr.hpp>
 #include <plugins/nacl.hpp>
+#include <syslogd>
 
 using namespace net;
 

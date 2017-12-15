@@ -13,9 +13,12 @@ Iface eth0 {
 	prerouting: my_filter
 }
 
+// Definition of Syslog triggers UDP logging
+// If this is not included and syslog(...) is called in a function,
+// the log is sent to the console (printf)
 Syslog settings {
-	address: 10.0.0.2,
-	port: 6514
+	address: 10.0.0.1,
+	port: 514
 }
 
 acceptable_addrs: [

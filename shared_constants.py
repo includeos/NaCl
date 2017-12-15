@@ -267,13 +267,22 @@ valid_lb_layers = [
 
 # ---- Syslog keys ----
 
+# SYSLOG_KEY_TYPE 	= "type"
 SYSLOG_KEY_ADDRESS 	= IFACE_KEY_ADDRESS
 SYSLOG_KEY_PORT 	= LB_KEY_PORT
 
 predefined_syslog_keys = [
+# 	SYSLOG_KEY_TYPE,
 	SYSLOG_KEY_ADDRESS,
 	SYSLOG_KEY_PORT
 ]
+
+# CONSOLE = "console"
+#
+# predefined_syslog_types = [
+#	UDP,
+#	CONSOLE
+# ]
 
 # ---- Syslog severity levels ----
 

@@ -32,9 +32,7 @@
 {{#has_load_balancers}}
 #include <microLB>
 {{/has_load_balancers}}
-{{#has_syslogs}}
 #include <syslogd>
-{{/has_syslogs}}
 
 using namespace net;
 
@@ -117,6 +115,8 @@ void register_plugin_nacl() {
 	{{/ifaces_with_vlans}}
 	{{#syslogs}}
 
+	// Init syslog over UDP
+	Syslog::set_facility(std::make_unique<Syslog_udp>());
 	// Syslog (setting IP and port for the syslog messages)
 	Syslog::settings( {{address}}, {{port}} );
 	INFO("NaCl", "Setting up syslog. If sent over UDP, syslog messages are sent to IP %s and port %d", Syslog::ip().str().c_str(), Syslog::port());

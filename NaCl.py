@@ -1270,8 +1270,31 @@ class Syslog(Typed):
 		super(Syslog, self).__init__(idx, name, ctx, base_type, type_t)
 
 	def add_syslog(self):
+		# type_is_udp = False
+		# addr = None
+		# port = None
+		#
+		# syslog_type = self.members.get(SYSLOG_KEY_TYPE)
+		# if syslog_type is None:
+		#	sys.exit("line " + get_line_and_column(self.ctx) + " A Syslog type must be given (" + \
+		#		", ".join(predefined_syslog_types) + ")")
+		#
+		# if syslog_type == UDP:
+		#	type_is_udp = True
+		#
+		#	addr = self.members.get(SYSLOG_KEY_ADDRESS)
+		#	port = self.members.get(SYSLOG_KEY_PORT)
+		#
+		#	if addr is None or port is None:
+		#		sys.exit("line " + get_line_and_column(self.ctx) + " Syslog address and/or port have not been specified")
+
 		addr = self.members.get(SYSLOG_KEY_ADDRESS)
 		port = self.members.get(SYSLOG_KEY_PORT)
+
+		if addr is None or port is None:
+			sys.exit("line " + get_line_and_column(self.ctx) + " Syslog address and/or port have not been specified")
+
+		# syslogs.append({ TEMPLATE_KEY_ADDRESS: addr, TEMPLATE_KEY_PORT: port, UDP: type_is_udp })
 		syslogs.append({ TEMPLATE_KEY_ADDRESS: addr, TEMPLATE_KEY_PORT: port })
 
 	# Called in Element
@@ -1286,8 +1309,19 @@ class Syslog(Typed):
 
 	# Called in Element
 	def resolve_syslog_value(self, dictionary, key, value):
-		# Add found value
 		dictionary[key] = resolve_value(LANGUAGE, value)
+
+		# if key != SYSLOG_KEY_TYPE:
+		#	# Add found value
+		#	dictionary[key] = resolve_value(LANGUAGE, value)
+		# else:
+		#	if value.value_name() is None:
+		#		sys.exit("line " + get_line_and_column(value) + " ")
+		#	v = value.value_name().getText().lower()
+		#	if v not in predefined_syslog_types:
+		#		sys.exit("line " + get_line_and_column(value) + " Invalid syslog type (valid types are " + \
+		#			", ".join(predefined_syslog_types) + ")")
+		#	dictionary[key] = v
 
 	def process(self):
 		if self.res is None:
