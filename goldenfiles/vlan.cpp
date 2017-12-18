@@ -21,6 +21,7 @@
 #include <net/ip4/cidr.hpp>
 #include <plugins/nacl.hpp>
 #include <net/vlan>
+#include <syslogd>
 
 using namespace net;
 

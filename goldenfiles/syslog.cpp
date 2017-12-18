@@ -34,7 +34,22 @@ public:
 		if (not ct_entry) {
 return {nullptr, Filter_verdict_type::DROP};
 }
+Syslog::syslog(LOG_DEBUG, "Incoming packet from %s", pckt->ip_src().to_string().c_str());
+if (ct_entry->state == Conntrack::State::ESTABLISHED) {
+Syslog::syslog(LOG_INFO, "Accepting packet from an already established connection (from %s)", pckt->ip_src().to_string().c_str());
+Syslog::syslog(LOG_DEBUG, "Packet from established connection. Source addr: %s. TTL: %u. Checksum: %u", pckt->ip_src().to_string().c_str(), pckt->ip_ttl(), pckt->ip_checksum());
 return {std::move(pckt), Filter_verdict_type::ACCEPT};
+}
+if ((ip4::Cidr{10,0,0,0,24}.contains(pckt->ip_src()) or ip4::Cidr{140,20,30,10,24}.contains(pckt->ip_src()))) {
+Syslog::syslog(LOG_INFO, "Accepting packet from acceptable saddr %s", pckt->ip_src().to_string().c_str());
+return {std::move(pckt), Filter_verdict_type::ACCEPT};
+}
+if ((pckt->ip_src() >= IP4::addr{120,10,20,30} and pckt->ip_src() <= IP4::addr{120,10,30,40})) {
+Syslog::syslog(LOG_WARNING, "Dropping packet from shady saddr %s", pckt->ip_src().to_string().c_str());
+return {nullptr, Filter_verdict_type::DROP};
+}
+Syslog::syslog(LOG_INFO, "Default verdict - dropping packet from %s", pckt->ip_src().to_string().c_str());
+return {nullptr, Filter_verdict_type::DROP};
 
 	}
 };
@@ -44,8 +59,16 @@ return {std::move(pckt), Filter_verdict_type::ACCEPT};
 void register_plugin_nacl() {
 	INFO("NaCl", "Registering NaCl plugin");
 
-	auto& eth0 = Inet4::stack<0>();
+	auto& uplink = Inet4::stack<0>();
+	uplink.network_config(IP4::addr{10,0,0,40}, IP4::addr{255,255,255,0}, IP4::addr{10,0,0,1});
+	auto& eth0 = Inet4::stack<1>();
 	eth0.network_config(IP4::addr{10,0,0,45}, IP4::addr{255,255,255,0}, IP4::addr{10,0,0,1});
+
+	// Init syslog over UDP
+	Syslog::set_facility(std::make_unique<Syslog_udp>());
+	// Syslog (setting IP and port for the syslog messages)
+	Syslog::settings( IP4::addr{10,0,0,1}, 514 );
+	INFO("NaCl", "Setting up syslog. If sent over UDP, syslog messages are sent to IP %s and port %d", Syslog::ip().str().c_str(), Syslog::port());
 
 	custom_made_classes_from_nacl::My_Filter my_filter;
 
@@ -54,16 +77,6 @@ void register_plugin_nacl() {
 	// Ct
 
 	nacl_ct_obj = std::make_shared<Conntrack>();
-	nacl_ct_obj->maximum_entries = 20000;
-	nacl_ct_obj->reserve(10000);
-	nacl_ct_obj->timeout.established.tcp = Conntrack::Timeout_duration{ 100 };
-	nacl_ct_obj->timeout.established.udp = Conntrack::Timeout_duration{ 200 };
-	nacl_ct_obj->timeout.established.icmp = Conntrack::Timeout_duration{ 300 };
-	nacl_ct_obj->timeout.confirmed.tcp = Conntrack::Timeout_duration{ 700 };
-	nacl_ct_obj->timeout.confirmed.udp = Conntrack::Timeout_duration{ 800 };
-	nacl_ct_obj->timeout.unconfirmed.tcp = Conntrack::Timeout_duration{ 400 };
-	nacl_ct_obj->timeout.unconfirmed.udp = Conntrack::Timeout_duration{ 500 };
-	nacl_ct_obj->timeout.unconfirmed.icmp = Conntrack::Timeout_duration{ 600 };
 
 	INFO("NaCl", "Enabling Conntrack on eth0");
 	eth0.enable_conntrack(nacl_ct_obj);

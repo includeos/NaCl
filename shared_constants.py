@@ -62,6 +62,7 @@ TYPE_VLAN 			= "vlan"
 TYPE_GATEWAY 		= "gateway"
 TYPE_CONNTRACK 		= "conntrack"
 TYPE_LOAD_BALANCER 	= "load_balancer"
+TYPE_SYSLOG 		= "syslog"
 TYPE_FILTER 		= "filter"
 TYPE_REWRITE 		= "rewrite"
 TYPE_NAT 			= "nat"
@@ -72,6 +73,7 @@ valid_nacl_types = [
 	TYPE_GATEWAY,
 	TYPE_CONNTRACK,
 	TYPE_LOAD_BALANCER,
+	TYPE_SYSLOG,
 	TYPE_FILTER,
 	TYPE_REWRITE,
 	TYPE_NAT
@@ -263,6 +265,47 @@ valid_lb_layers = [
 	TCP
 ]
 
+# ---- Syslog keys ----
+
+# SYSLOG_KEY_TYPE 	= "type"
+SYSLOG_KEY_ADDRESS 	= IFACE_KEY_ADDRESS
+SYSLOG_KEY_PORT 	= LB_KEY_PORT
+
+predefined_syslog_keys = [
+# 	SYSLOG_KEY_TYPE,
+	SYSLOG_KEY_ADDRESS,
+	SYSLOG_KEY_PORT
+]
+
+# CONSOLE = "console"
+#
+# predefined_syslog_types = [
+#	UDP,
+#	CONSOLE
+# ]
+
+# ---- Syslog severity levels ----
+
+EMERG = "emerg"
+ALERT = "alert"
+CRIT = "crit"
+ERR = "err"
+WARNING = "warning"
+NOTICE = "notice"
+INFO = "info"
+DEBUG = "debug"
+
+# ---- IncludeOS syslog severity levels
+
+INCLUDEOS_SYSLOG_SEVERITY_EMERG = "LOG_EMERG"
+INCLUDEOS_SYSLOG_SEVERITY_ALERT = "LOG_ALERT"
+INCLUDEOS_SYSLOG_SEVERITY_CRIT = "LOG_CRIT"
+INCLUDEOS_SYSLOG_SEVERITY_ERR = "LOG_ERR"
+INCLUDEOS_SYSLOG_SEVERITY_WARNING = "LOG_WARNING"
+INCLUDEOS_SYSLOG_SEVERITY_NOTICE = "LOG_NOTICE"
+INCLUDEOS_SYSLOG_SEVERITY_INFO = "LOG_INFO"
+INCLUDEOS_SYSLOG_SEVERITY_DEBUG = "LOG_DEBUG"
+
 # ---- General ----
 
 # Constants related to the log action (std::cout)
@@ -311,6 +354,7 @@ INCLUDEOS_IP4_CIDR_CLASS = "ip4::Cidr"
 ACCEPT 	= 'accept'
 DROP 	= 'drop'
 LOG 	= 'log'
+SYSLOG 	= 'syslog'
 SNAT 	= 'snat'
 DNAT 	= 'dnat'
 

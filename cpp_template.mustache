@@ -32,6 +32,7 @@
 {{#has_load_balancers}}
 #include <microLB>
 {{/has_load_balancers}}
+#include <syslogd>
 
 using namespace net;
 
@@ -112,6 +113,14 @@ void register_plugin_nacl() {
 	Super_stack::inet().create<IP4>({{iface}}_manager.add({{iface}}_nic, {{index}}), {{iface_index}}, {{index}}).network_config({{address}}, {{netmask}}{{#gateway}}, {{.}}{{/gateway}}{{^gateway}}, 0{{/gateway}});
 	{{/vlans}}
 	{{/ifaces_with_vlans}}
+	{{#syslogs}}
+
+	// Init syslog over UDP
+	Syslog::set_facility(std::make_unique<Syslog_udp>());
+	// Syslog (setting IP and port for the syslog messages)
+	Syslog::settings( {{address}}, {{port}} );
+	INFO("NaCl", "Setting up syslog. If sent over UDP, syslog messages are sent to IP %s and port %d", Syslog::ip().str().c_str(), Syslog::port());
+	{{/syslogs}}
 
 	{{#filters}}
 	custom_made_classes_from_nacl::{{title}} {{name}};

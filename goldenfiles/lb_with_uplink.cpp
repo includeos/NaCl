@@ -21,6 +21,7 @@
 #include <net/ip4/cidr.hpp>
 #include <plugins/nacl.hpp>
 #include <microLB>
+#include <syslogd>
 
 using namespace net;
 

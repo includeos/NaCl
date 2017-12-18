@@ -1,0 +1,57 @@
+Iface uplink {
+	address: 10.0.0.40,
+	netmask: 255.255.255.0,
+	gateway: 10.0.0.1,
+	index: 0
+}
+
+Iface eth0 {
+	address: 10.0.0.45,
+	netmask: 255.255.255.0,
+	gateway: 10.0.0.1,
+	index: 1,
+	prerouting: my_filter
+}
+
+// Definition of Syslog triggers UDP logging
+// If this is not included and syslog(...) is called in a function,
+// the log is sent to the console (printf)
+Syslog settings {
+	address: 10.0.0.1,
+	port: 514
+}
+
+acceptable_addrs: [
+	10.0.0.0/24,
+	140.20.30.10/24
+]
+
+warning_addrs: 120.10.20.30-120.10.30.40
+
+Filter::IP my_filter {
+	debug()
+
+	if (ct.state == established) {
+		syslog(INFO, "Accepting packet from an already established connection (from ", ip.saddr, ")")
+		syslog(DEBUG, "Packet from established connection. Source addr: ", ip.saddr, ". TTL: ", ip.ttl,
+			". Checksum: ", ip.checksum)
+		accept
+	}
+
+	if (ip.saddr in acceptable_addrs) {
+		syslog(INFO, "Accepting packet from acceptable saddr ", ip.saddr)
+		accept
+	}
+
+	if (ip.saddr in warning_addrs) {
+		syslog(WARNING, "Dropping packet from shady saddr ", ip.saddr)
+		drop
+	}
+
+	syslog(INFO, "Default verdict - dropping packet from ", ip.saddr)
+	drop
+}
+
+Filter::IP debug {
+	syslog(DEBUG, "Incoming packet from ", ip.saddr)
+}

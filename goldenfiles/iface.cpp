@@ -22,6 +22,7 @@
 #include <plugins/nacl.hpp>
 #include <net/nat/napt.hpp>
 #include <net/vlan>
+#include <syslogd>
 
 using namespace net;
 

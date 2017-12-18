@@ -40,6 +40,7 @@ TEMPLATE_KEY_PUSHES 			= "pushes"
 TEMPLATE_KEY_GATEWAYS 			= "gateways"
 TEMPLATE_KEY_CONNTRACKS 		= "conntracks"
 TEMPLATE_KEY_LOAD_BALANCERS 	= "load_balancers"
+TEMPLATE_KEY_SYSLOGS 			= "syslogs"
 TEMPLATE_KEY_IP_FORWARD_IFACES 	= "ip_forward_ifaces"
 TEMPLATE_KEY_ENABLE_CT_IFACES 	= "enable_ct_ifaces"
 TEMPLATE_KEY_MASQUERADES 		= "masquerades"
@@ -52,6 +53,7 @@ TEMPLATE_KEY_HAS_VLANS 			= "has_vlans"
 TEMPLATE_KEY_HAS_AUTO_NATTING_IFACES = "has_auto_natting_ifaces"
 TEMPLATE_KEY_HAS_FUNCTIONS 		= "has_functions"
 TEMPLATE_KEY_HAS_LOAD_BALANCERS = "has_load_balancers"
+TEMPLATE_KEY_HAS_SYSLOGS 		= "has_syslogs"
 
 TEMPLATE_KEY_ENABLE_CT 			= "enable_ct"
 
@@ -66,6 +68,7 @@ pushes 				= []
 gateways 			= []
 conntracks 			= []
 load_balancers 		= []
+syslogs 			= []
 ip_forward_ifaces 	= []
 enable_ct_ifaces 	= []
 masquerades 		= []
@@ -73,6 +76,7 @@ auto_natting_ifaces = []
 
 gateway_exists 		= False
 conntrack_exists 	= False
+syslog_exists 		= False
 
 TEMPLATE_KEY_FUNCTION_NAME 	= "function_name"
 TEMPLATE_KEY_COMMA 			= "comma"
@@ -94,17 +98,17 @@ TEMPLATE_KEY_CONTENT		= "content"
 TEMPLATE_KEY_IFACE_INDEX 	= "iface_index"
 TEMPLATE_KEY_VLANS 			= "vlans"
 TEMPLATE_KEY_IS_GATEWAY_PUSH = "is_gateway_push"
+TEMPLATE_KEY_PORT 			= "port"
 
 TEMPLATE_KEY_LB_LAYER 				= "layer"
 TEMPLATE_KEY_LB_ALGORITHM 			= "algorithm"
 TEMPLATE_KEY_LB_WAIT_QUEUE_LIMIT 	= "wait_queue_limit"
 TEMPLATE_KEY_LB_SESSION_LIMIT 		= "session_limit"
-TEMPLATE_KEY_LB_PORT 				= "port"
 TEMPLATE_KEY_LB_CLIENTS_IFACE 		= "clients_iface_name"
 TEMPLATE_KEY_LB_SERVERS_IFACE 		= "servers_iface_name"
 TEMPLATE_KEY_LB_POOL 				= "pool"
 TEMPLATE_KEY_LB_NODE_ADDRESS 		= TEMPLATE_KEY_ADDRESS
-TEMPLATE_KEY_LB_NODE_PORT 			= TEMPLATE_KEY_LB_PORT
+TEMPLATE_KEY_LB_NODE_PORT 			= TEMPLATE_KEY_PORT
 
 TEMPLATE_KEY_CONNTRACK_TIMEOUTS 	= "timeouts"
 TEMPLATE_KEY_CONNTRACK_TYPE 		= "type"
@@ -154,7 +158,7 @@ class Element(object):
 		is_vlan = isinstance(self, Vlan)
 
 		# Using Untyped methods (placed in Element) since depth is more than 1 level deep
-		if isinstance(self, Load_balancer) or isinstance(self, Conntrack):
+		if isinstance(self, Load_balancer) or isinstance(self, Conntrack) or isinstance(self, Syslog):
 			if value.obj() is None:
 				sys.exit("line " + get_line_and_column(value) + " A " + class_name + " must be an object")
 			self.process_obj(self.members, value.obj())
@@ -197,8 +201,8 @@ class Element(object):
 		# Find assignments (f.ex. x.y: <value> or x.y.z: <value>) that refers to this Element
 
 		class_name = self.get_class_name()
-		is_lb_untyped_or_conntrack = isinstance(self, Untyped) or isinstance(self, Load_balancer) or \
-			isinstance(self, Conntrack)
+		is_lb_untyped_conntrack_or_syslog = isinstance(self, Untyped) or isinstance(self, Load_balancer) or \
+			isinstance(self, Conntrack) or isinstance(self, Syslog)
 		is_gateway = isinstance(self, Gateway)
 
 		# Handle assignments in the order of number of name parts to facilitate that you can have two assignments
@@ -217,7 +221,7 @@ class Element(object):
 		for key in assignments_to_process:
 			element = elements.get(key)
 
-			if is_lb_untyped_or_conntrack:
+			if is_lb_untyped_conntrack_or_syslog:
 				self.process_assignment(element)
 			elif is_gateway:
 				self.process_gateway_assignment(element)
@@ -246,10 +250,10 @@ class Element(object):
 					else:
 						sys.exit("line " + get_line_and_column(element.ctx) + " " + class_name + " member " + member + " has already been set")
 
-	# ---------- Methods related to dictionary self.members for Untyped and Load_balancer ----------
+	# ---------- Methods related to dictionary self.members for Untyped, Load_balancer, Conntrack and Syslog ----------
 
 	def process_assignment(self, element):
-		# Could be either Untyped, Load_balancer or Conntrack
+		# Could be either Untyped, Load_balancer, Conntrack or Syslog
 
 		# Remove first part (the name of this element)
 		assignment_name_parts = element.name.split(DOT)
@@ -295,7 +299,8 @@ class Element(object):
 	def add_dictionary_val(self, dictionary, key_list, value, level=1, parent_key=""):
 		is_lb = isinstance(self, Load_balancer)
 		is_conntrack = isinstance(self, Conntrack)
-		level_key = key_list[0] if not is_lb and not is_conntrack else key_list[0].lower()
+		is_syslog = isinstance(self, Syslog)
+		level_key = key_list[0] if not is_lb and not is_conntrack and not is_syslog else key_list[0].lower()
 
 		# End of recursion condition
 		if len(key_list) == 1:
@@ -310,6 +315,9 @@ class Element(object):
 				elif is_conntrack:
 					self.validate_conntrack_key(level_key, parent_key, level, value) # sys.exit on error
 					self.resolve_conntrack_value(dictionary, level_key, value)
+				elif is_syslog:
+					self.validate_syslog_key(level_key, parent_key, level, value) # sys.exit on error
+					self.resolve_syslog_value(dictionary, level_key, value)
 				else:
 					dictionary[level_key] = resolve_value(LANGUAGE, value)
 				return
@@ -323,14 +331,15 @@ class Element(object):
 				return self.add_dictionary_val(dictionary[key], key_list, value, level, level_key)
 
 	def process_obj(self, dictionary, ctx, level=1, parent_key=""):
-		# Could be either Untyped, Load_balancer or Conntrack
-		# Level only relevant for Load_balancer and Conntrack
+		# Could be either Untyped, Load_balancer, Conntrack or Syslog
+		# Level only relevant for Load_balancer, Conntrack and Syslog
 
 		is_lb = isinstance(self, Load_balancer)
 		is_conntrack = isinstance(self, Conntrack)
+		is_syslog = isinstance(self, Syslog)
 
 		for pair in ctx.key_value_list().key_value_pair():
-			key = pair.key().getText() if not is_lb and not is_conntrack else pair.key().getText().lower()
+			key = pair.key().getText() if not is_lb and not is_conntrack and not is_syslog else pair.key().getText().lower()
 
 			if dictionary.get(key) is not None:
 				sys.exit("line " + get_line_and_column(pair.key()) + " Member " + key + " has already been set")
@@ -340,6 +349,8 @@ class Element(object):
 				self.validate_lb_key(key, parent_key, level, pair.key()) # sys.exit on error
 			elif is_conntrack:
 				self.validate_conntrack_key(key, parent_key, level, pair.key()) # sys.exit on error
+			elif is_syslog:
+				self.validate_syslog_key(key, parent_key, level, pair.key()) # sys.exit on error
 
 			# End of recursion:
 			if pair.value().obj() is None:
@@ -347,6 +358,8 @@ class Element(object):
 					self.resolve_lb_value(dictionary, key, pair.value())
 				elif is_conntrack:
 					self.resolve_conntrack_value(dictionary, key, pair.value())
+				elif is_syslog:
+					self.resolve_syslog_value(dictionary, key, pair.value())
 				else:
 					dictionary[key] = resolve_value(LANGUAGE, pair.value())
 			else:
@@ -1138,7 +1151,7 @@ class Load_balancer(Typed):
 			TEMPLATE_KEY_LB_ALGORITHM: 			algo,
 			TEMPLATE_KEY_LB_WAIT_QUEUE_LIMIT: 	waitq_limit,
 			TEMPLATE_KEY_LB_SESSION_LIMIT: 		session_limit,
-			TEMPLATE_KEY_LB_PORT: 				port,
+			TEMPLATE_KEY_PORT: 					port,
 			TEMPLATE_KEY_LB_CLIENTS_IFACE: 		clients_iface_name,
 			TEMPLATE_KEY_LB_SERVERS_IFACE: 		servers_iface_name,
 			TEMPLATE_KEY_LB_POOL: 				pystache_pool
@@ -1250,6 +1263,80 @@ class Load_balancer(Typed):
 
 # < Load_balancer
 
+# -------------------- Syslog (settings) --------------------
+
+class Syslog(Typed):
+	def __init__(self, idx, name, ctx, base_type, type_t):
+		super(Syslog, self).__init__(idx, name, ctx, base_type, type_t)
+
+	def add_syslog(self):
+		# type_is_udp = False
+		# addr = None
+		# port = None
+		#
+		# syslog_type = self.members.get(SYSLOG_KEY_TYPE)
+		# if syslog_type is None:
+		#	sys.exit("line " + get_line_and_column(self.ctx) + " A Syslog type must be given (" + \
+		#		", ".join(predefined_syslog_types) + ")")
+		#
+		# if syslog_type == UDP:
+		#	type_is_udp = True
+		#
+		#	addr = self.members.get(SYSLOG_KEY_ADDRESS)
+		#	port = self.members.get(SYSLOG_KEY_PORT)
+		#
+		#	if addr is None or port is None:
+		#		sys.exit("line " + get_line_and_column(self.ctx) + " Syslog address and/or port have not been specified")
+
+		addr = self.members.get(SYSLOG_KEY_ADDRESS)
+		port = self.members.get(SYSLOG_KEY_PORT)
+
+		if addr is None or port is None:
+			sys.exit("line " + get_line_and_column(self.ctx) + " Syslog address and/or port have not been specified")
+
+		# syslogs.append({ TEMPLATE_KEY_ADDRESS: addr, TEMPLATE_KEY_PORT: port, UDP: type_is_udp })
+		syslogs.append({ TEMPLATE_KEY_ADDRESS: addr, TEMPLATE_KEY_PORT: port })
+
+	# Called in Element
+	def validate_syslog_key(self, key, parent_key, level, ctx):
+		class_name = self.get_class_name()
+
+		if level == 1:
+			if key not in predefined_syslog_keys:
+				sys.exit("line " + get_line_and_column(ctx) + " Invalid " + class_name + " member " + key)
+		else:
+			sys.exit("line " + get_line_and_column(ctx) + " Invalid " + class_name + " member " + key)
+
+	# Called in Element
+	def resolve_syslog_value(self, dictionary, key, value):
+		dictionary[key] = resolve_value(LANGUAGE, value)
+
+		# if key != SYSLOG_KEY_TYPE:
+		#	# Add found value
+		#	dictionary[key] = resolve_value(LANGUAGE, value)
+		# else:
+		#	if value.value_name() is None:
+		#		sys.exit("line " + get_line_and_column(value) + " ")
+		#	v = value.value_name().getText().lower()
+		#	if v not in predefined_syslog_types:
+		#		sys.exit("line " + get_line_and_column(value) + " Invalid syslog type (valid types are " + \
+		#			", ".join(predefined_syslog_types) + ")")
+		#	dictionary[key] = v
+
+	def process(self):
+		if self.res is None:
+			# Then process
+
+			self.process_ctx()
+			self.process_assignments()
+			self.add_syslog()
+
+			self.res = self.members
+
+		return self.res
+
+# < Syslog (settings)
+
 # -------------------- Function --------------------
 
 class Function(Element):
@@ -1330,6 +1417,7 @@ def handle_input():
 		TEMPLATE_KEY_IFACES_WITH_VLANS: 	ifaces_with_vlans,
 		TEMPLATE_KEY_CONNTRACKS: 			conntracks,
 		TEMPLATE_KEY_LOAD_BALANCERS: 		load_balancers,
+		TEMPLATE_KEY_SYSLOGS: 				syslogs,
 		TEMPLATE_KEY_FILTERS: 				filters,
 		TEMPLATE_KEY_NATS: 					nats,
 		TEMPLATE_KEY_REWRITES: 				rewrites,
@@ -1346,7 +1434,8 @@ def handle_input():
 		TEMPLATE_KEY_HAS_AUTO_NATTING_IFACES: (len(auto_natting_ifaces) > 0),
 		TEMPLATE_KEY_HAS_FUNCTIONS: 		(len(nats) > 0 or len(filters) > 0),
 		TEMPLATE_KEY_ENABLE_CT: 			(len(nats) > 0 or len(filters) > 0 or len(gateways) > 0),
-		TEMPLATE_KEY_HAS_LOAD_BALANCERS: 	(len(load_balancers) > 0)
+		TEMPLATE_KEY_HAS_LOAD_BALANCERS: 	(len(load_balancers) > 0),
+		TEMPLATE_KEY_HAS_SYSLOGS: 			(len(syslogs) > 0)
 	}
 
 	if LANGUAGE == CPP:
@@ -1438,6 +1527,12 @@ def save_element(base_type, ctx):
 			sys.exit("line " + get_line_and_column(type_t_ctx) + " A Conntrack has already been defined")
 		elements[name] = Conntrack(idx, name, ctx, base_type, type_t)
 		conntrack_exists = True
+	elif type_t_lower == TYPE_SYSLOG:
+		global syslog_exists
+		if syslog_exists:
+			sys.exit("line " + get_line_and_column(type_t_ctx) + " A Syslog has already been defined")
+		elements[name] = Syslog(idx, name, ctx, base_type, type_t)
+		syslog_exists = True
 	else:
 		sys.exit("line " + get_line_and_column(type_t_ctx) + " NaCl elements of type " + type_t + " are not handled")
 
