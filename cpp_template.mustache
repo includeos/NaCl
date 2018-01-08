@@ -80,7 +80,7 @@ void register_plugin_nacl() {
 	INFO("NaCl", "Registering NaCl plugin");
 
 	{{#ifaces}}
-  auto& {{name}} = Super_stack::get<IP4>({{index}});
+  auto& {{name}} = Super_stack::get<IP4>({{{index}}});
 	{{#config_is_static}}
 	{{name}}.network_config({{address}}, {{netmask}}{{#gateway}}, {{.}}{{/gateway}}{{^gateway}}, 0{{/gateway}}{{#dns}}, {{.}}{{/dns}});
 	{{/config_is_static}}
