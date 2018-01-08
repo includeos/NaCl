@@ -18,6 +18,7 @@
 
 #include <iostream>
 #include <net/inet4>
+#include <net/super_stack.hpp>
 #include <net/ip4/cidr.hpp>
 #include <plugins/nacl.hpp>
 #include <microLB>
@@ -29,9 +30,9 @@ static microLB::Balancer* nacl_lb_obj = nullptr;
 void register_plugin_nacl() {
 	INFO("NaCl", "Registering NaCl plugin");
 
-	auto& inside = Inet4::stack<1>();
+	auto& inside = Super_stack::get<IP4>(1);
 	inside.network_config(IP4::addr{10,20,17,72}, IP4::addr{255,255,255,0}, IP4::addr{10,20,17,1});
-	auto& outside = Inet4::stack<0>();
+	auto& outside = Super_stack::get<IP4>(0);
 	outside.network_config(IP4::addr{10,20,17,71}, IP4::addr{255,255,255,0}, IP4::addr{10,20,17,1});
 
 

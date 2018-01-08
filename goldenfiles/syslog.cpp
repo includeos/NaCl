@@ -18,6 +18,7 @@
 
 #include <iostream>
 #include <net/inet4>
+#include <net/super_stack.hpp>
 #include <net/ip4/cidr.hpp>
 #include <plugins/nacl.hpp>
 #include <syslogd>
@@ -59,9 +60,9 @@ return {nullptr, Filter_verdict_type::DROP};
 void register_plugin_nacl() {
 	INFO("NaCl", "Registering NaCl plugin");
 
-	auto& uplink = Inet4::stack<0>();
+	auto& uplink = Super_stack::get<IP4>(0);
 	uplink.network_config(IP4::addr{10,0,0,40}, IP4::addr{255,255,255,0}, IP4::addr{10,0,0,1});
-	auto& eth0 = Inet4::stack<1>();
+	auto& eth0 = Super_stack::get<IP4>(1);
 	eth0.network_config(IP4::addr{10,0,0,45}, IP4::addr{255,255,255,0}, IP4::addr{10,0,0,1});
 
 	// Init syslog over UDP
