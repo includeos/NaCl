@@ -18,6 +18,7 @@
 
 #include <iostream>
 #include <net/inet4>
+#include <net/super_stack.hpp>
 #include <net/ip4/cidr.hpp>
 #include <plugins/nacl.hpp>
 #include <syslogd>
@@ -72,37 +73,37 @@ return {nullptr, Filter_verdict_type::DROP};
 void register_plugin_nacl() {
 	INFO("NaCl", "Registering NaCl plugin");
 
-	auto& s = Inet4::stack<3>();
-	Inet4::ifconfig<3>(10.0, [&s] (bool timedout) {
+	auto& s = Super_stack::get<IP4>(3);
+	s.negotiate_dhcp(10.0, [&s] (bool timedout) {
 		if (timedout) {
 			INFO("NaCl plugin interface s", "DHCP timeout (%s) - falling back to static configuration", s.ifname().c_str());
 			s.network_config(IP4::addr{10,0,0,60}, IP4::addr{255,255,255,0}, IP4::addr{10,0,0,1});
 		}
 	});
-	auto& something_else = Inet4::stack<2>();
-	Inet4::ifconfig<2>(10.0, [&something_else] (bool timedout) {
+	auto& something_else = Super_stack::get<IP4>(2);
+	something_else.negotiate_dhcp(10.0, [&something_else] (bool timedout) {
 		if (timedout) {
 			INFO("NaCl plugin interface something_else", "DHCP request timed out. Nothing to do.");
 			return;
 		}
 		INFO("NaCl plugin interface something_else", "IP address updated: %s", something_else.ip_addr().str().c_str());
 	});
-	auto& something = Inet4::stack<1>();
-	Inet4::ifconfig<1>(10.0, [&something] (bool timedout) {
+	auto& something = Super_stack::get<IP4>(1);
+	something.negotiate_dhcp(10.0, [&something] (bool timedout) {
 		if (timedout) {
 			INFO("NaCl plugin interface something", "DHCP request timed out. Nothing to do.");
 			return;
 		}
 		INFO("NaCl plugin interface something", "IP address updated: %s", something.ip_addr().str().c_str());
 	});
-	auto& some_other = Inet4::stack<0>();
-	Inet4::ifconfig<0>(10.0, [&some_other] (bool timedout) {
+	auto& some_other = Super_stack::get<IP4>(0);
+	some_other.negotiate_dhcp(10.0, [&some_other] (bool timedout) {
 		if (timedout) {
 			INFO("NaCl plugin interface some_other", "DHCP timeout (%s) - falling back to static configuration", some_other.ifname().c_str());
 			some_other.network_config(IP4::addr{10,0,0,50}, IP4::addr{255,255,255,0}, IP4::addr{10,0,0,1});
 		}
 	});
-	auto& eth0 = Inet4::stack<4>();
+	auto& eth0 = Super_stack::get<IP4>(4);
 	eth0.network_config(IP4::addr{10,0,0,42}, IP4::addr{255,255,255,0}, IP4::addr{10,0,0,1}, IP4::addr{8,8,8,8});
 
 	custom_made_classes_from_nacl::My_Filter my_filter;

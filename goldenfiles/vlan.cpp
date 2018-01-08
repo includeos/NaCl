@@ -18,6 +18,7 @@
 
 #include <iostream>
 #include <net/inet4>
+#include <net/super_stack.hpp>
 #include <net/ip4/cidr.hpp>
 #include <plugins/nacl.hpp>
 #include <net/vlan>
@@ -28,15 +29,15 @@ using namespace net;
 void register_plugin_nacl() {
 	INFO("NaCl", "Registering NaCl plugin");
 
-	auto& eth4 = Inet4::stack<4>();
+	auto& eth4 = Super_stack::get<IP4>(4);
 	eth4.network_config(IP4::addr{10,200,100,100}, IP4::addr{255,255,255,0}, IP4::addr{100,200,100,1});
-	auto& eth3 = Inet4::stack<3>();
+	auto& eth3 = Super_stack::get<IP4>(3);
 	eth3.network_config(IP4::addr{10,100,100,100}, IP4::addr{255,255,255,0}, IP4::addr{100,100,100,1});
-	auto& eth2 = Inet4::stack<2>();
+	auto& eth2 = Super_stack::get<IP4>(2);
 	eth2.network_config(IP4::addr{10,10,10,50}, IP4::addr{255,255,255,0}, IP4::addr{10,10,10,1});
-	auto& eth1 = Inet4::stack<1>();
+	auto& eth1 = Super_stack::get<IP4>(1);
 	eth1.network_config(IP4::addr{10,0,10,45}, IP4::addr{255,255,255,0}, IP4::addr{10,0,10,1});
-	auto& eth0 = Inet4::stack<0>();
+	auto& eth0 = Super_stack::get<IP4>(0);
 	eth0.network_config(IP4::addr{10,0,0,30}, IP4::addr{255,255,255,0}, IP4::addr{10,0,0,1});
 
 	// For each iface:

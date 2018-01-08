@@ -18,6 +18,7 @@
 
 #include <iostream>
 #include <net/inet4>
+#include <net/super_stack.hpp>
 #include <net/ip4/cidr.hpp>
 #include <plugins/nacl.hpp>
 #include <syslogd>
@@ -44,7 +45,7 @@ return {std::move(pckt), Filter_verdict_type::ACCEPT};
 void register_plugin_nacl() {
 	INFO("NaCl", "Registering NaCl plugin");
 
-	auto& eth0 = Inet4::stack<0>();
+	auto& eth0 = Super_stack::get<IP4>(0);
 	eth0.network_config(IP4::addr{10,0,0,45}, IP4::addr{255,255,255,0}, IP4::addr{10,0,0,1});
 
 	custom_made_classes_from_nacl::My_Filter my_filter;

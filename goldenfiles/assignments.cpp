@@ -18,6 +18,7 @@
 
 #include <iostream>
 #include <net/inet4>
+#include <net/super_stack.hpp>
 #include <net/ip4/cidr.hpp>
 #include <plugins/nacl.hpp>
 #include <net/router.hpp>
@@ -58,15 +59,15 @@ return {nullptr, Filter_verdict_type::DROP};
 void register_plugin_nacl() {
 	INFO("NaCl", "Registering NaCl plugin");
 
-	auto& eth1 = Inet4::stack<1>();
-	Inet4::ifconfig<1>(10.0, [&eth1] (bool timedout) {
+	auto& eth1 = Super_stack::get<IP4>(1);
+	eth1.negotiate_dhcp(10.0, [&eth1] (bool timedout) {
 		if (timedout) {
 			INFO("NaCl plugin interface eth1", "DHCP request timed out. Nothing to do.");
 			return;
 		}
 		INFO("NaCl plugin interface eth1", "IP address updated: %s", eth1.ip_addr().str().c_str());
 	});
-	auto& eth0 = Inet4::stack<0>();
+	auto& eth0 = Super_stack::get<IP4>(0);
 	eth0.network_config(IP4::addr{10,0,0,45}, IP4::addr{255,255,255,0}, IP4::addr{10,0,0,1}, IP4::addr{8,8,8,8});
 
 	// For each iface:

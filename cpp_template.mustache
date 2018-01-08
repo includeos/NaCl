@@ -80,7 +80,7 @@ void register_plugin_nacl() {
 	INFO("NaCl", "Registering NaCl plugin");
 
 	{{#ifaces}}
-  auto& {{name}} = Super_stack::get<IP4>({{{index}}});
+	auto& {{name}} = Super_stack::get<IP4>({{{index}}});
 	{{#config_is_static}}
 	{{name}}.network_config({{address}}, {{netmask}}{{#gateway}}, {{.}}{{/gateway}}{{^gateway}}, 0{{/gateway}}{{#dns}}, {{.}}{{/dns}});
 	{{/config_is_static}}
@@ -106,10 +106,10 @@ void register_plugin_nacl() {
 
 	// For each iface:
 	auto& {{iface}}_nic = {{iface}}.nic();
-	auto& {{iface}}_manager = VLAN_manager::get({{iface_index}});
+	auto& {{iface}}_manager = VLAN_manager::get({{{iface_index}}});
 	// For each vlan connected to this iface:
 	{{#vlans}}
-	Super_stack::inet().create<IP4>({{iface}}_manager.add({{iface}}_nic, {{index}}), {{iface_index}}, {{index}}).network_config({{address}}, {{netmask}}{{#gateway}}, {{.}}{{/gateway}}{{^gateway}}, 0{{/gateway}});
+	Super_stack::inet().create<IP4>({{iface}}_manager.add({{iface}}_nic, {{{index}}}), {{{iface_index}}}, {{{index}}}).network_config({{address}}, {{netmask}}{{#gateway}}, {{.}}{{/gateway}}{{^gateway}}, 0{{/gateway}});
 	{{/vlans}}
 	{{/ifaces_with_vlans}}
 	{{#syslogs}}

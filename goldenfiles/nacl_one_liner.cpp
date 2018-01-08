@@ -18,6 +18,7 @@
 
 #include <iostream>
 #include <net/inet4>
+#include <net/super_stack.hpp>
 #include <net/ip4/cidr.hpp>
 #include <plugins/nacl.hpp>
 #include <net/nat/napt.hpp>
@@ -554,25 +555,25 @@ return {std::move(pckt), Filter_verdict_type::ACCEPT};
 void register_plugin_nacl() {
 	INFO("NaCl", "Registering NaCl plugin");
 
-	auto& eth4 = Inet4::stack<3>();
+	auto& eth4 = Super_stack::get<IP4>(3);
 	eth4.network_config(IP4::addr{10,0,0,203}, IP4::addr{255,255,255,0}, IP4::addr{10,0,0,1});
-	auto& eth3 = Inet4::stack<2>();
+	auto& eth3 = Super_stack::get<IP4>(2);
 	eth3.network_config(IP4::addr{10,0,0,102}, IP4::addr{255,255,255,0}, IP4::addr{10,0,0,1});
-	auto& eth1 = Inet4::stack<5>();
+	auto& eth1 = Super_stack::get<IP4>(5);
 	eth1.network_config(IP4::addr{10,0,0,80}, IP4::addr{255,255,255,0}, IP4::addr{10,0,0,1});
-	auto& eth0 = Inet4::stack<4>();
+	auto& eth0 = Super_stack::get<IP4>(4);
 	eth0.network_config(IP4::addr{10,0,0,40}, IP4::addr{255,255,255,0}, IP4::addr{10,0,0,1}, IP4::addr{8,8,8,8});
-	auto& eth_test_2 = Inet4::stack<1>();
+	auto& eth_test_2 = Super_stack::get<IP4>(1);
 	eth_test_2.network_config(IP4::addr{10,0,0,99}, IP4::addr{255,255,255,0}, IP4::addr{10,0,0,1}, IP4::addr{10,10,10,10});
-	auto& eth2 = Inet4::stack<6>();
-	Inet4::ifconfig<6>(10.0, [&eth2] (bool timedout) {
+	auto& eth2 = Super_stack::get<IP4>(6);
+	eth2.negotiate_dhcp(10.0, [&eth2] (bool timedout) {
 		if (timedout) {
 			INFO("NaCl plugin interface eth2", "DHCP request timed out. Nothing to do.");
 			return;
 		}
 		INFO("NaCl plugin interface eth2", "IP address updated: %s", eth2.ip_addr().str().c_str());
 	});
-	auto& eth_test_1 = Inet4::stack<0>();
+	auto& eth_test_1 = Super_stack::get<IP4>(0);
 	eth_test_1.network_config(IP4::addr{10,0,0,130}, IP4::addr{255,255,255,0}, IP4::addr{10,0,0,1}, IP4::addr{9,9,9,9});
 
 	custom_made_classes_from_nacl::Encapsulating_Ip_Filter encapsulating_ip_filter;
