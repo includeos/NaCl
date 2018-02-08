@@ -259,6 +259,8 @@ valid_lb_servers_algos = [
 	# FEWEST_CONNECTIONS
 ]
 
+INCLUDEOS_ROUND_ROBIN = ROUND_ROBIN
+
 # Load balancer layers
 
 valid_lb_layers = [
@@ -615,7 +617,10 @@ predefined_values_cpp = {
 	ESTABLISHED: 	INCLUDEOS_STATE_ESTABLISHED,
 	NEW: 			INCLUDEOS_STATE_NEW,
 	RELATED: 		INCLUDEOS_STATE_RELATED,
-	INVALID: 		INCLUDEOS_STATE_INVALID
+	INVALID: 		INCLUDEOS_STATE_INVALID,
+
+	# TCP Load balancer
+	ROUND_ROBIN: 	INCLUDEOS_ROUND_ROBIN
 }
 
 class Tcp:
