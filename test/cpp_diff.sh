@@ -17,6 +17,7 @@ declare -a examples=(
 	"iface"
 	"lb"
 	"lb_assignment_functionality"
+	"lb_assignment_functionality_2"
 	"lb_with_uplink"
 	"log"
 	"nacl"
@@ -26,6 +27,10 @@ declare -a examples=(
 	"vlan"
 )
 
+GREEN="\033[92m" 	# Green
+RED="\033[38;5;1m" 	# Red
+NO_COLOR="\033[0m" 	# No color
+
 for i in "${examples[@]}"
 do
 	cat ../examples/$i.nacl | ../NaCl.py $CPP_OUTPUT
@@ -34,8 +39,8 @@ do
 
 	if [ -z "$DIFFERENCE" ]
 	then
-		echo "$i: Success"
+		echo -e "$i: ${GREEN}SUCCESS${NO_COLOR}"
 	else
-		echo "$i: Failed"
+		echo -e "$i: ${RED}FAILED${NO_COLOR}"
 	fi
 done

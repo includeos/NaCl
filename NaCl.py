@@ -1208,6 +1208,7 @@ class Load_balancer(Typed):
 					sys.exit("line " + get_line_and_column(value) + " No element with the name " + element_name + " exists")
 				if e.ctx.value().list_t() is None:
 					sys.exit("line " + get_line_and_column(value) + " Element " + element_name + " does not consist of a list")
+				# Updating value to be the element e's ctx value
 				value = e.ctx.value()
 
 			pool = []
@@ -1222,7 +1223,7 @@ class Load_balancer(Typed):
 					if e is None:
 						sys.exit("line " + get_line_and_column(node) + " No element with the name " + element_name + " exists")
 					if e.ctx.value().obj() is None:
-						sys.exit("line " + get_line_and_column(node) + " Element " + element_name + " is not an object")
+						sys.exit("line " + get_line_and_column(node) + " Element " + element_name + " must be an object")
 					node = e.ctx.value()
 
 				n = {}
@@ -1241,6 +1242,29 @@ class Load_balancer(Typed):
 				pool.append(n)
 
 			found_element_value = pool
+		elif key == LB_KEY_CLIENTS or key == LB_KEY_SERVERS:
+			if value.value_name() is not None:
+				element_name = value.value_name().getText()
+				e = elements.get(element_name)
+				if e is None:
+					sys.exit("line " + get_line_and_column(value) + " No element with the name " + element_name + " exists")
+				if e.ctx.value().obj() is None:
+					sys.exit("line " + get_line_and_column(value) + " Element " + element_name + " must be an object")
+				# Updating value to be the element e's ctx value
+				value = e.ctx.value()
+
+			if value.obj() is None:
+				mandatory_keys = ", ".join(predefined_lb_clients_keys) if key == LB_KEY_CLIENTS else ", ".join(predefined_lb_servers_keys)
+				sys.exit("line " + get_line_and_column(value) + " Invalid " + key + " value. It needs to be an object containing " + \
+					mandatory_keys)
+
+			found_element_value = {}
+			for pair in value.obj().key_value_list().key_value_pair():
+				k = pair.key().getText().lower()
+				# Validate the key first
+				self.validate_lb_key(k, key, 2, value)
+				# Then resolve the value
+				self.resolve_lb_value(found_element_value, k, pair.value())
 		else:
 			found_element_value = resolve_value(LANGUAGE, value)
 
