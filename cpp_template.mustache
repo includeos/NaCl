@@ -20,7 +20,6 @@
 #include <net/inet4>
 #include <net/super_stack.hpp>
 #include <net/ip4/cidr.hpp>
-#include <plugins/nacl.hpp>
 {{#has_nats}}
 #include <net/nat/napt.hpp>
 {{/has_nats}}
@@ -40,6 +39,14 @@ static void print_stats(int);
 #include <syslogd>
 
 using namespace net;
+
+namespace nacl {
+  class Filter {
+  public:
+    virtual Filter_verdict<IP4> operator()(IP4::IP_packet_ptr pckt, Inet<IP4>& stack, Conntrack::Entry_ptr ct_entry) = 0;
+    virtual ~Filter() {}
+  };
+}
 
 {{#has_gateways}}
 std::unique_ptr<Router<IP4>> nacl_router_obj;
