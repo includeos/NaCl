@@ -20,12 +20,19 @@
 #include <net/inet4>
 #include <net/super_stack.hpp>
 #include <net/ip4/cidr.hpp>
-#include <plugins/nacl.hpp>
 #include <net/router.hpp>
 #include <net/vlan>
 #include <syslogd>
 
 using namespace net;
+
+namespace nacl {
+  class Filter {
+  public:
+    virtual Filter_verdict<IP4> operator()(IP4::IP_packet_ptr pckt, Inet<IP4>& stack, Conntrack::Entry_ptr ct_entry) = 0;
+    virtual ~Filter() {}
+  };
+}
 
 std::unique_ptr<Router<IP4>> nacl_router_obj;
 std::shared_ptr<Conntrack> nacl_ct_obj;
