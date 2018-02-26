@@ -209,9 +209,29 @@ predefined_conntrack_timeout_inner_keys = [
 	ICMP
 ]
 
-# ---- Load_balancer keys ----
+# ---- Port constants ----
 
+SSH 	= "ssh"
+DNS 	= "dns"
+HTTP 	= "http"
+HTTPS 	= "https"
+
+# ---- Load_balancer ----
+
+predefined_lb_subtypes = [
+	TCP,
+	HTTP
+]
+
+# ---- Load_balancer::HTTP keys ----
+
+
+
+# ---- Load_balancer::TCP keys ----
+
+# TODO Can be removed later:
 LB_KEY_LAYER = "layer"
+
 LB_KEY_CLIENTS = "clients"
 LB_KEY_SERVERS = "servers"
 
@@ -382,11 +402,6 @@ def INCLUDEOS_ACCEPT(subtype):
 		return "return {" + ICMP_PCKT + DOT + INCLUDEOS_ICMP_RELEASE_METHOD + ", " + INCLUDEOS_VERDICT_TYPE_ACCEPT + "};\n"
 
 INCLUDEOS_CT_ENTRY = "ct_entry"
-
-SSH 	= "ssh"
-DNS 	= "dns"
-HTTP 	= "http"
-HTTPS 	= "https"
 
 # TCP, UDP and IP packet properties (NaCl)
 

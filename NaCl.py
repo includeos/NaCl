@@ -1073,8 +1073,9 @@ class Gateway(Typed):
 # -------------------- Load_balancer --------------------
 
 class Load_balancer(Typed):
-	def __init__(self, idx, name, ctx, base_type, type_t):
+	def __init__(self, idx, name, ctx, base_type, type_t, subtype):
 		super(Load_balancer, self).__init__(idx, name, ctx, base_type, type_t)
+		self.subtype = subtype
 
 	def add_load_balancer(self):
 		# Note: This method also validates that all the mandatory fields have been set
@@ -1544,7 +1545,24 @@ def save_element(base_type, ctx):
 		elements[name] = Gateway(idx, name, ctx, base_type, type_t)
 		gateway_exists = True
 	elif type_t_lower == TYPE_LOAD_BALANCER:
-		elements[name] = Load_balancer(idx, name, ctx, base_type, type_t)
+		# TODO later: Make it mandatory to set a subtype when defining a Load_balancer
+		# if ctx.subtype() is None:
+		#	sys.exit("line " + get_line_and_column(type_t_ctx) + " A Load_balancer object needs a subtype (", ".join(predefined_lb_subtypes))")
+
+		lb_subtype = TCP
+		if ctx.subtype() is not None:
+			lb_subtype = ctx.subtype().getText().lower()
+		if lb_subtype != TCP and lb_subtype != HTTP:
+			sys.exit("line " + get_line_and_column(ctx.subtype()) + " Invalid Load_balancer subtype (valid subtypes are " + \
+				", ".join(predefined_lb_subtypes) + ")")
+
+		elements[name] = Load_balancer(idx, name, ctx, base_type, type_t, lb_subtype)
+		# OR, if split the two Load_balancer types in two different classes:
+		# if lb_subtype == TCP:
+		#	elements[name] = TCP_load_balancer(idx, name, ctx, base_type, type_t)
+		# else:
+		#	elements[name] = HTTP_load_balancer(idx, name, ctx, base_type, type_t)
+
 	elif type_t_lower == TYPE_CONNTRACK:
 		global conntrack_exists
 		if conntrack_exists:

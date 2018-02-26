@@ -112,7 +112,7 @@ comparison_operator: 	Equals | Not_equals
 
 // ---------- typed_initializer ----------
 
-typed_initializer: type_t name value;
+typed_initializer: type_t (Colon Colon subtype)? name value;
 
 // ---------- initializer ----------
 
