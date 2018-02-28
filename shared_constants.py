@@ -56,7 +56,7 @@ IS_LIST = True
 TRUE 	= "true"
 FALSE 	= "false"
 
-# Possible NaCl types
+# Available NaCl types
 TYPE_IFACE 			= "iface"
 TYPE_VLAN 			= "vlan"
 TYPE_GATEWAY 		= "gateway"
@@ -269,22 +269,13 @@ valid_lb_layers = [
 
 # ---- Syslog keys ----
 
-# SYSLOG_KEY_TYPE 	= "type"
 SYSLOG_KEY_ADDRESS 	= IFACE_KEY_ADDRESS
 SYSLOG_KEY_PORT 	= LB_KEY_PORT
 
 predefined_syslog_keys = [
-# 	SYSLOG_KEY_TYPE,
 	SYSLOG_KEY_ADDRESS,
 	SYSLOG_KEY_PORT
 ]
-
-# CONSOLE = "console"
-#
-# predefined_syslog_types = [
-#	UDP,
-#	CONSOLE
-# ]
 
 # ---- Syslog severity levels ----
 

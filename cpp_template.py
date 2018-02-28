@@ -193,7 +193,7 @@ class Action_handler:
 		if type_nat != SNAT and type_nat != DNAT:
 			sys.exit("line 1:0 Internal error in transpile_nat_cpp: Invalid NAT type " + type_nat)
 
-		pckt_name = get_pckt_name_cpp(subtype)
+		# pckt_name = get_pckt_name_cpp(subtype)
 
 		parameters = ""
 		num_params = len(parameter_ctx_list)
