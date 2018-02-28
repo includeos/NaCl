@@ -24,7 +24,10 @@ import sys
 import os
 
 import pystache
-from cpp_template import *
+
+# cpp_transpile_function.py also imports cpp_resolve_values.py, which
+# in turn imports shared_constants.py
+from cpp_transpile_function import *
 
 # antlr4 -Dlanguage=Python2 NaCl.g4 -visitor
 
@@ -142,6 +145,8 @@ class Element(object):
 		# Fill members dictionary if this is a top element with a value of type obj
 		self.members = {}
 
+	# All subclasses MUST implement the process method - this is the main processing method for all NaCl elements, the
+	# starting point for every transpilation of every NaCl element
 	def process(self):
 		sys.exit("line " + get_line_and_column(self.ctx) + " Internal error: Subclass of class Element has not implemented the process method")
 
@@ -808,7 +813,6 @@ class Gateway(Typed):
 	def get_pystache_route_obj(self, name, route_ctx):
 		route_obj = { "ctx": route_ctx }
 		pairs = route_ctx.key_value_list().key_value_pair()
-		num_pairs = len(pairs)
 
 		for pair in pairs:
 			orig_key = pair.key().getText()
@@ -1176,6 +1180,7 @@ class Load_balancer(Typed):
 
 	# Called in Element
 	def resolve_lb_value(self, dictionary, key, value):
+		class_name = self.get_class_name()
 		found_element_value = value.getText()
 
 		if key == LB_KEY_LAYER or key == LB_SERVERS_KEY_ALGORITHM:
@@ -1294,31 +1299,12 @@ class Syslog(Typed):
 		super(Syslog, self).__init__(idx, name, ctx, base_type, type_t)
 
 	def add_syslog(self):
-		# type_is_udp = False
-		# addr = None
-		# port = None
-		#
-		# syslog_type = self.members.get(SYSLOG_KEY_TYPE)
-		# if syslog_type is None:
-		#	sys.exit("line " + get_line_and_column(self.ctx) + " A Syslog type must be given (" + \
-		#		", ".join(predefined_syslog_types) + ")")
-		#
-		# if syslog_type == UDP:
-		#	type_is_udp = True
-		#
-		#	addr = self.members.get(SYSLOG_KEY_ADDRESS)
-		#	port = self.members.get(SYSLOG_KEY_PORT)
-		#
-		#	if addr is None or port is None:
-		#		sys.exit("line " + get_line_and_column(self.ctx) + " Syslog address and/or port have not been specified")
-
 		addr = self.members.get(SYSLOG_KEY_ADDRESS)
 		port = self.members.get(SYSLOG_KEY_PORT)
 
 		if addr is None or port is None:
 			sys.exit("line " + get_line_and_column(self.ctx) + " Syslog address and/or port have not been specified")
 
-		# syslogs.append({ TEMPLATE_KEY_ADDRESS: addr, TEMPLATE_KEY_PORT: port, UDP: type_is_udp })
 		syslogs.append({ TEMPLATE_KEY_ADDRESS: addr, TEMPLATE_KEY_PORT: port })
 
 	# Called in Element
@@ -1335,18 +1321,6 @@ class Syslog(Typed):
 	def resolve_syslog_value(self, dictionary, key, value):
 		dictionary[key] = resolve_value(LANGUAGE, value)
 
-		# if key != SYSLOG_KEY_TYPE:
-		#	# Add found value
-		#	dictionary[key] = resolve_value(LANGUAGE, value)
-		# else:
-		#	if value.value_name() is None:
-		#		sys.exit("line " + get_line_and_column(value) + " ")
-		#	v = value.value_name().getText().lower()
-		#	if v not in predefined_syslog_types:
-		#		sys.exit("line " + get_line_and_column(value) + " Invalid syslog type (valid types are " + \
-		#			", ".join(predefined_syslog_types) + ")")
-		#	dictionary[key] = v
-
 	def process(self):
 		if self.res is None:
 			# Then process
@@ -1362,6 +1336,8 @@ class Syslog(Typed):
 # < Syslog (settings)
 
 # -------------------- Function --------------------
+
+# Filter and Nat are examples of functions
 
 class Function(Element):
 	def __init__(self, idx, name, ctx, base_type, type_t, subtype):
@@ -1404,7 +1380,7 @@ class Function(Element):
 		 			elif type_t_lower == TYPE_REWRITE:
 		 				rewrites.append(pystache_function_obj)
 		 			else:
-		 				sys.exit("line " + get_line_and_column(ctx.type_t()) + " Functions of type " + \
+						sys.exit("line " + get_line_and_column(self.ctx.type_t()) + " Functions of type " + \
 		 					self.type_t + " are not handled")
 		 			return self.res
 
@@ -1419,23 +1395,34 @@ class Function(Element):
 
 # -------------------- 2. Process elements and write content to file --------------------
 
+# -------------------- Pystache --------------------
+
+# Connected to cpp_template.mustache
+class Cpp_template(object):
+	def __init__(self):
+		pass
+
+# ------------------ < Pystache ------------------
+
+# Main function
+# Called after all the elements in the NaCl text have been visited and saved in the elements dictionary
 def handle_input():
 	if LANGUAGE not in valid_languages:
 		sys.exit("line 1:0 Internal error in handle_input: Cannot transpile to language " + LANGUAGE)
 
 	# Process / transpile / fill the pystache lists
 	function_elements = []
-
-	for key, e in elements.iteritems():
+	for _, e in elements.iteritems():
 		if e.base_type != BASE_TYPE_FUNCTION:
 			e.process()
 		else:
 			function_elements.append(e)
-
-	# Have processed all elements except function elements when arrive here
+	# When we arrive here, all the elements except the function elements have been processed
 	for e in function_elements:
 		e.process()
 
+	# Create a data object containing all the pystache lists - to be sent to the
+	# pystache Renderer's render method together with the cpp_template.mustache content
 	data = {
 		TEMPLATE_KEY_IFACES: 				ifaces,
 		TEMPLATE_KEY_IFACES_WITH_VLANS: 	ifaces_with_vlans,
@@ -1463,6 +1450,8 @@ def handle_input():
 	}
 
 	if LANGUAGE == CPP:
+		# Combine the data object with the Cpp_template (cpp_template.mustache file)
+		# Pystache returns the transpiled C++ content
 		content = pystache.Renderer().render(Cpp_template(), data)
 
 		# Create the C++ file and write the content to the file
@@ -1487,6 +1476,8 @@ invalid_names = [
 	IP
 ]
 
+# Validate the name that the user has given an element
+# Called in save_element function
 def validate_name(name_ctx):
 	name_parts = name_ctx.getText().split(DOT)
 	name = name_parts[0]
@@ -1497,6 +1488,7 @@ def validate_name(name_ctx):
 	if name.lower() in invalid_names:
 		sys.exit("line " + get_line_and_column(name_ctx) + " Invalid name " + name)
 
+# Add visited element to the elements dictionary
 def save_element(base_type, ctx):
 	if base_type != BASE_TYPE_TYPED_INIT and base_type != BASE_TYPE_UNTYPED_INIT and base_type != BASE_TYPE_FUNCTION:
 		sys.exit("line " + get_line_and_column(ctx) + " NaCl elements of base type " + base_type + " are not handled")

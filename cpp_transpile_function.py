@@ -16,21 +16,11 @@
 
 from cpp_resolve_values import *
 
-import pystache
-
-# -------------------- Pystache --------------------
-
-class Cpp_template(object):
-	def __init__(self):
-		pass
-
-# ------------------ < Pystache ------------------
-
 # NOTE
 # Action_handler was previously placed in shared_constants.py together with the
 # get_pckt_name_cpp function (this function is now back in cpp_resolve_values.py)
 # Action_handler is placed here for now because it uses the transpile_function_cpp
-# method
+# method. Also, actions are only used in functions.
 class Action_handler:
 	def __init__(self):
 		self.actions = {
@@ -193,7 +183,7 @@ class Action_handler:
 		if type_nat != SNAT and type_nat != DNAT:
 			sys.exit("line 1:0 Internal error in transpile_nat_cpp: Invalid NAT type " + type_nat)
 
-		pckt_name = get_pckt_name_cpp(subtype)
+		# pckt_name = get_pckt_name_cpp(subtype)
 
 		parameters = ""
 		num_params = len(parameter_ctx_list)
