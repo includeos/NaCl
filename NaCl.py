@@ -24,7 +24,10 @@ import sys
 import os
 
 import pystache
-from cpp_template import *
+
+# cpp_transpile_function.py also imports cpp_resolve_values.py, which
+# in turn imports shared_constants.py
+from cpp_transpile_function import *
 
 # antlr4 -Dlanguage=Python2 NaCl.g4 -visitor
 
@@ -1391,6 +1394,15 @@ class Function(Element):
 # < Function
 
 # -------------------- 2. Process elements and write content to file --------------------
+
+# -------------------- Pystache --------------------
+
+# Connected to cpp_template.mustache
+class Cpp_template(object):
+	def __init__(self):
+		pass
+
+# ------------------ < Pystache ------------------
 
 # Main function
 # Called after all the elements in the NaCl text have been visited and saved in the elements dictionary
