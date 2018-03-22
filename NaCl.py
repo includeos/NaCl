@@ -164,16 +164,25 @@ class NaCl_state():
 			sys.exit("line 1:0 Internal error when appending to pystache_data[" + key + "]: Value given is not a dictionary")
 		self.pystache_data[key].append(value)
 
+	def pystache_list_is_empty(self, key):
+		if key not in self.pystache_data:
+			sys.exit("line 1:0 Internal error when checking if pystache list is empty: No member named " + key)
+		if len(self.pystache_data[key]) > 0:
+			return False
+		return True
+
+	# Solved by static final_registration method in the type_processors?
 	# TODO: Need more dynamic solution (these are from Iface class:)
 	# Last method to be called in handle_input before pystache rendering:
+	'''
 	def set_has_values(self):
 		TEMPLATE_KEY_HAS_AUTO_NATTING_IFACES 	= "has_auto_natting_ifaces"
 		TEMPLATE_KEY_HAS_VLANS 					= "has_vlans"
 		TEMPLATE_KEY_HAS_MASQUERADES 			= "has_masquerades"
 
-		auto_natting_ifaces = self.pystache_data.get(TEMPLATE_KEY_HAS_AUTO_NATTING_IFACES)
-		ifaces_with_vlans = self.pystache_data.get(TEMPLATE_KEY_HAS_VLANS)
-		masquerades = self.pystache_data.get(TEMPLATE_KEY_HAS_MASQUERADES)
+		auto_natting_ifaces = self.pystache_data.get(TEMPLATE_KEY_AUTO_NATTING_IFACES)
+		ifaces_with_vlans = self.pystache_data.get(TEMPLATE_KEY_VLANS)
+		masquerades = self.pystache_data.get(TEMPLATE_KEY_MASQUERADES)
 
 		if auto_natting_ifaces is not None and (len(auto_natting_ifaces) > 0):
 			self.register_pystache_data(TEMPLATE_KEY_HAS_AUTO_NATTING_IFACES, True) # (len(self.auto_natting_ifaces) > 0)
@@ -186,6 +195,7 @@ class NaCl_state():
 		# self.register_pystache_data(TEMPLATE_KEY_HAS_MASQUERADES, (len(self.masquerades) > 0))
 		# self.register_pystache_data(TEMPLATE_KEY_HAS_AUTO_NATTING_IFACES, (len(self.auto_natting_ifaces) > 0))
 		# self.register_pystache_data(TEMPLATE_KEY_HAS_VLANS, (len(self.ifaces_with_vlans) > 0))
+	'''
 
 	def register_all_type_processors(self):
 		print "Register all type processors"
@@ -336,6 +346,10 @@ class Element(object):
 
 		# Fill members dictionary if this is a top element with a value of type obj
 		self.members = {}
+
+	@staticmethod
+	def final_registration(nacl_state):
+		pass
 
 	# All subclasses MUST implement the process method - this is the main processing method for all NaCl elements, the
 	# starting point for every transpilation of every NaCl element
@@ -1852,7 +1866,10 @@ def handle_input(nacl_state):
 
 	# TODO: Avoid somehow?
 	# Set the last pystache_data values (the has-values) before rendering:
-	nacl_state.set_has_values()
+	# nacl_state.set_has_values()
+	# Maybe solution?:
+	for _, c in nacl_state.nacl_type_processors.iteritems():
+		c.final_registration(nacl_state) # static method
 
 	if LANGUAGE == CPP:
 		# Combine the data object with the Cpp_template (cpp_template.mustache file)

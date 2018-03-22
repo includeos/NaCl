@@ -503,6 +503,42 @@ class Iface(Typed):
 
 		return self.res
 
+	# Called from handle_input (NaCl.py) right before rendering, after the NaCl file has been processed
+	# Register the last data here that can not be registered before this (set has-values f.ex.)
+	@staticmethod
+	def final_registration(nacl_state):
+		if not nacl_state.pystache_list_is_empty(TEMPLATE_KEY_AUTO_NATTING_IFACES):
+			# nacl_state.append_to_pystache_data_structure(TEMPLATE_KEY_HAS_AUTO_NATTING_IFACES, {
+			#	TEMPLATE_KEY_HAS_AUTO_NATTING_IFACES: True
+			# })
+			nacl_state.register_pystache_data(TEMPLATE_KEY_HAS_AUTO_NATTING_IFACES, True)
+
+		if not nacl_state.pystache_list_is_empty(TEMPLATE_KEY_IFACES_WITH_VLANS):
+			# nacl_state.append_to_pystache_data_structure(TEMPLATE_KEY_HAS_VLANS, {
+			#	TEMPLATE_KEY_HAS_VLANS: True
+			# })
+			nacl_state.register_pystache_data(TEMPLATE_KEY_HAS_VLANS, True)
+
+		if not nacl_state.pystache_list_is_empty(TEMPLATE_KEY_MASQUERADES):
+			# nacl_state.append_to_pystache_data_structure(TEMPLATE_KEY_HAS_MASQUERADES, {
+			#	TEMPLATE_KEY_HAS_MASQUERADES: True
+			# })
+			nacl_state.register_pystache_data(TEMPLATE_KEY_HAS_MASQUERADES, True)
+
+		'''
+		# In NaCl_state:
+		auto_natting_ifaces = self.pystache_data.get(TEMPLATE_KEY_AUTO_NATTING_IFACES)
+		ifaces_with_vlans = self.pystache_data.get(TEMPLATE_KEY_IFACES_WITH_VLANS)
+		masquerades = self.pystache_data.get(TEMPLATE_KEY_MASQUERADES)
+
+		if auto_natting_ifaces is not None and (len(auto_natting_ifaces) > 0):
+			self.register_pystache_data(TEMPLATE_KEY_HAS_AUTO_NATTING_IFACES, True) # (len(self.auto_natting_ifaces) > 0)
+		if ifaces_with_vlans is not None and (len(ifaces_with_vlans) > 0):
+			self.register_pystache_data(TEMPLATE_KEY_HAS_VLANS, True)
+		if masquerades is not None and (len(masquerades) > 0):
+			self.register_pystache_data(TEMPLATE_KEY_HAS_MASQUERADES, True)
+		'''
+
 # < CLASS Iface
 
 # -------------------- INIT --------------------
@@ -517,10 +553,11 @@ def register_iface_pystache_structures(nacl_state):
 		TEMPLATE_KEY_AUTO_NATTING_IFACES, \
 		TEMPLATE_KEY_IFACE_PUSHES, \
 		TEMPLATE_KEY_IFACES_WITH_VLANS, \
-		TEMPLATE_KEY_MASQUERADES, \
-		TEMPLATE_KEY_HAS_MASQUERADES, \
-		TEMPLATE_KEY_HAS_AUTO_NATTING_IFACES, \
-		TEMPLATE_KEY_HAS_VLANS \
+		TEMPLATE_KEY_MASQUERADES
+		# TEMPLATE_KEY_HAS_MASQUERADES, \
+		# TEMPLATE_KEY_HAS_AUTO_NATTING_IFACES, \
+		# TEMPLATE_KEY_HAS_VLANS \
+		# These three are added in the final_registration method
 	])
 
 # def register_vlan_pystache_structures(nacl_state):
