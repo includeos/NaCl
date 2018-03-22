@@ -156,7 +156,7 @@ class NaCl_state():
 	def add_pystache_data_structures(self, keys):
 		for key in keys:
 			self.pystache_data[key] = []
-	
+
 	def append_to_pystache_data_structure(self, key, value):
 		if key not in self.pystache_data:
 			sys.exit("line 1:0 Internal error when appending to pystache_data: No member named " + key)
@@ -1679,35 +1679,75 @@ class Function(Element):
 
 		# Old:
 		# for p in pushes:
+		# Old 2:
+		# for p in self.nacl_state.pushes:
 		# New:
-		for p in self.nacl_state.pushes:
-			for f in p[TEMPLATE_KEY_FUNCTION_NAMES]:
-		 		if self.name == f[TEMPLATE_KEY_FUNCTION_NAME]:
-		 			# Then we know that this function is called in the C++ code
-		 			# And the function should be added to the correct pystache list
-		 			type_t_lower = self.type_t.lower()
+		# TODO: Constant
+		TEMPLATE_KEY_IFACE_PUSHES = "pushes_iface"
+		iface_pushes = self.nacl_state.pystache_data.get(TEMPLATE_KEY_IFACE_PUSHES)
+		gateway_pushes = self.nacl_state.pystache_data.get(TEMPLATE_KEY_GATEWAY_PUSHES)
 
-					# Display an error message if the function is a Filter and does not end in a default verdict
-					if type_t_lower == TYPE_FILTER:
-						if self.subtype.lower() != IP:
-							sys.exit("line " + get_line_and_column(self.ctx) + " Only a function of subtype IP can be pushed onto an Iface's chain. " + \
-								"However, you can create and call Filters of any subtype inside an IP Filter")
+		# TODO: Reuse content of for loop - move to separate method (same as below)
+		if iface_pushes is not None:
+			for p in iface_pushes:
+				for f in p[TEMPLATE_KEY_FUNCTION_NAMES]:
+					if self.name == f[TEMPLATE_KEY_FUNCTION_NAME]:
+						# Then we know that this function is called in the C++ code
+						# And the function should be added to the correct pystache list
+						type_t_lower = self.type_t.lower()
 
-						elements = list(self.ctx.body().body_element())
-						last_element = elements[len(elements) - 1]
-						if last_element.action() is None or last_element.action().getText() not in valid_default_filter_verdicts:
-							sys.exit("line " + get_line_and_column(self.ctx) + " Missing default verdict at the end of this Filter")
+						# Display an error message if the function is a Filter and does not end in a default verdict
+						if type_t_lower == TYPE_FILTER:
+							if self.subtype.lower() != IP:
+								sys.exit("line " + get_line_and_column(self.ctx) + " Only a function of subtype IP can be pushed onto an Iface's chain. " + \
+									"However, you can create and call Filters of any subtype inside an IP Filter")
 
-		 			if type_t_lower == TYPE_FILTER:
-		 				filters.append(pystache_function_obj)
-		 			elif type_t_lower == TYPE_NAT:
-		 				nats.append(pystache_function_obj)
-		 			elif type_t_lower == TYPE_REWRITE:
-		 				rewrites.append(pystache_function_obj)
-		 			else:
-						sys.exit("line " + get_line_and_column(self.ctx.type_t()) + " Functions of type " + \
-		 					self.type_t + " are not handled")
-		 			return self.res
+							elements = list(self.ctx.body().body_element())
+							last_element = elements[len(elements) - 1]
+							if last_element.action() is None or last_element.action().getText() not in valid_default_filter_verdicts:
+								sys.exit("line " + get_line_and_column(self.ctx) + " Missing default verdict at the end of this Filter")
+
+						if type_t_lower == TYPE_FILTER:
+							filters.append(pystache_function_obj)
+						elif type_t_lower == TYPE_NAT:
+							nats.append(pystache_function_obj)
+						elif type_t_lower == TYPE_REWRITE:
+							rewrites.append(pystache_function_obj)
+						else:
+							sys.exit("line " + get_line_and_column(self.ctx.type_t()) + " Functions of type " + \
+								self.type_t + " are not handled")
+						return self.res
+		# New: ADDED: And the same for pushes_gateway?:
+		# TODO: Reuse the content - move to separate method
+		if gateway_pushes is not None:
+			for p in gateway_pushes:
+				for f in p[TEMPLATE_KEY_FUNCTION_NAMES]:
+					if self.name == f[TEMPLATE_KEY_FUNCTION_NAME]:
+						# Then we know that this function is called in the C++ code
+						# And the function should be added to the correct pystache list
+						type_t_lower = self.type_t.lower()
+
+						# Display an error message if the function is a Filter and does not end in a default verdict
+						if type_t_lower == TYPE_FILTER:
+							if self.subtype.lower() != IP:
+								sys.exit("line " + get_line_and_column(self.ctx) + " Only a function of subtype IP can be pushed onto an Iface's chain. " + \
+									"However, you can create and call Filters of any subtype inside an IP Filter")
+
+							elements = list(self.ctx.body().body_element())
+							last_element = elements[len(elements) - 1]
+							if last_element.action() is None or last_element.action().getText() not in valid_default_filter_verdicts:
+								sys.exit("line " + get_line_and_column(self.ctx) + " Missing default verdict at the end of this Filter")
+
+						if type_t_lower == TYPE_FILTER:
+							filters.append(pystache_function_obj)
+						elif type_t_lower == TYPE_NAT:
+							nats.append(pystache_function_obj)
+						elif type_t_lower == TYPE_REWRITE:
+							rewrites.append(pystache_function_obj)
+						else:
+							sys.exit("line " + get_line_and_column(self.ctx.type_t()) + " Functions of type " + \
+								self.type_t + " are not handled")
+						return self.res
 
 	# Main processing method
 	def process(self):

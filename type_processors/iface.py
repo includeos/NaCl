@@ -1,5 +1,4 @@
 import sys
-# import NaCl
 from NaCl import NaCl_exception, Typed, get_line_and_column, resolve_value, \
 	BASE_TYPE_TYPED_INIT, BASE_TYPE_FUNCTION, \
 	TRUE, FALSE, LANGUAGE, TEMPLATE_KEY_IFACE, \
@@ -564,7 +563,7 @@ def register_iface_pystache_structures(nacl_state):
 #	nacl_state.add_pystache_data_structures(...)
 
 def init(nacl_state):
-	print "init iface: Iface and Vlan"
+	print "Init iface: Iface and Vlan"
 
 	nacl_state.add_type_processor(TYPE_IFACE, Iface)
 	nacl_state.add_type_processor(TYPE_VLAN, Vlan)
