@@ -67,6 +67,9 @@ TYPE_FILTER 		= "filter"
 TYPE_REWRITE 		= "rewrite"
 TYPE_NAT 			= "nat"
 
+# TODO: Change to dictionary
+# Value: Create object
+# -> nacl_types
 valid_nacl_types = [
 	TYPE_IFACE,
 	TYPE_VLAN,
@@ -78,11 +81,19 @@ valid_nacl_types = [
 	TYPE_REWRITE,
 	TYPE_NAT
 ]
+# ->
+# nacl_types = {
+	# Later: each type processor can register into this dictionary
+#	TYPE_IFACE: Iface()
+#}
+# -> Moved into NaCl.py to have access to the different types for testing
 
 BASE_TYPE_FUNCTION 		= "function"
 BASE_TYPE_UNTYPED_INIT 	= "untyped_init"
 BASE_TYPE_TYPED_INIT 	= "typed_init"
 
+# New: Moved into Iface class:
+'''
 # ---- Iface keys ----
 
 IFACE_KEY_ADDRESS 		= "address"
@@ -127,7 +138,10 @@ predefined_config_types = [
 	DHCP_FALLBACK_CONFIG,
 	STATIC_CONFIG
 ]
+'''
 
+# New: Moved to Vlan class in type_iface.py:
+'''
 # ---- Vlan keys ----
 
 VLAN_KEY_ADDRESS 	= IFACE_KEY_ADDRESS
@@ -142,6 +156,7 @@ predefined_vlan_keys = [
 	VLAN_KEY_GATEWAY,
 	VLAN_KEY_INDEX
 ]
+'''
 
 # ---- Gateway keys ----
 
@@ -269,7 +284,7 @@ valid_lb_layers = [
 
 # ---- Syslog keys ----
 
-SYSLOG_KEY_ADDRESS 	= IFACE_KEY_ADDRESS
+SYSLOG_KEY_ADDRESS 	= "address" # Old: IFACE_KEY_ADDRESS
 SYSLOG_KEY_PORT 	= LB_KEY_PORT
 
 predefined_syslog_keys = [

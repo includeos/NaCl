@@ -34,49 +34,62 @@ from cpp_transpile_function import *
 LANGUAGE = CPP # CPP is defined in shared_constants.py, imported in cpp_template.py
 
 # Pystache keys
-TEMPLATE_KEY_IFACES 			= "ifaces"
-TEMPLATE_KEY_IFACES_WITH_VLANS	= "ifaces_with_vlans"
+# New:
+# TEMPLATE_KEY_IFACES 			= "ifaces"
+# TEMPLATE_KEY_IFACES_WITH_VLANS	= "ifaces_with_vlans"
 TEMPLATE_KEY_FILTERS 			= "filters"
 TEMPLATE_KEY_NATS 				= "nats"
 TEMPLATE_KEY_REWRITES 			= "rewrites"
-TEMPLATE_KEY_PUSHES 			= "pushes"
+
+# New:
+# TEMPLATE_KEY_PUSHES 			= "pushes"
+# TODO: Move to Gateway class/file:
+TEMPLATE_KEY_GATEWAY_PUSHES 	= "pushes_gateway"
+
 TEMPLATE_KEY_GATEWAYS 			= "gateways"
 TEMPLATE_KEY_CONNTRACKS 		= "conntracks"
 TEMPLATE_KEY_LOAD_BALANCERS 	= "load_balancers"
 TEMPLATE_KEY_SYSLOGS 			= "syslogs"
 TEMPLATE_KEY_IP_FORWARD_IFACES 	= "ip_forward_ifaces"
 TEMPLATE_KEY_ENABLE_CT_IFACES 	= "enable_ct_ifaces"
-TEMPLATE_KEY_MASQUERADES 		= "masquerades"
-TEMPLATE_KEY_AUTO_NATTING_IFACES = "auto_natting_ifaces"
+# New:
+# TEMPLATE_KEY_MASQUERADES 		= "masquerades"
+# TEMPLATE_KEY_AUTO_NATTING_IFACES = "auto_natting_ifaces"
 
 TEMPLATE_KEY_HAS_GATEWAYS 		= "has_gateways"
 TEMPLATE_KEY_HAS_NATS 			= "has_nats"
-TEMPLATE_KEY_HAS_MASQUERADES 	= "has_masquerades"
-TEMPLATE_KEY_HAS_VLANS 			= "has_vlans"
-TEMPLATE_KEY_HAS_AUTO_NATTING_IFACES = "has_auto_natting_ifaces"
+# New:
+# TEMPLATE_KEY_HAS_MASQUERADES 	= "has_masquerades"
+# TEMPLATE_KEY_HAS_VLANS 			= "has_vlans"
+# New:
+# TEMPLATE_KEY_HAS_AUTO_NATTING_IFACES = "has_auto_natting_ifaces"
 TEMPLATE_KEY_HAS_FUNCTIONS 		= "has_functions"
 TEMPLATE_KEY_HAS_LOAD_BALANCERS = "has_load_balancers"
 TEMPLATE_KEY_HAS_SYSLOGS 		= "has_syslogs"
 
 TEMPLATE_KEY_ENABLE_CT 			= "enable_ct"
 
+# TODO: Moving this into class NaCl_state:
+
 # Data to be sent to pystache renderer
 # Each list are to contain objects consisting of key value pairs
-ifaces 				= []
-ifaces_with_vlans 	= []
+# New: Moved into Iface class:
+# ifaces 				= []
+# ifaces_with_vlans 	= []
 filters 			= []
 rewrites 			= []
 nats 				= []
-pushes 				= []
+# New: Moved into Iface class:
+# pushes 				= []
 gateways 			= []
 conntracks 			= []
 load_balancers 		= []
 syslogs 			= []
 ip_forward_ifaces 	= []
 enable_ct_ifaces 	= []
-masquerades 		= []
-auto_natting_ifaces = []
-
+# New: Moved into Iface class:
+# masquerades 		= []
+# auto_natting_ifaces = []
 gateway_exists 		= False
 conntrack_exists 	= False
 syslog_exists 		= False
@@ -88,9 +101,10 @@ TEMPLATE_KEY_CHAIN 			= "chain"
 TEMPLATE_KEY_FUNCTION_NAMES = "function_names"
 TEMPLATE_KEY_NAME 			= "name"
 TEMPLATE_KEY_TITLE 			= "title"
-TEMPLATE_KEY_CONFIG_IS_DHCP 			= "config_is_dhcp"
-TEMPLATE_KEY_CONFIG_IS_DHCP_FALLBACK 	= "config_is_dhcp_fallback"
-TEMPLATE_KEY_CONFIG_IS_STATIC 			= "config_is_static"
+# New: Moved into Iface class:
+# TEMPLATE_KEY_CONFIG_IS_DHCP 			= "config_is_dhcp"
+# TEMPLATE_KEY_CONFIG_IS_DHCP_FALLBACK 	= "config_is_dhcp_fallback"
+# TEMPLATE_KEY_CONFIG_IS_STATIC 		= "config_is_static"
 TEMPLATE_KEY_INDEX 			= "index"
 TEMPLATE_KEY_ADDRESS 		= "address"
 TEMPLATE_KEY_NETMASK 		= "netmask"
@@ -99,7 +113,8 @@ TEMPLATE_KEY_DNS 			= "dns"
 TEMPLATE_KEY_ROUTES 		= "routes"
 TEMPLATE_KEY_CONTENT		= "content"
 TEMPLATE_KEY_IFACE_INDEX 	= "iface_index"
-TEMPLATE_KEY_VLANS 			= "vlans"
+# New:
+# TEMPLATE_KEY_VLANS 			= "vlans"
 TEMPLATE_KEY_IS_GATEWAY_PUSH = "is_gateway_push"
 TEMPLATE_KEY_PORT 			= "port"
 
@@ -116,6 +131,180 @@ TEMPLATE_KEY_LB_NODE_PORT 			= TEMPLATE_KEY_PORT
 TEMPLATE_KEY_CONNTRACK_TIMEOUTS 	= "timeouts"
 TEMPLATE_KEY_CONNTRACK_TYPE 		= "type"
 
+class NaCl_exception(Exception):
+	def __init__(self, value):
+		self.value = value
+
+	def __str__(self):
+		return repr(self.value)
+
+class NaCl_state():
+	def __init__(self):
+		self.invalid_names = [
+			TCP,
+			UDP,
+			ICMP,
+			CT,
+			IP
+		]
+		self.nacl_type_processors = {} # e.g. nacl_types/valid_nacl_types
+		self.pystache_data = {} # e.g. data in handle_input
+
+	def register_pystache_data(self, key, value):
+		self.pystache_data[key] = value
+
+	def add_pystache_data_structures(self, keys):
+		for key in keys:
+			self.pystache_data[key] = []
+	
+	def append_to_pystache_data_structure(self, key, value):
+		if key not in self.pystache_data:
+			sys.exit("line 1:0 Internal error when appending to pystache_data: No member named " + key)
+		if not isinstance(value, dict):
+			sys.exit("line 1:0 Internal error when appending to pystache_data[" + key + "]: Value given is not a dictionary")
+		self.pystache_data[key].append(value)
+
+	# TODO: Need more dynamic solution (these are from Iface class:)
+	# Last method to be called in handle_input before pystache rendering:
+	def set_has_values(self):
+		TEMPLATE_KEY_HAS_AUTO_NATTING_IFACES 	= "has_auto_natting_ifaces"
+		TEMPLATE_KEY_HAS_VLANS 					= "has_vlans"
+		TEMPLATE_KEY_HAS_MASQUERADES 			= "has_masquerades"
+
+		auto_natting_ifaces = self.pystache_data.get(TEMPLATE_KEY_HAS_AUTO_NATTING_IFACES)
+		ifaces_with_vlans = self.pystache_data.get(TEMPLATE_KEY_HAS_VLANS)
+		masquerades = self.pystache_data.get(TEMPLATE_KEY_HAS_MASQUERADES)
+
+		if auto_natting_ifaces is not None and (len(auto_natting_ifaces) > 0):
+			self.register_pystache_data(TEMPLATE_KEY_HAS_AUTO_NATTING_IFACES, True) # (len(self.auto_natting_ifaces) > 0)
+		if ifaces_with_vlans is not None and (len(ifaces_with_vlans) > 0):
+			self.register_pystache_data(TEMPLATE_KEY_HAS_VLANS, True)
+		if masquerades is not None and (len(masquerades) > 0):
+			self.register_pystache_data(TEMPLATE_KEY_HAS_MASQUERADES, True)
+
+		# Old:
+		# self.register_pystache_data(TEMPLATE_KEY_HAS_MASQUERADES, (len(self.masquerades) > 0))
+		# self.register_pystache_data(TEMPLATE_KEY_HAS_AUTO_NATTING_IFACES, (len(self.auto_natting_ifaces) > 0))
+		# self.register_pystache_data(TEMPLATE_KEY_HAS_VLANS, (len(self.ifaces_with_vlans) > 0))
+
+	def register_all_type_processors(self):
+		print "Register all type processors"
+		# For each file in the type_processors folder, call the register function
+		# from type_processors.iface import register
+		#type_proc_dir = "type_processors"
+		#import importlib
+		# Call the register function in all type_processors
+		#for filename in os.listdir(type_proc_dir):
+		#	if filename.startswith("type") and filename.endswith(".py"):
+		#		filename = filename[:-3] # remove .py
+		#		path_to_file = os.path.join(type_proc_dir, filename)
+		#		processor = importlib.import_module(path_to_file)
+		#		processor.register()
+
+		# import type_processors
+		# type_processors.__init__()
+
+		# from type_processors import __init__ as init
+		# init()
+
+		from type_processors import init as init_type_processors
+		init_type_processors(self)
+
+	def add_type_processor(self, name, class_constructor):
+		self.nacl_type_processors[name] = class_constructor
+
+	# Validate the name that the user has given an element
+	# Called in save_element function
+	def validate_name(self, name_ctx):
+		name_parts = name_ctx.getText().split(DOT)
+		name = name_parts[0]
+
+		if "-" in name:
+			sys.exit("line " + get_line_and_column(name_ctx) + " Invalid character (-) in name " + name)
+
+		if name.lower() in self.invalid_names:
+			sys.exit("line " + get_line_and_column(name_ctx) + " Invalid name " + name)
+
+	# Add visited element to the elements dictionary
+	def save_element(self, base_type, ctx):
+		print "save_element - content of nacl_type_processors: ", str(self.nacl_type_processors)
+
+		if base_type != BASE_TYPE_TYPED_INIT and base_type != BASE_TYPE_UNTYPED_INIT and base_type != BASE_TYPE_FUNCTION:
+			sys.exit("line " + get_line_and_column(ctx) + " NaCl elements of base type " + base_type + " are not handled")
+
+		name_ctx = ctx.name() if base_type != BASE_TYPE_UNTYPED_INIT else ctx.value_name()
+		if name_ctx is None:
+			sys.exit("line " + get_line_and_column(ctx) + " Missing name of element")
+		if name_ctx.getText() in elements:
+			sys.exit("line " + get_line_and_column(name_ctx) + " Element " + name_ctx.getText() + " has already been defined")
+
+		self.validate_name(name_ctx)
+
+		name = name_ctx.getText()
+		idx = len(elements)
+
+		# BASE_TYPE_UNTYPED_INIT
+
+		if base_type == BASE_TYPE_UNTYPED_INIT:
+			elements[name] = Untyped(self, idx, name, ctx, base_type)
+			return
+
+		type_t_ctx = ctx.type_t()
+		type_t = type_t_ctx.getText()
+		type_t_lower = type_t.lower()
+
+		# Old: if type_t.lower() not in valid_nacl_types:
+		# New:
+		if type_t_lower not in self.nacl_type_processors:
+			sys.exit("line " + get_line_and_column(type_t_ctx) + " Undefined type " + type_t)
+
+		# BASE_TYPE_FUNCTION
+
+		if base_type == BASE_TYPE_FUNCTION:
+			elements[name] = Function(self, idx, name, ctx, base_type, type_t, ctx.subtype().getText())
+			return
+
+		# BASE_TYPE_TYPED_INIT
+		# TODO: Use dictionary
+		elements[name] = self.nacl_type_processors[type_t_lower](self, idx, name, ctx, base_type, type_t)
+		# TODO: Each class in its own file
+		# Load_balancer / all classes in pyton you can call type processors
+		# Type_processors (folder) contains one file per class
+		# In load_balancer.py f.ex.: from Ncl import Types
+		# -> NaCl.register("Load_balancer", Load_balancer) in the dictioary nacl_types/valid_nacl_types ()
+		# (So don't need to change)
+
+	# TODO (singleton):
+	'''
+		type_t_lower = type_t.lower()
+		if type_t_lower == TYPE_IFACE:
+			elements[name] = Iface(idx, name, ctx, base_type, type_t)
+		elif type_t_lower == TYPE_VLAN:
+			elements[name] = Vlan(idx, name, ctx, base_type, type_t)
+		elif type_t_lower == TYPE_GATEWAY:
+			global gateway_exists
+			if gateway_exists:
+				sys.exit("line " + get_line_and_column(type_t_ctx) + " A Gateway has already been defined")
+			elements[name] = Gateway(idx, name, ctx, base_type, type_t)
+			gateway_exists = True
+		elif type_t_lower == TYPE_LOAD_BALANCER:
+			elements[name] = Load_balancer(idx, name, ctx, base_type, type_t)
+		elif type_t_lower == TYPE_CONNTRACK:
+			global conntrack_exists
+			if conntrack_exists:
+				sys.exit("line " + get_line_and_column(type_t_ctx) + " A Conntrack has already been defined")
+			elements[name] = Conntrack(idx, name, ctx, base_type, type_t)
+			conntrack_exists = True
+		elif type_t_lower == TYPE_SYSLOG:
+			global syslog_exists
+			if syslog_exists:
+				sys.exit("line " + get_line_and_column(type_t_ctx) + " A Syslog has already been defined")
+			elements[name] = Syslog(idx, name, ctx, base_type, type_t)
+			syslog_exists = True
+		else:
+			sys.exit("line " + get_line_and_column(type_t_ctx) + " NaCl elements of type " + type_t + " are not handled")
+	'''
+
 def transpile_function(language, type_t, subtype, ctx):
 	if language == CPP:
 		return transpile_function_cpp(type_t, subtype, ctx)
@@ -131,7 +320,10 @@ def get_router_name(language):
 # -------------------- Element --------------------
 
 class Element(object):
-	def __init__(self, idx, name, ctx, base_type):
+	def __init__(self, nacl_state, idx, name, ctx, base_type):
+		# New:
+		self.nacl_state = nacl_state
+
 		self.idx 		= idx
 		self.name 		= name
 		self.ctx 		= ctx
@@ -153,53 +345,133 @@ class Element(object):
 	def get_class_name(self):
 		return self.__class__.__name__
 
+	# This is only implemented in the Vlan and Iface classes
+	# Every other class does nothing here
+	# If not valid - throw exception
+	def validate_key(self, key):
+		pass
+
+	# Can be overrided by subclasses
+	# Iface is special here and should override the method
+	def add_member(self, key, value):
+		if self.members.get(key) is None:
+			self.members[key] = value
+		else:
+			raise NaCl_exception(self.get_class_name() + " member " + key + " has already been set")
+		# Prev: self.members[key] = value
+
+	# def add_value_name(self, value_ctx):
+	#	raise NaCl_exception()
+	def add_not_obj_value(self, value_ctx):
+		raise NaCl_exception(self.get_class_name() + " has to contain key value pairs")
+
+	# Or maybe really process_object (or other name...)
+	# Adding to self.members
 	def process_ctx(self):
 		# Handle the Element's value ctx object: Fill self.members dictionary
 		# Note: Gateway has its own process_ctx method
 
 		value = self.ctx.value() if hasattr(self.ctx, 'value') else self.ctx
 		class_name = self.get_class_name()
+		''' Old:
 		is_iface = isinstance(self, Iface)
 		is_vlan = isinstance(self, Vlan)
+		'''
 
+		# TODO
 		# Using Untyped methods (placed in Element) since depth is more than 1 level deep
+		# Special handling when Untyped
 		if isinstance(self, Load_balancer) or isinstance(self, Conntrack) or isinstance(self, Syslog):
 			if value.obj() is None:
 				sys.exit("line " + get_line_and_column(value) + " A " + class_name + " must be an object")
 			self.process_obj(self.members, value.obj())
 			return
 
+		# Everything else but Load_balancer, Conntrack and Syslog:
 		if value.obj() is not None:
 			for pair in value.obj().key_value_list().key_value_pair():
 				orig_key 	= pair.key().getText()
 				key 		= orig_key.lower()
 				pair_value 	= pair.value()
 
+				# TODO: Call validate_keys in subclass (throw exception with error message - call sys.exit here in catch)
+				# Some classes don't need to do anything
+				# Or validate_pair
+				# New:
+				try:
+					# The old solution only tested this for vlan and iface:
+					# So the other classes (are there other classes?) can have an empty validate_key implementation f.ex. (do nothing)
+					# That means, this class Element can have a dummy method called this that does nothing
+					self.validate_key(orig_key) # check if exists in predefined_iface_keys f.ex.
+				except NaCl_exception as e:
+					sys.exit("line " + get_line_and_column(pair.key()) + " " + e.value)
+				# TODO vlan implementation of validate_key method. Old:
+				'''
 				if (is_iface and key not in predefined_iface_keys) or \
 					(is_vlan and key not in predefined_vlan_keys):
 					sys.exit("line " + get_line_and_column(pair.key()) + " Invalid " + class_name + \
 						" member " + orig_key)
+				'''
 
+				# TODO: Can be removed later? Checked in self.add_member-method
 				if self.members.get(key) is not None:
 					sys.exit("line " + get_line_and_column(pair.key()) + " " + class_name + " member " + key + " has already been set")
 
+				# Old:
+				'''
 				if is_iface and key in chains:
 					self.process_push(key, pair.value())
 				else:
 					self.members[key] = pair_value
-		elif is_iface and value.value_name() is not None:
-			# configuration type (dhcp, dhcp-with-fallback, static)
-			config = value.value_name().getText().lower()
-			if config in predefined_config_types:
-				self.members[IFACE_KEY_CONFIG] = value
-			else:
-				sys.exit("line " + get_line_and_column(value) + " Invalid Iface value " + value.value_name().getText())
+				'''
+				# New:
+				# TODO: Implement this method in all classes
+				self.add_member(key, pair_value)
+				# Default add_member behavior: self.members[key] = pair_value
+				# Special if is_iface and key in chains: self.process_push(key, pair_value)
+
+			# Really one tab to the left:
+			# Old:
+			'''
+			elif is_iface and value.value_name() is not None:
+				# configuration type (dhcp, dhcp-with-fallback, static)
+				config = value.value_name().getText().lower()
+				if config in predefined_config_types:
+					self.members[IFACE_KEY_CONFIG] = value
+				else:
+					sys.exit("line " + get_line_and_column(value) + " Invalid Iface value " + value.value_name().getText())
+			# New:
+			# else:
+			'''
+		else:
+			try:
+				self.add_not_obj_value(value)
+				# Iface's method if not value.value_name() is None:
+				'''
+				if is_iface:
+					sys.exit("line " + get_line_and_column(value) + " An Iface has to contain key value pairs, or be set to a configuration type (" + \
+						", ".join(predefined_config_types) + ")")
+				'''
+			except NaCl_exception as e:
+				sys.exit("line " + get_line_and_column(value) + " " + e.value)
+				# sys.exit("line " + get_line_and_column(value) + " A " + class_name + " has to contain key value pairs")
+
+		'''
+		elif value.value_name() is not None:
+			# Do something if is Iface, but if is other class look at the else-functionality below:
+			# sys.exit(... has to contain key value pairs)
+			try:
+				self.add_value_name(value)
+				# So if the class does not allow value_names (constant values, f.ex. dhcp), throw exception?
+			except Exception:
+				sys.exit("line " + get_line_and_column(value) + " A " + class_name + " has to contain key value pairs")
 		else:
 			if is_iface:
 				sys.exit("line " + get_line_and_column(value) + " An Iface has to contain key value pairs, or be set to a configuration type (" + \
 					", ".join(predefined_config_types) + ")")
 			else:
 				sys.exit("line " + get_line_and_column(value) + " A " + class_name + " has to contain key value pairs")
+		'''
 
 	def process_assignments(self):
 		# Loop through elements that are assignments
@@ -238,14 +510,32 @@ class Element(object):
 				if len(name_parts) != 2:
 					sys.exit("line " + get_line_and_column(element.ctx) + " Invalid " + class_name + " member " + element.name)
 
+				# TODO: Call validate_key (same as in process_ctx)
+				# New:
+				try:
+					self.validate_key(orig_member)
+				except NaCl_exception as e:
+					sys.exit("line " + get_line_and_column(element.ctx) + " " + e.value)
+				# Old:
+				# TODO: Vlan and Conntrack validate_key
+				'''
 				if (isinstance(self, Iface) and member not in predefined_iface_keys) or \
 					(isinstance(self, Vlan) and member not in predefined_vlan_keys) or \
 					(isinstance(self, Conntrack) and member not in predefined_conntrack_keys):
 					sys.exit("line " + get_line_and_column(element.ctx) + " Invalid " + class_name + " member " + orig_member)
+				'''
 
 				if self.members.get(member) is not None:
 					sys.exit("line " + get_line_and_column(element.ctx) + " Member " + member + " has already been set")
 
+				# New:
+				found_element_value = element.ctx.value()
+				try:
+					self.add_member(member, found_element_value)
+				except NaCl_exception as e:
+					sys.exit("line " + get_line_and_column(element.ctx) + " " + e.value)
+				# Old:
+				'''
 				found_element_value = element.ctx.value()
 				if isinstance(self, Iface) and member in chains:
 					self.process_push(member, found_element_value)
@@ -254,6 +544,7 @@ class Element(object):
 						self.members[member] = found_element_value
 					else:
 						sys.exit("line " + get_line_and_column(element.ctx) + " " + class_name + " member " + member + " has already been set")
+				'''
 
 	# ---------- Methods related to dictionary self.members for Untyped, Load_balancer, Conntrack and Syslog ----------
 
@@ -379,8 +670,8 @@ class Element(object):
 # -------------------- Untyped --------------------
 
 class Untyped(Element):
-	def __init__(self, idx, name, ctx, base_type):
-		super(Untyped, self).__init__(idx, name, ctx, base_type)
+	def __init__(self, nacl_state, idx, name, ctx, base_type):
+		super(Untyped, self).__init__(nacl_state, idx, name, ctx, base_type)
 
 	# Main processing method
 	def process(self):
@@ -410,8 +701,8 @@ class Untyped(Element):
 # -------------------- Typed --------------------
 
 class Typed(Element):
-	def __init__(self, idx, name, ctx, base_type, type_t):
-		super(Typed, self).__init__(idx, name, ctx, base_type)
+	def __init__(self, nacl_state, idx, name, ctx, base_type, type_t):
+		super(Typed, self).__init__(nacl_state, idx, name, ctx, base_type)
 		self.type_t = type_t
 
 # < Typed
@@ -419,8 +710,8 @@ class Typed(Element):
 # -------------------- Conntrack --------------------
 
 class Conntrack(Typed):
-	def __init__(self, idx, name, ctx, base_type, type_t):
-		super(Conntrack, self).__init__(idx, name, ctx, base_type, type_t)
+	def __init__(self, nacl_state, idx, name, ctx, base_type, type_t):
+		super(Conntrack, self).__init__(nacl_state, idx, name, ctx, base_type, type_t)
 
 	def add_conntrack(self):
 		timeout = self.members.get(CONNTRACK_KEY_TIMEOUT)
@@ -504,7 +795,7 @@ class Conntrack(Typed):
 # < Conntrack
 
 # -------------------- Iface --------------------
-
+'''
 class Iface(Typed):
 	def __init__(self, idx, name, ctx, base_type, type_t):
 		super(Iface, self).__init__(idx, name, ctx, base_type, type_t)
@@ -755,14 +1046,14 @@ class Iface(Typed):
 			# self.res = resolve_value(LANGUAGE, ...)
 
 		return self.res
-
+'''
 # < Iface
 
 # -------------------- Vlan --------------------
-
+'''
 class Vlan(Typed):
-	def __init__(self, idx, name, ctx, base_type, type_t):
-		super(Vlan, self).__init__(idx, name, ctx, base_type, type_t)
+	def __init__(self, nacl_state, idx, name, ctx, base_type, type_t):
+		super(Vlan, self).__init__(nacl_state, idx, name, ctx, base_type, type_t)
 
 		# Vlan keys/members:
 		# address
@@ -797,12 +1088,15 @@ class Vlan(Typed):
 		return self.res
 
 # < Vlan
-
+'''
 # -------------------- Gateway --------------------
 
 class Gateway(Typed):
-	def __init__(self, idx, name, ctx, base_type, type_t):
-		super(Gateway, self).__init__(idx, name, ctx, base_type, type_t)
+	def __init__(self, nacl_state, idx, name, ctx, base_type, type_t):
+		super(Gateway, self).__init__(nacl_state, idx, name, ctx, base_type, type_t)
+
+		# New:
+		self.pushes = []
 
 		# self.members (in Element) to contain this Gateway's members as defined in NaCl file
 		# Key: Name of route
@@ -982,8 +1276,18 @@ class Gateway(Typed):
 
 			function_names.append({TEMPLATE_KEY_FUNCTION_NAME: name, TEMPLATE_KEY_COMMA: (i < (num_functions - 1))})
 
+		# Old:
+		'''
 		pushes.append({
 			TEMPLATE_KEY_IS_GATEWAY_PUSH: 	True,
+			TEMPLATE_KEY_NAME:				get_router_name(LANGUAGE),
+			TEMPLATE_KEY_CHAIN: 			chain,
+			TEMPLATE_KEY_FUNCTION_NAMES: 	function_names
+		})
+		'''
+		# New:
+		self.pushes.append({
+			# TEMPLATE_KEY_IS_GATEWAY_PUSH: 	True,
 			TEMPLATE_KEY_NAME:				get_router_name(LANGUAGE),
 			TEMPLATE_KEY_CHAIN: 			chain,
 			TEMPLATE_KEY_FUNCTION_NAMES: 	function_names
@@ -1070,6 +1374,10 @@ class Gateway(Typed):
 			# Or:
 			# self.res = resolve_value(LANGUAGE, ...)
 
+			# New:
+			# Add self.pushes to pystache data:
+			self.nacl_state.register_pystache_data(TEMPLATE_KEY_GATEWAY_PUSHES, self.pushes)
+
 		return self.res
 
 # < Gateway
@@ -1077,8 +1385,8 @@ class Gateway(Typed):
 # -------------------- Load_balancer --------------------
 
 class Load_balancer(Typed):
-	def __init__(self, idx, name, ctx, base_type, type_t):
-		super(Load_balancer, self).__init__(idx, name, ctx, base_type, type_t)
+	def __init__(self, nacl_state, idx, name, ctx, base_type, type_t):
+		super(Load_balancer, self).__init__(nacl_state, idx, name, ctx, base_type, type_t)
 
 	def add_load_balancer(self):
 		# Note: This method also validates that all the mandatory fields have been set
@@ -1295,8 +1603,8 @@ class Load_balancer(Typed):
 # -------------------- Syslog (settings) --------------------
 
 class Syslog(Typed):
-	def __init__(self, idx, name, ctx, base_type, type_t):
-		super(Syslog, self).__init__(idx, name, ctx, base_type, type_t)
+	def __init__(self, nacl_state, idx, name, ctx, base_type, type_t):
+		super(Syslog, self).__init__(nacl_state, idx, name, ctx, base_type, type_t)
 
 	def add_syslog(self):
 		addr = self.members.get(SYSLOG_KEY_ADDRESS)
@@ -1340,8 +1648,8 @@ class Syslog(Typed):
 # Filter and Nat are examples of functions
 
 class Function(Element):
-	def __init__(self, idx, name, ctx, base_type, type_t, subtype):
-		super(Function, self).__init__(idx, name, ctx, base_type)
+	def __init__(self, nacl_state, idx, name, ctx, base_type, type_t, subtype):
+		super(Function, self).__init__(nacl_state, idx, name, ctx, base_type)
 		self.type_t 	= type_t
 		self.subtype 	= subtype
 
@@ -1355,7 +1663,10 @@ class Function(Element):
 			TEMPLATE_KEY_CONTENT: 	self.res 	# Contains transpiled content
 		}
 
-		for p in pushes:
+		# Old:
+		# for p in pushes:
+		# New:
+		for p in self.nacl_state.pushes:
 			for f in p[TEMPLATE_KEY_FUNCTION_NAMES]:
 		 		if self.name == f[TEMPLATE_KEY_FUNCTION_NAME]:
 		 			# Then we know that this function is called in the C++ code
@@ -1395,6 +1706,59 @@ class Function(Element):
 
 # -------------------- 2. Process elements and write content to file --------------------
 
+# nacl_types = {}
+'''
+nacl_types = {
+	TYPE_IFACE: Iface,
+	TYPE_VLAN: Vlan,
+	TYPE_GATEWAY: Gateway,
+	TYPE_CONNTRACK: Conntrack,
+	TYPE_LOAD_BALANCER: Load_balancer,
+	TYPE_SYSLOG: Syslog,
+	TYPE_FILTER: Function,
+	TYPE_REWRITE: Function,
+	TYPE_NAT: Function
+}
+'''
+
+# 1. Before visiting
+'''
+def register_all_type_processors():
+	print "Register all type processors"
+	# For each file in the type_processors folder, call the register function
+	# from type_processors.iface import register
+	#type_proc_dir = "type_processors"
+	#import importlib
+	# Call the register function in all type_processors
+	#for filename in os.listdir(type_proc_dir):
+	#	if filename.startswith("type") and filename.endswith(".py"):
+	#		filename = filename[:-3] # remove .py
+	#		path_to_file = os.path.join(type_proc_dir, filename)
+	#		processor = importlib.import_module(path_to_file)
+	#		processor.register()
+
+	# import type_processors
+	# type_processors.__init__()
+
+	# from type_processors import __init__ as init
+	# init()
+
+	from type_processors import init as init_type_processors
+	init_type_processors()
+'''
+
+# 2. Called by all type_processors when the register function is called
+# in the register_all_type_processors function
+'''
+def register_type_processor(name, class_constructor):
+	print "register_type_processor"
+	print "Name:", name
+	print "Class:", class_constructor
+	nacl_types[name] = class_constructor
+
+	print "Content of nacl_types after a register_type_processor: ", str(nacl_types)
+'''
+
 # -------------------- Pystache --------------------
 
 # Connected to cpp_template.mustache
@@ -1406,9 +1770,13 @@ class Cpp_template(object):
 
 # Main function
 # Called after all the elements in the NaCl text have been visited and saved in the elements dictionary
-def handle_input():
+def handle_input(nacl_state):
+	print "handle_input - elements:", str(elements)
+
 	if LANGUAGE not in valid_languages:
 		sys.exit("line 1:0 Internal error in handle_input: Cannot transpile to language " + LANGUAGE)
+
+	# TODO: Must indicate if is only allowed to create ONE or more of this type
 
 	# Process / transpile / fill the pystache lists
 	function_elements = []
@@ -1421,38 +1789,78 @@ def handle_input():
 	for e in function_elements:
 		e.process()
 
+	# Old:
 	# Create a data object containing all the pystache lists - to be sent to the
 	# pystache Renderer's render method together with the cpp_template.mustache content
+	# TODO: Push into this dictionary as well (from your class file)
+	'''
 	data = {
-		TEMPLATE_KEY_IFACES: 				ifaces,
-		TEMPLATE_KEY_IFACES_WITH_VLANS: 	ifaces_with_vlans,
+		# New:
+		# TEMPLATE_KEY_IFACES: 				ifaces,
+		# TEMPLATE_KEY_IFACES_WITH_VLANS: 	ifaces_with_vlans,
 		TEMPLATE_KEY_CONNTRACKS: 			conntracks,
 		TEMPLATE_KEY_LOAD_BALANCERS: 		load_balancers,
 		TEMPLATE_KEY_SYSLOGS: 				syslogs,
 		TEMPLATE_KEY_FILTERS: 				filters,
 		TEMPLATE_KEY_NATS: 					nats,
 		TEMPLATE_KEY_REWRITES: 				rewrites,
-		TEMPLATE_KEY_PUSHES: 				pushes,
+		# New:
+		# TEMPLATE_KEY_PUSHES: 				pushes,
 		TEMPLATE_KEY_GATEWAYS: 				gateways, # or only one gateway?
 		TEMPLATE_KEY_IP_FORWARD_IFACES:		ip_forward_ifaces,
 		TEMPLATE_KEY_ENABLE_CT_IFACES:		enable_ct_ifaces,
 		TEMPLATE_KEY_MASQUERADES: 			masquerades,
-		TEMPLATE_KEY_AUTO_NATTING_IFACES: 	auto_natting_ifaces,
+		# New:
+		# TEMPLATE_KEY_AUTO_NATTING_IFACES: 	auto_natting_ifaces,
 		TEMPLATE_KEY_HAS_GATEWAYS: 			(len(gateways) > 0),
 		TEMPLATE_KEY_HAS_NATS: 				(len(nats) > 0 or len(masquerades) > 0),
 		TEMPLATE_KEY_HAS_MASQUERADES:		(len(masquerades) > 0),
-		TEMPLATE_KEY_HAS_VLANS: 			(len(ifaces_with_vlans) > 0),
-		TEMPLATE_KEY_HAS_AUTO_NATTING_IFACES: (len(auto_natting_ifaces) > 0),
+		# New:
+		# TEMPLATE_KEY_HAS_VLANS: 			(len(ifaces_with_vlans) > 0),
+		# TEMPLATE_KEY_HAS_AUTO_NATTING_IFACES: (len(auto_natting_ifaces) > 0),
 		TEMPLATE_KEY_HAS_FUNCTIONS: 		(len(nats) > 0 or len(filters) > 0),
 		TEMPLATE_KEY_ENABLE_CT: 			(len(nats) > 0 or len(filters) > 0 or len(gateways) > 0),
 		TEMPLATE_KEY_HAS_LOAD_BALANCERS: 	(len(load_balancers) > 0),
 		TEMPLATE_KEY_HAS_SYSLOGS: 			(len(syslogs) > 0)
 	}
+	'''
+	# New:
+	nacl_state.register_pystache_data(TEMPLATE_KEY_CONNTRACKS, conntracks)
+	nacl_state.register_pystache_data(TEMPLATE_KEY_LOAD_BALANCERS, load_balancers)
+	nacl_state.register_pystache_data(TEMPLATE_KEY_SYSLOGS, syslogs)
+	nacl_state.register_pystache_data(TEMPLATE_KEY_FILTERS, filters)
+	nacl_state.register_pystache_data(TEMPLATE_KEY_NATS, nats)
+	nacl_state.register_pystache_data(TEMPLATE_KEY_REWRITES, rewrites)
+	nacl_state.register_pystache_data(TEMPLATE_KEY_GATEWAYS, gateways)
+	nacl_state.register_pystache_data(TEMPLATE_KEY_IP_FORWARD_IFACES, ip_forward_ifaces)
+	nacl_state.register_pystache_data(TEMPLATE_KEY_ENABLE_CT_IFACES, enable_ct_ifaces)
+	# nacl_state.register_pystache_data(TEMPLATE_KEY_MASQUERADES, masquerades)
+	nacl_state.register_pystache_data(TEMPLATE_KEY_HAS_GATEWAYS, (len(gateways) > 0))
+	# nacl_state.register_pystache_data(TEMPLATE_KEY_HAS_NATS, (len(nats) > 0 or len(masquerades) > 0))
+	# nacl_state.register_pystache_data(TEMPLATE_KEY_HAS_MASQUERADES, (len(masquerades) > 0))
+	nacl_state.register_pystache_data(TEMPLATE_KEY_HAS_FUNCTIONS, (len(nats) > 0 or len(filters) > 0))
+	nacl_state.register_pystache_data(TEMPLATE_KEY_ENABLE_CT, (len(nats) > 0 or len(filters) > 0 or len(gateways) > 0))
+	nacl_state.register_pystache_data(TEMPLATE_KEY_HAS_LOAD_BALANCERS, (len(load_balancers) > 0))
+	nacl_state.register_pystache_data(TEMPLATE_KEY_HAS_SYSLOGS, (len(syslogs) > 0))
+
+	# TODO hmmmm...
+	new_nats = nacl_state.pystache_data.get(TEMPLATE_KEY_NATS)
+	masqs = nacl_state.pystache_data.get("masquerades") # TEMPLATE_KEY_MASQUERADES (defined in Iface class/file)
+	if ((new_nats is not None and (len(new_nats) > 0)) or (masqs is not None and (len(masqs) > 0))):
+		print "HAS NATS"
+		nacl_state.register_pystache_data(TEMPLATE_KEY_HAS_NATS, True)
+
+	# TODO: Avoid somehow?
+	# Set the last pystache_data values (the has-values) before rendering:
+	nacl_state.set_has_values()
 
 	if LANGUAGE == CPP:
 		# Combine the data object with the Cpp_template (cpp_template.mustache file)
 		# Pystache returns the transpiled C++ content
-		content = pystache.Renderer().render(Cpp_template(), data)
+		# Old:
+		# content = pystache.Renderer().render(Cpp_template(), data)
+		# New:
+		content = pystache.Renderer().render(Cpp_template(), nacl_state.pystache_data)
 
 		# Create the C++ file and write the content to the file
 		file = None
@@ -1467,7 +1875,7 @@ def handle_input():
 	print "Transpilation complete"
 
 # -------------------- 1. Visiting --------------------
-
+'''
 invalid_names = [
 	TCP,
 	UDP,
@@ -1487,9 +1895,13 @@ def validate_name(name_ctx):
 
 	if name.lower() in invalid_names:
 		sys.exit("line " + get_line_and_column(name_ctx) + " Invalid name " + name)
+'''
 
+'''
 # Add visited element to the elements dictionary
 def save_element(base_type, ctx):
+	print "save_element - content of nacl_types: ", str(nacl_types)
+
 	if base_type != BASE_TYPE_TYPED_INIT and base_type != BASE_TYPE_UNTYPED_INIT and base_type != BASE_TYPE_FUNCTION:
 		sys.exit("line " + get_line_and_column(ctx) + " NaCl elements of base type " + base_type + " are not handled")
 
@@ -1512,8 +1924,11 @@ def save_element(base_type, ctx):
 
 	type_t_ctx = ctx.type_t()
 	type_t = type_t_ctx.getText()
+	type_t_lower = type_t.lower()
 
-	if type_t.lower() not in valid_nacl_types:
+	# Old: if type_t.lower() not in valid_nacl_types:
+	# New:
+	if type_t_lower not in nacl_types:
 		sys.exit("line " + get_line_and_column(type_t_ctx) + " Undefined type " + type_t)
 
 	# BASE_TYPE_FUNCTION
@@ -1523,7 +1938,16 @@ def save_element(base_type, ctx):
 		return
 
 	# BASE_TYPE_TYPED_INIT
-
+	# TODO: Use dictionary
+	nacl_types[type_t_lower](idx, name, ctx, base_type, type_t)
+	# TODO: Each class in its own file
+	# Load_balancer / all classes in pyton you can call type processors
+	# Type_processors (folder) contains one file per class
+	# In load_balancer.py f.ex.: from Ncl import Types
+	# -> NaCl.register("Load_balancer", Load_balancer) in the dictioary nacl_types/valid_nacl_types ()
+	# (So don't need to change)
+'''
+'''
 	type_t_lower = type_t.lower()
 	if type_t_lower == TYPE_IFACE:
 		elements[name] = Iface(idx, name, ctx, base_type, type_t)
@@ -1551,27 +1975,37 @@ def save_element(base_type, ctx):
 		syslog_exists = True
 	else:
 		sys.exit("line " + get_line_and_column(type_t_ctx) + " NaCl elements of type " + type_t + " are not handled")
+'''
 
 class NaClRecordingVisitor(NaClVisitor):
+	def __init__(self, nacl_state):
+		self.nacl_state = nacl_state
 
 	def visitTyped_initializer(self, ctx):
 		# Typed: Could indicate that C++ code is going to be created from this - depends on the
 		# type_t specified (Iface, Gateway special)
-		save_element(BASE_TYPE_TYPED_INIT, ctx)
+		self.nacl_state.save_element(BASE_TYPE_TYPED_INIT, ctx)
 
 	def visitInitializer(self, ctx):
 		# Untyped: Means generally that no C++ code is going to be created from this - exists only in NaCl
 		# Except: Assignments
-		save_element(BASE_TYPE_UNTYPED_INIT, ctx)
+		self.nacl_state.save_element(BASE_TYPE_UNTYPED_INIT, ctx)
 
 	def visitFunction(self, ctx):
-		save_element(BASE_TYPE_FUNCTION, ctx)
+		self.nacl_state.save_element(BASE_TYPE_FUNCTION, ctx)
 
-lexer = NaClLexer(StdinStream())
-stream = CommonTokenStream(lexer)
-parser = NaClParser(stream)
-tree = parser.prog()
-visitor = NaClRecordingVisitor()
-visitor.visit(tree)
+# Code to be executed when NaCl.py is run directly, but not when imported:
+if __name__ == "__main__":
+	nacl_state = NaCl_state()
+	nacl_state.register_all_type_processors() # init
+	# Each type processor calls:
+	# nacl_state.add_type_processor
 
-handle_input()
+	lexer = NaClLexer(StdinStream())
+	stream = CommonTokenStream(lexer)
+	parser = NaClParser(stream)
+	tree = parser.prog()
+	visitor = NaClRecordingVisitor(nacl_state)
+	visitor.visit(tree)
+
+	handle_input(nacl_state)
