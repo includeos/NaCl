@@ -1,11 +1,11 @@
 from NaCl import exit_NaCl, NaCl_exception, Typed, get_line_and_column, resolve_value, \
 	BASE_TYPE_TYPED_INIT, BASE_TYPE_FUNCTION, \
-	TRUE, FALSE, LANGUAGE, TEMPLATE_KEY_IFACE, \
+	DOT, TRUE, FALSE, LANGUAGE, TEMPLATE_KEY_IFACE, \
 	TYPE_NAT, TEMPLATE_KEY_FUNCTION_NAME, TEMPLATE_KEY_COMMA, \
 	TEMPLATE_KEY_NAME, TEMPLATE_KEY_CHAIN, TEMPLATE_KEY_FUNCTION_NAMES, \
 	TEMPLATE_KEY_INDEX, TEMPLATE_KEY_NETMASK, TEMPLATE_KEY_GATEWAY, TEMPLATE_KEY_ADDRESS, \
 	TEMPLATE_KEY_IFACE_INDEX, TEMPLATE_KEY_TITLE, TEMPLATE_KEY_DNS, \
-	elements, enable_ct_ifaces
+	elements
 '''
 ifaces
 auto_natting_ifaces
@@ -17,7 +17,6 @@ masquerades
 # -------------------- CONSTANTS Iface --------------------
 
 TYPE_IFACE 	= "iface"
-TYPE_VLAN 	= "vlan"
 
 # Iface keys
 
@@ -66,6 +65,8 @@ PREDEFINED_CONFIG_TYPES = [
 
 # -------------------- CONSTANTS Vlan --------------------
 
+TYPE_VLAN 	= "vlan"
+
 # Vlan keys
 
 VLAN_KEY_ADDRESS 	= IFACE_KEY_ADDRESS
@@ -95,6 +96,8 @@ TEMPLATE_KEY_IFACE_PUSHES 				= "pushes_iface"
 TEMPLATE_KEY_AUTO_NATTING_IFACES 		= "auto_natting_ifaces"
 TEMPLATE_KEY_MASQUERADES 				= "masquerades"
 
+TEMPLATE_KEY_ENABLE_CT_IFACES 			= "enable_ct_ifaces"
+
 TEMPLATE_KEY_HAS_AUTO_NATTING_IFACES 	= "has_auto_natting_ifaces"
 TEMPLATE_KEY_HAS_VLANS 					= "has_vlans"
 TEMPLATE_KEY_HAS_MASQUERADES 			= "has_masquerades"
@@ -105,11 +108,67 @@ TEMPLATE_KEY_CONFIG_IS_STATIC 			= "config_is_static"
 
 # -------------------- CLASSES --------------------
 
+# ---- CLASS Common (for the below classes Vlan and Iface) ----
+
+class Common(Typed):
+	def __init__(self, nacl_state, idx, name, ctx, base_type, type_t):
+		super(Common, self).__init__(nacl_state, idx, name, ctx, base_type, type_t)
+
+	def process_assignment(self, element_key):
+		print "process assignment Common"
+
+		element = elements.get(element_key)
+
+		name_parts = element_key.split(DOT)
+		orig_member = name_parts[1]
+		member = orig_member.lower()
+
+		if len(name_parts) != 2:
+			exit_NaCl(element.ctx, "Invalid " + self.get_class_name() + " member " + element.name)
+
+		# TODO: Call validate_key (same as in process_ctx)
+		# New:
+		try:
+			self.validate_key(orig_member)
+		except NaCl_exception as e:
+			exit_NaCl(element.ctx, e.value)
+		# Old:
+		# TODO: Vlan and Conntrack validate_key
+		'''
+		if (isinstance(self, Iface) and member not in predefined_iface_keys) or \
+			(isinstance(self, Vlan) and member not in predefined_vlan_keys) or \
+			(isinstance(self, Conntrack) and member not in predefined_conntrack_keys):
+			sys.exit("line " + get_line_and_column(element.ctx) + " Invalid " + class_name + " member " + orig_member)
+		'''
+
+		if self.members.get(member) is not None:
+			exit_NaCl(element.ctx, "Member " + member + " has already been set")
+
+		# New:
+		found_element_value = element.ctx.value()
+		try:
+			self.add_member(member, found_element_value)
+		except NaCl_exception as e:
+			exit_NaCl(element.ctx, e.value)
+		# Old:
+		'''
+		found_element_value = element.ctx.value()
+		if isinstance(self, Iface) and member in chains:
+			self.process_push(member, found_element_value)
+		else:
+			if self.members.get(member) is None:
+				self.members[member] = found_element_value
+			else:
+				sys.exit("line " + get_line_and_column(element.ctx) + " " + class_name + " member " + member + " has already been set")
+		'''
+
 # ---- CLASS Vlan ----
 
-class Vlan(Typed):
+class Vlan(Common):
 	def __init__(self, nacl_state, idx, name, ctx, base_type, type_t):
 		super(Vlan, self).__init__(nacl_state, idx, name, ctx, base_type, type_t)
+
+		self.handle_as_untyped = False
 
 		# Vlan keys/members:
 		# address
@@ -163,9 +222,11 @@ class Vlan(Typed):
 
 # ---- CLASS Iface ----
 
-class Iface(Typed):
+class Iface(Common):
 	def __init__(self, nacl_state, idx, name, ctx, base_type, type_t):
 		super(Iface, self).__init__(nacl_state, idx, name, ctx, base_type, type_t)
+
+		self.handle_as_untyped = False
 
 		# No - moving this to NaCl_state
 		# New:
@@ -465,11 +526,23 @@ class Iface(Typed):
 
 	# TODO: enable_ct_ifaces needs to be private to NaCl_state (?) - used by Gateway and Iface (?)
 	def enable_ct(self):
+		# Old:
+		'''
 		# Add this Iface's name to enable_ct_ifaces pystache list if it is not in the list already
 		if not any(enable_ct_iface[TEMPLATE_KEY_IFACE] == self.name for enable_ct_iface in enable_ct_ifaces):
 			for chain in CHAIN_NAMES:
 				if self.chains.get(chain) is not None:
 					enable_ct_ifaces.append({TEMPLATE_KEY_IFACE: self.name})
+					return # Only one entry in enable_ct_ifaces list for each Iface
+		'''
+		# New:
+		# Add this Iface's name to enable_ct_ifaces pystache list if it is not in the list already
+		if not self.nacl_state.exists_in_pystache_list(TEMPLATE_KEY_ENABLE_CT_IFACES, TEMPLATE_KEY_IFACE, self.name):
+			for chain in CHAIN_NAMES:
+				if self.chains.get(chain) is not None:
+					self.nacl_state.append_to_pystache_data_structure(TEMPLATE_KEY_ENABLE_CT_IFACES, {
+						TEMPLATE_KEY_IFACE: self.name
+					})
 					return # Only one entry in enable_ct_ifaces list for each Iface
 
 	# Main processing method
@@ -566,7 +639,10 @@ def register_iface_pystache_structures(nacl_state):
 		TEMPLATE_KEY_AUTO_NATTING_IFACES, \
 		TEMPLATE_KEY_IFACE_PUSHES, \
 		TEMPLATE_KEY_IFACES_WITH_VLANS, \
-		TEMPLATE_KEY_MASQUERADES
+		TEMPLATE_KEY_MASQUERADES, \
+		# Also adding here (used by Gateway too):
+		# So gateway needs to import this from iface:
+		TEMPLATE_KEY_ENABLE_CT_IFACES
 		# TEMPLATE_KEY_HAS_MASQUERADES, \
 		# TEMPLATE_KEY_HAS_AUTO_NATTING_IFACES, \
 		# TEMPLATE_KEY_HAS_VLANS \

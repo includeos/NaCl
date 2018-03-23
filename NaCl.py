@@ -35,7 +35,7 @@ LANGUAGE = CPP # CPP is defined in shared_constants.py, imported in cpp_template
 
 # Pystache keys
 # New:
-# TEMPLATE_KEY_IFACES 			= "ifaces"
+# TEMPLATE_KEY_IFACES 				= "ifaces"
 # TEMPLATE_KEY_IFACES_WITH_VLANS	= "ifaces_with_vlans"
 TEMPLATE_KEY_FILTERS 			= "filters"
 TEMPLATE_KEY_NATS 				= "nats"
@@ -47,20 +47,21 @@ TEMPLATE_KEY_REWRITES 			= "rewrites"
 TEMPLATE_KEY_GATEWAY_PUSHES 	= "pushes_gateway"
 
 TEMPLATE_KEY_GATEWAYS 			= "gateways"
-TEMPLATE_KEY_CONNTRACKS 		= "conntracks"
+# New:
+# TEMPLATE_KEY_CONNTRACKS 		= "conntracks"
 TEMPLATE_KEY_LOAD_BALANCERS 	= "load_balancers"
 TEMPLATE_KEY_SYSLOGS 			= "syslogs"
 TEMPLATE_KEY_IP_FORWARD_IFACES 	= "ip_forward_ifaces"
-TEMPLATE_KEY_ENABLE_CT_IFACES 	= "enable_ct_ifaces"
 # New:
-# TEMPLATE_KEY_MASQUERADES 		= "masquerades"
-# TEMPLATE_KEY_AUTO_NATTING_IFACES = "auto_natting_ifaces"
+# TEMPLATE_KEY_ENABLE_CT_IFACES 	= "enable_ct_ifaces"
+# TEMPLATE_KEY_MASQUERADES 			= "masquerades"
+# TEMPLATE_KEY_AUTO_NATTING_IFACES 	= "auto_natting_ifaces"
 
 TEMPLATE_KEY_HAS_GATEWAYS 		= "has_gateways"
 TEMPLATE_KEY_HAS_NATS 			= "has_nats"
 # New:
 # TEMPLATE_KEY_HAS_MASQUERADES 	= "has_masquerades"
-# TEMPLATE_KEY_HAS_VLANS 			= "has_vlans"
+# TEMPLATE_KEY_HAS_VLANS 		= "has_vlans"
 # New:
 # TEMPLATE_KEY_HAS_AUTO_NATTING_IFACES = "has_auto_natting_ifaces"
 TEMPLATE_KEY_HAS_FUNCTIONS 		= "has_functions"
@@ -86,8 +87,8 @@ conntracks 			= []
 load_balancers 		= []
 syslogs 			= []
 ip_forward_ifaces 	= []
-enable_ct_ifaces 	= []
 # New: Moved into Iface class:
+# enable_ct_ifaces 	= []
 # masquerades 		= []
 # auto_natting_ifaces = []
 gateway_exists 		= False
@@ -128,8 +129,10 @@ TEMPLATE_KEY_LB_POOL 				= "pool"
 TEMPLATE_KEY_LB_NODE_ADDRESS 		= TEMPLATE_KEY_ADDRESS
 TEMPLATE_KEY_LB_NODE_PORT 			= TEMPLATE_KEY_PORT
 
+'''
 TEMPLATE_KEY_CONNTRACK_TIMEOUTS 	= "timeouts"
 TEMPLATE_KEY_CONNTRACK_TYPE 		= "type"
+'''
 
 def exit_NaCl(ctx, message):
 	sys.exit("line " + get_line_and_column(ctx) + " " + message)
@@ -170,7 +173,7 @@ class NaCl_state():
 		if key not in self.pystache_data:
 			exit_NaCl_internal_error("Internal error when appending to pystache_data: No member named " + key)
 		if not isinstance(value, dict):
-			exit_NaCl_internal_error("Internal error when appending to pystache_data[" + key + "]: Value given is not a dictionary")
+			exit_NaCl_internal_error("Internal error when appending to pystache_data['" + key + "']: Value given is not a dictionary")
 		self.pystache_data[key].append(value)
 
 	def pystache_list_is_empty(self, key):
@@ -179,6 +182,14 @@ class NaCl_state():
 		if len(self.pystache_data[key]) > 0:
 			return False
 		return True
+
+	def exists_in_pystache_list(self, list_key, key, value):
+		if list_key not in self.pystache_data:
+			exit_NaCl_internal_error("Internal error: No member named " + list_key + " in pystache_data")
+		if any(list_obj.get(key) is not None and list_obj.get(key) == value for list_obj in self.pystache_data[list_key]):
+			# if any(enable_ct_iface[TEMPLATE_KEY_IFACE] == self.name for enable_ct_iface in enable_ct_ifaces):
+			return True
+		return False
 
 	# Solved by static final_registration method in the type_processors?
 	# TODO: Need more dynamic solution (these are from Iface class:)
@@ -349,6 +360,8 @@ class Element(object):
 		self.base_type 	= base_type
 		self.res 		= None
 
+		self.handle_as_untyped = True # Default (preferred)
+
 		# Use res
 		# self.values 	= None # Resolved all the element's values so can be used
 		            	       # when transpiling comparisons inside functions
@@ -401,16 +414,23 @@ class Element(object):
 		is_vlan = isinstance(self, Vlan)
 		'''
 
-		# TODO
 		# Using Untyped methods (placed in Element) since depth is more than 1 level deep
-		# Special handling when Untyped
+		# Old:
+		'''
 		if isinstance(self, Load_balancer) or isinstance(self, Conntrack) or isinstance(self, Syslog):
 			if value.obj() is None:
 				exit_NaCl(value, class_name + " must be an object")
 			self.process_obj(self.members, value.obj())
 			return
+		'''
+		# New:
+		if self.handle_as_untyped:
+			if value.obj() is None:
+				exit_NaCl(value, class_name + " must be an object")
+			self.process_obj(self.members, value.obj())
+			return
 
-		# Everything else but Load_balancer, Conntrack and Syslog:
+		# Everything else but Load_balancer, Conntrack and Syslog (meaning Gateway, Vlan and Iface):
 		if value.obj() is not None:
 			for pair in value.obj().key_value_list().key_value_pair():
 				orig_key 	= pair.key().getText()
@@ -505,10 +525,13 @@ class Element(object):
 		# Find assignments (f.ex. x.y: <value> or x.y.z: <value>) that refers to this Element
 
 		class_name = self.get_class_name()
-		# TODO:
+		# Old:
+		'''
 		is_lb_untyped_conntrack_or_syslog = isinstance(self, Untyped) or isinstance(self, Load_balancer) or \
 			isinstance(self, Conntrack) or isinstance(self, Syslog)
 		is_gateway = isinstance(self, Gateway)
+		'''
+		# New: use self.handle_as_untyped instead
 
 		# Handle assignments in the order of number of name parts to facilitate that you can have two assignments
 		# where one is creating a member with an object as a value, while the other adds another element (key and value)
@@ -524,20 +547,27 @@ class Element(object):
 			assignments_to_process = sorted(assignments_to_process, key=lambda k: len(k.split(DOT)))
 
 		for key in assignments_to_process:
+			# New:
+			self.process_assignment(key)
+
+			'''
+			# Old:
 			element = elements.get(key)
 
-			# TODO: Replace with something like:
-			'''
-			try:
-				self.process_assignment(element)
-			except NaCl_exception as e:
-				exit_NaCl(element.ctx, e.value)
-			'''
-			if is_lb_untyped_conntrack_or_syslog:
+			# Old:
+			# if is_lb_untyped_conntrack_or_syslog:
+			# New:
+			if self.handle_as_untyped:
 				self.process_assignment(element)
 			elif is_gateway:
-				self.process_gateway_assignment(element)
+				# Old:
+				# self.process_gateway_assignment(element)
+				# New:
+				self.process_assignment(element)
 			else:
+			'''
+			'''
+				# Override process_assignment in Iface and Vlan with (moved to class Common in iface module:
 				name_parts = key.split(DOT)
 				orig_member = name_parts[1]
 				member = orig_member.lower()
@@ -553,13 +583,15 @@ class Element(object):
 					exit_NaCl(element.ctx, e.value)
 				# Old:
 				# TODO: Vlan and Conntrack validate_key
-				'''
+			'''
+			'''
 				if (isinstance(self, Iface) and member not in predefined_iface_keys) or \
 					(isinstance(self, Vlan) and member not in predefined_vlan_keys) or \
 					(isinstance(self, Conntrack) and member not in predefined_conntrack_keys):
+					# Note: If Conntrack: Would have never come here because of if above
 					sys.exit("line " + get_line_and_column(element.ctx) + " Invalid " + class_name + " member " + orig_member)
-				'''
-
+			'''
+			'''
 				if self.members.get(member) is not None:
 					exit_NaCl(element.ctx, "Member " + member + " has already been set")
 
@@ -570,7 +602,8 @@ class Element(object):
 				except NaCl_exception as e:
 					exit_NaCl(element.ctx, e.value)
 				# Old:
-				'''
+			'''
+			'''
 				found_element_value = element.ctx.value()
 				if isinstance(self, Iface) and member in chains:
 					self.process_push(member, found_element_value)
@@ -579,12 +612,14 @@ class Element(object):
 						self.members[member] = found_element_value
 					else:
 						sys.exit("line " + get_line_and_column(element.ctx) + " " + class_name + " member " + member + " has already been set")
-				'''
+			'''
 
 	# ---------- Methods related to dictionary self.members for Untyped, Load_balancer, Conntrack and Syslog ----------
 
-	def process_assignment(self, element):
+	def process_assignment(self, element_key):
 		# Could be either Untyped, Load_balancer, Conntrack or Syslog
+
+		element = elements.get(element_key)
 
 		# Remove first part (the name of this element)
 		assignment_name_parts = element.name.split(DOT)
@@ -627,11 +662,26 @@ class Element(object):
 				key_list.pop(0) # Remove first key (level_key) - has been found
 				return self.get_dictionary_val(new_dict, key_list, error_ctx)
 
+	def validate_dictionary_key(self, key, parent_key, level, value_ctx):
+		exit_NaCl(value_ctx, "Internal error: The class " + self.get_class_name() + " needs to override the method " + \
+			"validate_dictionary_key")
+
+	def resolve_dictionary_value(self, dictionary, key, value_ctx):
+		exit_NaCl(value_ctx, "Internal error: The class " + self.get_class_name() + " needs to override the method " + \
+			"resolve_dictionary_value")
+
 	def add_dictionary_val(self, dictionary, key_list, value, level=1, parent_key=""):
+		# Old:
+		'''
 		is_lb = isinstance(self, Load_balancer)
 		is_conntrack = isinstance(self, Conntrack)
 		is_syslog = isinstance(self, Syslog)
+
 		level_key = key_list[0] if not is_lb and not is_conntrack and not is_syslog else key_list[0].lower()
+		'''
+		# New:
+		# TODO: The other way around?
+		level_key = key_list[0] if not self.handle_as_untyped else key_list[0].lower()
 
 		# End of recursion condition
 		if len(key_list) == 1:
@@ -640,6 +690,8 @@ class Element(object):
 				dictionary[level_key] = {} # Create new dictionary
 				return self.process_obj(dictionary[level_key], value.obj(), (level + 1), level_key)
 			else:
+				# Old:
+				'''
 				if is_lb:
 					self.validate_lb_key(level_key, parent_key, level, value) # sys.exit on error
 					self.resolve_lb_value(dictionary, level_key, value)
@@ -649,6 +701,14 @@ class Element(object):
 				elif is_syslog:
 					self.validate_syslog_key(level_key, parent_key, level, value) # sys.exit on error
 					self.resolve_syslog_value(dictionary, level_key, value)
+				else:
+					dictionary[level_key] = resolve_value(LANGUAGE, value)
+				'''
+				# New:
+				if self.handle_as_untyped:
+					# self.validate_and_resolve_dictionary_val(dictionary, level_key, parent_key, level, value)
+					self.validate_dictionary_key(level_key, parent_key, level, value)
+					self.resolve_dictionary_value(dictionary, level_key, value)
 				else:
 					dictionary[level_key] = resolve_value(LANGUAGE, value)
 				return
@@ -665,32 +725,52 @@ class Element(object):
 		# Could be either Untyped, Load_balancer, Conntrack or Syslog
 		# Level only relevant for Load_balancer, Conntrack and Syslog
 
+		# Old:
+		'''
 		is_lb = isinstance(self, Load_balancer)
 		is_conntrack = isinstance(self, Conntrack)
 		is_syslog = isinstance(self, Syslog)
+		'''
 
 		for pair in ctx.key_value_list().key_value_pair():
-			key = pair.key().getText() if not is_lb and not is_conntrack and not is_syslog else pair.key().getText().lower()
+			# Old:
+			# key = pair.key().getText() if not is_lb and not is_conntrack and not is_syslog else pair.key().getText().lower()
+			# New:
+			# TODO: The other way around?
+			key = pair.key().getText() if not self.handle_as_untyped else pair.key().getText().lower()
 
 			if dictionary.get(key) is not None:
 				exit_NaCl(pair.key(), "Member " + key + " has already been set")
 
 			# Validate key
+
+			# Old:
+			'''
 			if is_lb:
 				self.validate_lb_key(key, parent_key, level, pair.key()) # sys.exit on error
 			elif is_conntrack:
 				self.validate_conntrack_key(key, parent_key, level, pair.key()) # sys.exit on error
 			elif is_syslog:
 				self.validate_syslog_key(key, parent_key, level, pair.key()) # sys.exit on error
+			'''
+			# New:
+			if self.handle_as_untyped:
+				self.validate_dictionary_key(key, parent_key, level, pair.key())
 
 			# End of recursion:
 			if pair.value().obj() is None:
+				# Old:
+				'''
 				if is_lb:
 					self.resolve_lb_value(dictionary, key, pair.value())
 				elif is_conntrack:
 					self.resolve_conntrack_value(dictionary, key, pair.value())
 				elif is_syslog:
 					self.resolve_syslog_value(dictionary, key, pair.value())
+				'''
+				# New:
+				if self.handle_as_untyped:
+					self.resolve_dictionary_value(dictionary, key, pair.value())
 				else:
 					dictionary[key] = resolve_value(LANGUAGE, pair.value())
 			else:
@@ -742,6 +822,7 @@ class Typed(Element):
 
 # < Typed
 
+'''
 # -------------------- Conntrack --------------------
 
 class Conntrack(Typed):
@@ -828,9 +909,11 @@ class Conntrack(Typed):
 		return self.res
 
 # < Conntrack
-
-# -------------------- Iface --------------------
 '''
+
+'''
+# -------------------- Iface --------------------
+
 class Iface(Typed):
 	def __init__(self, idx, name, ctx, base_type, type_t):
 		super(Iface, self).__init__(idx, name, ctx, base_type, type_t)
@@ -1081,11 +1164,13 @@ class Iface(Typed):
 			# self.res = resolve_value(LANGUAGE, ...)
 
 		return self.res
-'''
-# < Iface
 
-# -------------------- Vlan --------------------
+# < Iface
 '''
+
+'''
+# -------------------- Vlan --------------------
+
 class Vlan(Typed):
 	def __init__(self, nacl_state, idx, name, ctx, base_type, type_t):
 		super(Vlan, self).__init__(nacl_state, idx, name, ctx, base_type, type_t)
@@ -1124,11 +1209,14 @@ class Vlan(Typed):
 
 # < Vlan
 '''
+
 # -------------------- Gateway --------------------
 
 class Gateway(Typed):
 	def __init__(self, nacl_state, idx, name, ctx, base_type, type_t):
 		super(Gateway, self).__init__(nacl_state, idx, name, ctx, base_type, type_t)
+
+		self.handle_as_untyped = False
 
 		# New:
 		self.pushes = []
@@ -1212,7 +1300,13 @@ class Gateway(Typed):
 				"it must contain a list of objects")
 
 	# Called in Element's process_assignments method
-	def process_gateway_assignment(self, element):
+	# Old:
+	# def process_gateway_assignment(self, element):
+	# New:
+	# Overriding:
+	def process_assignment(self, element_key):
+		element = elements.get(element_key)
+
 		name_parts = element.name.split(DOT)
 		orig_member = name_parts[1]
 		member = orig_member.lower()
@@ -1339,7 +1433,11 @@ class Gateway(Typed):
 		routes = []
 		index = 0
 		num_routes = len(self.members)
-		for i, route in self.members.iteritems():
+
+		# New:
+		from type_processors.iface import TEMPLATE_KEY_ENABLE_CT_IFACES
+
+		for _, route in self.members.iteritems():
 			if GATEWAY_KEY_NETMASK not in route or \
 				GATEWAY_KEY_IFACE not in route or \
 				(GATEWAY_KEY_NET not in route and GATEWAY_KEY_HOST not in route):
@@ -1354,8 +1452,16 @@ class Gateway(Typed):
 
 			# Add iface_name to enable_ct_ifaces pystache list if it is not in the
 			# list already
+			# Old:
+			'''
 			if iface_name is not None and not any(enable_ct_iface[TEMPLATE_KEY_IFACE] == iface_name for enable_ct_iface in enable_ct_ifaces):
 				enable_ct_ifaces.append({TEMPLATE_KEY_IFACE: iface_name})
+			'''
+			# New:
+			if iface_name is not None and not self.nacl_state.exists_in_pystache_list(TEMPLATE_KEY_ENABLE_CT_IFACES, TEMPLATE_KEY_IFACE, iface_name):
+				self.nacl_state.append_to_pystache_data_structure(TEMPLATE_KEY_ENABLE_CT_IFACES, {
+					TEMPLATE_KEY_IFACE: iface_name
+				})
 
 			route[TEMPLATE_KEY_COMMA] = (index < (num_routes - 1))
 			index += 1
@@ -1499,62 +1605,68 @@ class Load_balancer(Typed):
 			TEMPLATE_KEY_LB_POOL: 				pystache_pool
 		})
 
-	# Called in Element
-	def validate_lb_key(self, key, parent_key, level, ctx):
+	# Old:
+	# def validate_lb_key(self, key, parent_key, level, ctx):
+	# New:
+	# Overriding
+	def validate_dictionary_key(self, key, parent_key, level, value_ctx):
 		class_name = self.get_class_name()
 
 		if level == 1:
 			if key not in predefined_lb_keys:
-				exit_NaCl(ctx, "Invalid " + class_name + " member " + key)
+				exit_NaCl(value_ctx, "Invalid " + class_name + " member " + key)
 		elif level == 2:
 			if parent_key == "":
-				exit_NaCl(ctx, "Internal error: Parent key of " + key + " has not been given")
+				exit_NaCl(value_ctx, "Internal error: Parent key of " + key + " has not been given")
 			if parent_key == LB_KEY_CLIENTS and key not in predefined_lb_clients_keys:
-				exit_NaCl(ctx, "Invalid " + class_name + " member " + key + " in " + self.name + "." + parent_key)
+				exit_NaCl(value_ctx, "Invalid " + class_name + " member " + key + " in " + self.name + "." + parent_key)
 			if parent_key == LB_KEY_SERVERS and key not in predefined_lb_servers_keys:
-				exit_NaCl(ctx, "Invalid " + class_name + " member " + key + " in " + self.name + "." + parent_key)
+				exit_NaCl(value_ctx, "Invalid " + class_name + " member " + key + " in " + self.name + "." + parent_key)
 		else:
-			exit_NaCl(ctx, "Invalid " + class_name + " member " + key)
+			exit_NaCl(value_ctx, "Invalid " + class_name + " member " + key)
 
-	# Called in Element
-	def resolve_lb_value(self, dictionary, key, value):
+	# Old:
+	# def resolve_lb_value(self, dictionary, key, value):
+	# New:
+	# Overriding
+	def resolve_dictionary_value(self, dictionary, key, value_ctx):
 		class_name = self.get_class_name()
-		found_element_value = value.getText()
+		found_element_value = value_ctx.getText()
 
 		if key == LB_KEY_LAYER or key == LB_SERVERS_KEY_ALGORITHM:
 			found_element_value = found_element_value.lower()
 
 		if key == LB_KEY_LAYER:
-			if value.value_name() is None or found_element_value not in valid_lb_layers:
-				exit_NaCl(value, "Invalid " + LB_KEY_LAYER + " value (" + value.getText() + ")")
+			if value_ctx.value_name() is None or found_element_value not in valid_lb_layers:
+				exit_NaCl(value_ctx, "Invalid " + LB_KEY_LAYER + " value (" + value_ctx.getText() + ")")
 		elif key == LB_KEY_IFACE:
 			# Then the Iface element's name is to be added, not the resolved Iface
-			if value.value_name() is None:
-				exit_NaCl(value, class_name + " member " + LB_KEY_IFACE + " contains an invalid value (" + \
+			if value_ctx.value_name() is None:
+				exit_NaCl(value_ctx, class_name + " member " + LB_KEY_IFACE + " contains an invalid value (" + \
 					found_element_value + ")")
 			element = elements.get(found_element_value)
 			if element is None or (hasattr(element, 'type_t') and element.type_t.lower() != TYPE_IFACE):
-				exit_NaCl(value, "No Iface with the name " + found_element_value + " exists")
+				exit_NaCl(value_ctx, "No Iface with the name " + found_element_value + " exists")
 		elif key == LB_SERVERS_KEY_ALGORITHM:
-			if value.value_name() is None or found_element_value not in valid_lb_servers_algos:
-				exit_NaCl(value, "Invalid algorithm " + value.getText())
+			if value_ctx.value_name() is None or found_element_value not in valid_lb_servers_algos:
+				exit_NaCl(value_ctx, "Invalid algorithm " + value_ctx.getText())
 		elif key == LB_SERVERS_KEY_POOL:
-			if value.list_t() is None and value.value_name() is None:
-				exit_NaCl(value, "Invalid " + LB_SERVERS_KEY_POOL + " value. It needs to be a list of objects or the name " + \
+			if value_ctx.list_t() is None and value_ctx.value_name() is None:
+				exit_NaCl(value_ctx, "Invalid " + LB_SERVERS_KEY_POOL + " value. It needs to be a list of objects or the name " + \
 					"of a list of objects containing " + ", ".join(predefined_lb_node_keys))
 
-			if value.value_name() is not None:
-				element_name = value.value_name().getText()
+			if value_ctx.value_name() is not None:
+				element_name = value_ctx.value_name().getText()
 				e = elements.get(element_name)
 				if e is None:
-					exit_NaCl(value, "No element with the name " + element_name + " exists")
+					exit_NaCl(value_ctx, "No element with the name " + element_name + " exists")
 				if e.ctx.value().list_t() is None:
-					exit_NaCl(value, "Element " + element_name + " does not consist of a list")
-				# Updating value to be the element e's ctx value
-				value = e.ctx.value()
+					exit_NaCl(value_ctx, "Element " + element_name + " does not consist of a list")
+				# Updating value_ctx to be the element e's ctx value
+				value_ctx = e.ctx.value()
 
 			pool = []
-			for i, node in enumerate(value.list_t().value_list().value()):
+			for i, node in enumerate(value_ctx.list_t().value_list().value()):
 				if node.obj() is None and node.value_name() is None:
 					exit_NaCl(node, "Invalid " + LB_SERVERS_KEY_POOL + " value. It needs to be a list of objects containing " + \
 						", ".join(predefined_lb_node_keys))
@@ -1583,32 +1695,43 @@ class Load_balancer(Typed):
 
 			found_element_value = pool
 		elif key == LB_KEY_CLIENTS or key == LB_KEY_SERVERS:
-			if value.value_name() is not None:
-				element_name = value.value_name().getText()
+			if value_ctx.value_name() is not None:
+				element_name = value_ctx.value_name().getText()
 				e = elements.get(element_name)
 				if e is None:
-					exit_NaCl(value, "No element with the name " + element_name + " exists")
+					exit_NaCl(value_ctx, "No element with the name " + element_name + " exists")
 				if e.ctx.value().obj() is None:
-					exit_NaCl(value, "Element " + element_name + " must be an object")
-				# Updating value to be the element e's ctx value
-				value = e.ctx.value()
+					exit_NaCl(value_ctx, "Element " + element_name + " must be an object")
+				# Updating value_ctx to be the element e's ctx value
+				value_ctx = e.ctx.value()
 
-			if value.obj() is None:
+			if value_ctx.obj() is None:
 				mandatory_keys = ", ".join(predefined_lb_clients_keys) if key == LB_KEY_CLIENTS else ", ".join(predefined_lb_servers_keys)
-				exit_NaCl(value, "Invalid " + key + " value. It needs to be an object containing " + mandatory_keys)
+				exit_NaCl(value_ctx, "Invalid " + key + " value. It needs to be an object containing " + mandatory_keys)
 
 			found_element_value = {}
-			for pair in value.obj().key_value_list().key_value_pair():
+			for pair in value_ctx.obj().key_value_list().key_value_pair():
 				k = pair.key().getText().lower()
 				# Validate the key first
-				self.validate_lb_key(k, key, 2, value)
+				# Old:
+				# self.validate_lb_key(k, key, 2, value_ctx)
+				# New:
+				self.validate_dictionary_key(k, key, 2, value_ctx)
 				# Then resolve the value
-				self.resolve_lb_value(found_element_value, k, pair.value())
+				# Old:
+				# self.resolve_lb_value(found_element_value, k, pair.value())
+				# New:
+				self.resolve_dictionary_value(found_element_value, k, pair.value())
 		else:
-			found_element_value = resolve_value(LANGUAGE, value)
+			found_element_value = resolve_value(LANGUAGE, value_ctx)
 
 		# Add found value
 		dictionary[key] = found_element_value
+
+	# Overriding
+	# def validate_and_resolve_dictionary_val(self, dictionary, level_key, parent_key, level, value):
+	#	self.validate_lb_key(level_key, parent_key, level, value)
+	#	self.resolve_lb_value(dictionary, level_key, value)
 
 	def process(self):
 		if self.res is None:
@@ -1641,19 +1764,29 @@ class Syslog(Typed):
 
 		syslogs.append({ TEMPLATE_KEY_ADDRESS: addr, TEMPLATE_KEY_PORT: port })
 
-	# Called in Element
-	def validate_syslog_key(self, key, parent_key, level, ctx):
+	# Old:
+	# def validate_syslog_key(self, key, parent_key, level, ctx):
+	# New:
+	# Overriding
+	def validate_dictionary_key(self, key, parent_key, level, value_ctx):
 		class_name = self.get_class_name()
-
 		if level == 1:
 			if key not in predefined_syslog_keys:
-				exit_NaCl(ctx, "Invalid " + class_name + " member " + key)
+				exit_NaCl(value_ctx, "Invalid " + class_name + " member " + key)
 		else:
-			exit_NaCl(ctx, "Invalid " + class_name + " member " + key)
+			exit_NaCl(value_ctx, "Invalid " + class_name + " member " + key)
 
-	# Called in Element
-	def resolve_syslog_value(self, dictionary, key, value):
+	# Old:
+	# def resolve_syslog_value(self, dictionary, key, value):
+	# New:
+	# Overriding
+	def resolve_dictionary_value(self, dictionary, key, value):
 		dictionary[key] = resolve_value(LANGUAGE, value)
+
+	# Overriding
+	# def validate_and_resolve_dictionary_val(self, dictionary, level_key, parent_key, level, value):
+	#	self.validate_syslog_key(level_key, parent_key, level, value)
+	#	self.resolve_syslog_value(dictionary, level_key, value)
 
 	def process(self):
 		if self.res is None:
@@ -1678,6 +1811,8 @@ class Function(Element):
 		super(Function, self).__init__(nacl_state, idx, name, ctx, base_type)
 		self.type_t 	= type_t
 		self.subtype 	= subtype
+
+		self.handle_as_untyped = False # Probably not relevant at all, but in case
 
 	def add_function(self):
 		# Only if a function is mentioned in an assignment that is a push or
@@ -1889,7 +2024,7 @@ def handle_input(nacl_state):
 	}
 	'''
 	# New:
-	nacl_state.register_pystache_data(TEMPLATE_KEY_CONNTRACKS, conntracks)
+	# nacl_state.register_pystache_data(TEMPLATE_KEY_CONNTRACKS, conntracks)
 	nacl_state.register_pystache_data(TEMPLATE_KEY_LOAD_BALANCERS, load_balancers)
 	nacl_state.register_pystache_data(TEMPLATE_KEY_SYSLOGS, syslogs)
 	nacl_state.register_pystache_data(TEMPLATE_KEY_FILTERS, filters)
@@ -1897,7 +2032,8 @@ def handle_input(nacl_state):
 	nacl_state.register_pystache_data(TEMPLATE_KEY_REWRITES, rewrites)
 	nacl_state.register_pystache_data(TEMPLATE_KEY_GATEWAYS, gateways)
 	nacl_state.register_pystache_data(TEMPLATE_KEY_IP_FORWARD_IFACES, ip_forward_ifaces)
-	nacl_state.register_pystache_data(TEMPLATE_KEY_ENABLE_CT_IFACES, enable_ct_ifaces)
+	# New:
+	# nacl_state.register_pystache_data(TEMPLATE_KEY_ENABLE_CT_IFACES, enable_ct_ifaces)
 	# nacl_state.register_pystache_data(TEMPLATE_KEY_MASQUERADES, masquerades)
 	nacl_state.register_pystache_data(TEMPLATE_KEY_HAS_GATEWAYS, (len(gateways) > 0))
 	# nacl_state.register_pystache_data(TEMPLATE_KEY_HAS_NATS, (len(nats) > 0 or len(masquerades) > 0))

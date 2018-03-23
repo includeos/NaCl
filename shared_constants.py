@@ -196,6 +196,7 @@ IP 		= "ip"
 ICMP 	= "icmp"
 CT 		= "ct"
 
+''' Moved to Conntrack.py
 # ---- Conntrack keys ----
 
 CONNTRACK_KEY_LIMIT 	= "limit"
@@ -223,6 +224,7 @@ predefined_conntrack_timeout_inner_keys = [
 	UDP,
 	ICMP
 ]
+'''
 
 # ---- Load_balancer keys ----
 
