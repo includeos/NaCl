@@ -131,6 +131,15 @@ TEMPLATE_KEY_LB_NODE_PORT 			= TEMPLATE_KEY_PORT
 TEMPLATE_KEY_CONNTRACK_TIMEOUTS 	= "timeouts"
 TEMPLATE_KEY_CONNTRACK_TYPE 		= "type"
 
+def exit_NaCl(ctx, message):
+	sys.exit("line " + get_line_and_column(ctx) + " " + message)
+
+def exit_NaCl_internal_error(message):
+	sys.exit("line 1:0 " + message)
+
+def exit_NaCl_custom_line_and_column(line_and_column, message):
+	sys.exit("line " + line_and_column + " " + message)
+
 class NaCl_exception(Exception):
 	def __init__(self, value):
 		self.value = value
@@ -159,14 +168,14 @@ class NaCl_state():
 
 	def append_to_pystache_data_structure(self, key, value):
 		if key not in self.pystache_data:
-			sys.exit("line 1:0 Internal error when appending to pystache_data: No member named " + key)
+			exit_NaCl_internal_error("Internal error when appending to pystache_data: No member named " + key)
 		if not isinstance(value, dict):
-			sys.exit("line 1:0 Internal error when appending to pystache_data[" + key + "]: Value given is not a dictionary")
+			exit_NaCl_internal_error("Internal error when appending to pystache_data[" + key + "]: Value given is not a dictionary")
 		self.pystache_data[key].append(value)
 
 	def pystache_list_is_empty(self, key):
 		if key not in self.pystache_data:
-			sys.exit("line 1:0 Internal error when checking if pystache list is empty: No member named " + key)
+			exit_NaCl_internal_error("Internal error when checking if pystache list is empty: No member named " + key)
 		if len(self.pystache_data[key]) > 0:
 			return False
 		return True
@@ -230,23 +239,23 @@ class NaCl_state():
 		name = name_parts[0]
 
 		if "-" in name:
-			sys.exit("line " + get_line_and_column(name_ctx) + " Invalid character (-) in name " + name)
+			exit_NaCl(name_ctx, "Invalid character (-) in name " + name)
 
 		if name.lower() in self.invalid_names:
-			sys.exit("line " + get_line_and_column(name_ctx) + " Invalid name " + name)
+			exit_NaCl(name_ctx, "Invalid name " + name)
 
 	# Add visited element to the elements dictionary
 	def save_element(self, base_type, ctx):
 		print "save_element - content of nacl_type_processors: ", str(self.nacl_type_processors)
 
 		if base_type != BASE_TYPE_TYPED_INIT and base_type != BASE_TYPE_UNTYPED_INIT and base_type != BASE_TYPE_FUNCTION:
-			sys.exit("line " + get_line_and_column(ctx) + " NaCl elements of base type " + base_type + " are not handled")
+			exit_NaCl(ctx, "NaCl elements of base type " + base_type + " are not handled")
 
 		name_ctx = ctx.name() if base_type != BASE_TYPE_UNTYPED_INIT else ctx.value_name()
 		if name_ctx is None:
-			sys.exit("line " + get_line_and_column(ctx) + " Missing name of element")
+			exit_NaCl(ctx, "Missing name of element")
 		if name_ctx.getText() in elements:
-			sys.exit("line " + get_line_and_column(name_ctx) + " Element " + name_ctx.getText() + " has already been defined")
+			exit_NaCl(name_ctx, "Element " + name_ctx.getText() + " has already been defined")
 
 		self.validate_name(name_ctx)
 
@@ -266,7 +275,7 @@ class NaCl_state():
 		# Old: if type_t.lower() not in valid_nacl_types:
 		# New:
 		if type_t_lower not in self.nacl_type_processors:
-			sys.exit("line " + get_line_and_column(type_t_ctx) + " Undefined type " + type_t)
+			exit_NaCl(type_t_ctx, "Undefined type " + type_t)
 
 		# BASE_TYPE_FUNCTION
 
@@ -354,7 +363,7 @@ class Element(object):
 	# All subclasses MUST implement the process method - this is the main processing method for all NaCl elements, the
 	# starting point for every transpilation of every NaCl element
 	def process(self):
-		sys.exit("line " + get_line_and_column(self.ctx) + " Internal error: Subclass of class Element has not implemented the process method")
+		exit_NaCl(self.ctx, "Internal error: Subclass of class Element has not implemented the process method")
 
 	def get_class_name(self):
 		return self.__class__.__name__
@@ -397,7 +406,7 @@ class Element(object):
 		# Special handling when Untyped
 		if isinstance(self, Load_balancer) or isinstance(self, Conntrack) or isinstance(self, Syslog):
 			if value.obj() is None:
-				sys.exit("line " + get_line_and_column(value) + " A " + class_name + " must be an object")
+				exit_NaCl(value, class_name + " must be an object")
 			self.process_obj(self.members, value.obj())
 			return
 
@@ -418,8 +427,8 @@ class Element(object):
 					# That means, this class Element can have a dummy method called this that does nothing
 					self.validate_key(orig_key) # check if exists in predefined_iface_keys f.ex.
 				except NaCl_exception as e:
-					sys.exit("line " + get_line_and_column(pair.key()) + " " + e.value)
-				# TODO vlan implementation of validate_key method. Old:
+					exit_NaCl(pair.key(), e.value)
+				# Old:
 				'''
 				if (is_iface and key not in predefined_iface_keys) or \
 					(is_vlan and key not in predefined_vlan_keys):
@@ -429,7 +438,7 @@ class Element(object):
 
 				# TODO: Can be removed later? Checked in self.add_member-method
 				if self.members.get(key) is not None:
-					sys.exit("line " + get_line_and_column(pair.key()) + " " + class_name + " member " + key + " has already been set")
+					exit_NaCl(pair.key(), class_name + " member " + key + " has already been set")
 
 				# Old:
 				'''
@@ -439,8 +448,12 @@ class Element(object):
 					self.members[key] = pair_value
 				'''
 				# New:
-				# TODO: Implement this method in all classes
-				self.add_member(key, pair_value)
+				# TODO: Implement this method in all classes that needs to do other operations
+				# than just adding the key value pair to the self.members dictionary
+				try:
+					self.add_member(key, pair_value)
+				except NaCl_exception as e:
+					exit_NaCl(pair.key(), e.value)
 				# Default add_member behavior: self.members[key] = pair_value
 				# Special if is_iface and key in chains: self.process_push(key, pair_value)
 
@@ -467,7 +480,7 @@ class Element(object):
 						", ".join(predefined_config_types) + ")")
 				'''
 			except NaCl_exception as e:
-				sys.exit("line " + get_line_and_column(value) + " " + e.value)
+				exit_NaCl(value, e.value)
 				# sys.exit("line " + get_line_and_column(value) + " A " + class_name + " has to contain key value pairs")
 
 		'''
@@ -492,6 +505,7 @@ class Element(object):
 		# Find assignments (f.ex. x.y: <value> or x.y.z: <value>) that refers to this Element
 
 		class_name = self.get_class_name()
+		# TODO:
 		is_lb_untyped_conntrack_or_syslog = isinstance(self, Untyped) or isinstance(self, Load_balancer) or \
 			isinstance(self, Conntrack) or isinstance(self, Syslog)
 		is_gateway = isinstance(self, Gateway)
@@ -512,6 +526,13 @@ class Element(object):
 		for key in assignments_to_process:
 			element = elements.get(key)
 
+			# TODO: Replace with something like:
+			'''
+			try:
+				self.process_assignment(element)
+			except NaCl_exception as e:
+				exit_NaCl(element.ctx, e.value)
+			'''
 			if is_lb_untyped_conntrack_or_syslog:
 				self.process_assignment(element)
 			elif is_gateway:
@@ -522,14 +543,14 @@ class Element(object):
 				member = orig_member.lower()
 
 				if len(name_parts) != 2:
-					sys.exit("line " + get_line_and_column(element.ctx) + " Invalid " + class_name + " member " + element.name)
+					exit_NaCl(element.ctx, "Invalid " + class_name + " member " + element.name)
 
 				# TODO: Call validate_key (same as in process_ctx)
 				# New:
 				try:
 					self.validate_key(orig_member)
 				except NaCl_exception as e:
-					sys.exit("line " + get_line_and_column(element.ctx) + " " + e.value)
+					exit_NaCl(element.ctx, e.value)
 				# Old:
 				# TODO: Vlan and Conntrack validate_key
 				'''
@@ -540,14 +561,14 @@ class Element(object):
 				'''
 
 				if self.members.get(member) is not None:
-					sys.exit("line " + get_line_and_column(element.ctx) + " Member " + member + " has already been set")
+					exit_NaCl(element.ctx, "Member " + member + " has already been set")
 
 				# New:
 				found_element_value = element.ctx.value()
 				try:
 					self.add_member(member, found_element_value)
 				except NaCl_exception as e:
-					sys.exit("line " + get_line_and_column(element.ctx) + " " + e.value)
+					exit_NaCl(element.ctx, e.value)
 				# Old:
 				'''
 				found_element_value = element.ctx.value()
@@ -572,7 +593,7 @@ class Element(object):
 		# Check if this key has already been set in this element
 		# In that case: Error: Value already set
 		if self.get_dictionary_val(self.members, list(assignment_name_parts), element.ctx) is not None:
-			sys.exit("line " + get_line_and_column(element.ctx) + " Member " + element.name + " has already been set")
+			exit_NaCl(element.ctx, "Member " + element.name + " has already been set")
 		else:
 			# Add to members dictionary
 			num_name_parts = len(assignment_name_parts)
@@ -601,7 +622,7 @@ class Element(object):
 				new_dict = dictionary.get(key)
 				if new_dict is None or not isinstance(new_dict, dict):
 					line_and_column = "1:0" if error_ctx is None else get_line_and_column(error_ctx)
-					sys.exit("line " + line_and_column + " " + level_key + "." + key_list[1] + " does not exist")
+					exit_NaCl_custom_line_and_column(line_and_column, level_key + "." + key_list[1] + " does not exist")
 
 				key_list.pop(0) # Remove first key (level_key) - has been found
 				return self.get_dictionary_val(new_dict, key_list, error_ctx)
@@ -633,7 +654,7 @@ class Element(object):
 				return
 
 		if level_key not in dictionary:
-			sys.exit("line " + get_line_and_column(value) + " Trying to add to a member (" + level_key + ") that doesn't exist")
+			exit_NaCl(value, "Trying to add to a member (" + level_key + ") that doesn't exist")
 
 		for key in dictionary:
 			if key == level_key:
@@ -652,7 +673,7 @@ class Element(object):
 			key = pair.key().getText() if not is_lb and not is_conntrack and not is_syslog else pair.key().getText().lower()
 
 			if dictionary.get(key) is not None:
-				sys.exit("line " + get_line_and_column(pair.key()) + " Member " + key + " has already been set")
+				exit_NaCl(pair.key(), "Member " + key + " has already been set")
 
 			# Validate key
 			if is_lb:
@@ -696,7 +717,7 @@ class Untyped(Element):
 				# This is an assignment to an already existing element
 				element_name = name_parts[0]
 				if elements.get(element_name) is None:
-					sys.exit("line " + get_line_and_column(self.ctx) + " No element with the name " + element_name + " exists")
+					exit_NaCl(self.ctx, "No element with the name " + element_name + " exists")
 			else:
 				if self.ctx.value().obj() is not None:
 					# Then this element is an obj and other assignments can add to this element
@@ -735,15 +756,15 @@ class Conntrack(Typed):
 			class_name = self.get_class_name()
 
 			if not isinstance(timeout, dict):
-				sys.exit("line " + get_line_and_column(self.ctx) + " Invalid " + CONNTRACK_KEY_TIMEOUT + \
-					" value of " + class_name + " (needs to be an object)")
+				exit_NaCl(self.ctx, "Invalid " + CONNTRACK_KEY_TIMEOUT + " value of " + class_name + \
+					" (needs to be an object)")
 
 			for conntrack_type in timeout:
 				t = timeout.get(conntrack_type)
 
 				if not isinstance(t, dict):
-					sys.exit("line " + get_line_and_column(self.ctx) + " Invalid " + conntrack_type + \
-						" value of " + class_name + " (needs to be an object)")
+					exit_NaCl(self.ctx, "Invalid " + conntrack_type + " value of " + class_name + \
+						" (needs to be an object)")
 
 				tcp_timeout = t.get(TCP)
 				udp_timeout = t.get(UDP)
@@ -769,22 +790,22 @@ class Conntrack(Typed):
 
 		if level == 1:
 			if key not in predefined_conntrack_keys:
-				sys.exit("line " + get_line_and_column(ctx) + " Invalid " + class_name + " member " + key)
+				exit_NaCl(ctx, "Invalid " + class_name + " member " + key)
 			return
 
 		if parent_key == "":
-			sys.exit("line " + get_line_and_column(ctx) + " Internal error: Parent key of " + key + " has not been given")
+			exit_NaCl(ctx, "Internal error: Parent key of " + key + " has not been given")
 
 		if level == 2:
 			if parent_key == CONNTRACK_KEY_TIMEOUT and key not in predefined_conntrack_timeout_keys:
-				sys.exit("line " + get_line_and_column(ctx) + " Invalid " + class_name + " member " + key + " in " + self.name + "." + parent_key)
+				exit_NaCl(ctx, "Invalid " + class_name + " member " + key + " in " + self.name + "." + parent_key)
 		elif level == 3:
 			if parent_key not in predefined_conntrack_timeout_keys:
-				sys.exit("line " + get_line_and_column(ctx) + " Internal error: Invalid parent key " + parent_key + " of " + key)
+				exit_NaCl(ctx, "Internal error: Invalid parent key " + parent_key + " of " + key)
 			if key not in predefined_conntrack_timeout_inner_keys:
-				sys.exit("line " + get_line_and_column(ctx) + " Invalid " + class_name + " member " + key)
+				exit_NaCl(ctx, "Invalid " + class_name + " member " + key)
 		else:
-			sys.exit("line " + get_line_and_column(ctx) + " Invalid " + class_name + " member " + key)
+			exit_NaCl(ctx, "Invalid " + class_name + " member " + key)
 
 	# Called in Element
 	def resolve_conntrack_value(self, dictionary, key, value):
@@ -1127,11 +1148,10 @@ class Gateway(Typed):
 			key = orig_key.lower()
 
 			if route_obj.get(key) is not None:
-				sys.exit("line " + get_line_and_column(pair.key()) + " Member " + key + \
-					" has already been set for route " + name)
+				exit_NaCl(pair.key(), "Member " + key + " has already been set for route " + name)
 
 			if key not in predefined_gateway_route_keys:
-				sys.exit("line " + get_line_and_column(pair.key()) + " " + orig_key + " is not a valid Gateway route member. " + \
+				exit_NaCl(pair.key(), orig_key + " is not a valid Gateway route member. " + \
 					"Valid members are: " + ", ".join(predefined_gateway_route_keys))
 
 			if key != GATEWAY_KEY_IFACE:
@@ -1142,11 +1162,11 @@ class Gateway(Typed):
 				iface_name = pair.value().getText()
 
 				if pair.value().value_name() is None:
-					sys.exit("line " + get_line_and_column(pair.value()) + " Gateway route member iface contains an invalid value (" + iface_name + ")")
+					exit_NaCl(pair.value(), "Gateway route member iface contains an invalid value (" + iface_name + ")")
 
 				element = elements.get(iface_name)
 				if element is None or (hasattr(element, 'type_t') and element.type_t.lower() != TYPE_IFACE):
-					sys.exit("line " + get_line_and_column(pair.value()) + " No Iface with the name " + iface_name + " exists")
+					exit_NaCl(pair.value(), "No Iface with the name " + iface_name + " exists")
 
 				route_obj[key] = iface_name
 
@@ -1163,35 +1183,33 @@ class Gateway(Typed):
 				name = orig_name.lower()
 
 				if route_pair.value().obj() is None and name not in predefined_gateway_keys:
-					sys.exit("line " + get_line_and_column(route_pair) + " Invalid Gateway member " + orig_name)
+					exit_NaCl(route_pair, "Invalid Gateway member " + orig_name)
 
 				if name == GATEWAY_KEY_SEND_TIME_EXCEEDED or name == GATEWAY_KEY_FORWARD:
 					if self.not_route_members.get(name) is not None:
-						sys.exit("line " + get_line_and_column(route_pair) + " " + name + " has already been set")
+						exit_NaCl(route_pair, name + " has already been set")
 					self.not_route_members[name] = route_pair.value()
 					continue
 
 				if self.members.get(name) is not None:
-					sys.exit("line " + get_line_and_column(route_pair) + " Route " + name + " has already been set")
+					exit_NaCl(route_pair, "Route " + name + " has already been set")
 
 				if route_pair.value().obj() is None:
-					sys.exit("line " + get_line_and_column(route_pair.value()) + " A Gateway's routes must be objects (" + \
-						"containing key value pairs)")
+					exit_NaCl(route_pair.value(), "A Gateway's routes must be objects (containing key value pairs)")
 
 				# Add pystache route obj to members dictionary
 				self.members[name] = self.get_pystache_route_obj(name, route_pair.value().obj())
 		elif value.list_t() is not None:
 			for i, val in enumerate(value.list_t().value_list().value()):
 				if val.obj() is None:
-					sys.exit("line " + get_line_and_column(val) + " A Gateway that constitutes a list must be a list of " + \
-						"objects (containing key value pairs)")
+					exit_NaCl(val, "A Gateway that constitutes a list must be a list of objects (containing key value pairs)")
 
 				# Add pystache route obj to members dictionary
 				# When unnamed routes, use index as key
 				self.members[i] = self.get_pystache_route_obj(str(i), val.obj())
 		else:
-			sys.exit("line " + get_line_and_column(value) + " A Gateway must contain key value pairs (in which " + \
-				"each pair's value is an object), or it must contain a list of objects")
+			exit_NaCl(value, "A Gateway must contain key value pairs (in which each pair's value is an object), or " + \
+				"it must contain a list of objects")
 
 	# Called in Element's process_assignments method
 	def process_gateway_assignment(self, element):
@@ -1201,9 +1219,9 @@ class Gateway(Typed):
 		num_name_parts = len(name_parts)
 
 		if num_name_parts > 3:
-			sys.exit("line " + get_line_and_column(element.ctx) + " Invalid Gateway member " + element.name)
+			exit_NaCl(element.ctx, "Invalid Gateway member " + element.name)
 		elif self.members.get(0) is not None:
-			sys.exit("line " + get_line_and_column(element.ctx) + " Trying to access a named member in a Gateway without named members (" + element.name + ")")
+			exit_NaCl(element.ctx, "Trying to access a named member in a Gateway without named members (" + element.name + ")")
 			# Could support later: gateway.0.netmask: 255.255.255.0
 
 		if num_name_parts == 2:
@@ -1214,31 +1232,30 @@ class Gateway(Typed):
 				if self.members.get(member) is None:
 					# Then add the route if valid
 					if element.ctx.value().obj() is None:
-						sys.exit("line " + get_line_and_column(element.ctx.value()) + " A Gateway member's value needs to contain key value pairs")
+						exit_NaCl(element.ctx.value(), "A Gateway member's value needs to contain key value pairs")
 					self.members[member] = self.get_pystache_route_obj(element.name, element.ctx.value().obj())
 				else:
-					sys.exit("line " + get_line_and_column(element.ctx) + " Gateway member " + member + " has already been set")
+					exit_NaCl(element.ctx, "Gateway member " + member + " has already been set")
 			# not_route_members:
 			else:
 				if self.not_route_members.get(member) is None:
 					self.not_route_members[member] = element.ctx.value()
 				else:
-					sys.exit("line " + get_line_and_column(element.ctx.value()) + " Gateway member " + member + " has already been set")
+					exit_NaCl(element.ctx.value(), "Gateway member " + member + " has already been set")
 		else:
 			# Then num_name_parts are 3 and we're talking about adding a member to a route
 			route = self.members.get(member)
 			if route is None:
-				sys.exit("line " + get_line_and_column(element.ctx) + " No member named " + member + " in Gateway " + self.name)
+				exit_NaCl(element.ctx, "No member named " + member + " in Gateway " + self.name)
 
 			route_member = name_parts[2].lower()
 
 			if route.get(route_member) is not None:
-				sys.exit("line " + get_line_and_column(element.ctx) + " Member " + route_member + " in route " + member + \
-					" has already been set")
+				exit_NaCl(element.ctx, "Member " + route_member + " in route " + member + " has already been set")
 
 			if route_member not in predefined_gateway_route_keys:
-				sys.exit("line " + get_line_and_column(element.ctx) + " " + route_member + " is not a valid Gateway route member. " + \
-					"Valid members are: " + ", ".join(predefined_gateway_route_keys))
+				exit_NaCl(element.ctx, route_member + " is not a valid Gateway route member. Valid members are: " + \
+					", ".join(predefined_gateway_route_keys))
 
 			if route_member != GATEWAY_KEY_IFACE:
 				route[route_member] = resolve_value(LANGUAGE, element.ctx.value())
@@ -1248,12 +1265,11 @@ class Gateway(Typed):
 				iface_name = element.ctx.value().getText()
 
 				if element.ctx.value().value_name() is None:
-					sys.exit("line " + get_line_and_column(element.ctx.value()) + " Invalid iface value " + \
-						iface_name + " (the value must be the name of an Iface)")
+					exit_NaCl(element.ctx.value(), "Invalid iface value " + iface_name + " (the value must be the name of an Iface)")
 
 				iface_element = elements.get(iface_name)
 				if iface_element is None or (hasattr(iface_element, 'type_t') and iface_element.type_t.lower() != TYPE_IFACE):
-					sys.exit("line " + get_line_and_column(element.ctx.value()) + " No Iface with the name " + iface_name + " exists")
+					exit_NaCl(element.ctx.value(), "No Iface with the name " + iface_name + " exists")
 
 				route[route_member] = iface_name
 
@@ -1263,13 +1279,13 @@ class Gateway(Typed):
 			# More than one function pushed onto chain
 			for list_value in value_ctx.list_t().value_list().value():
 				if list_value.value_name() is None:
-					sys.exit("line " + get_line_and_column(list_value) + " This is not supported: " + value_ctx.getText())
+					exit_NaCl(list_value, "This is not supported: " + value_ctx.getText())
 				functions.append(list_value.value_name())
 		elif value_ctx.value_name() is not None:
 			# Only one function pushed onto chain
 			functions = [ value_ctx.value_name() ]
 		else:
-			sys.exit("line " + get_line_and_column(value_ctx) + " This is not supported: " + value_ctx.getText())
+			exit_NaCl(value_ctx, "This is not supported: " + value_ctx.getText())
 
 		self.add_push(chain, functions)
 
@@ -1283,10 +1299,10 @@ class Gateway(Typed):
 			name = function.getText()
 			element = elements.get(name)
 			if element is None or element.base_type != BASE_TYPE_FUNCTION:
-				sys.exit("line " + get_line_and_column(function) + " No function with the name " + name + " exists")
+				exit_NaCl(function, "No function with the name " + name + " exists")
 
 			if element.type_t.lower() == TYPE_NAT:
-				sys.exit("line " + get_line_and_column(function) + " A Nat function cannot be pushed onto a Gateway's forward chain")
+				exit_NaCl(function, "A Nat function cannot be pushed onto a Gateway's forward chain")
 
 			function_names.append({TEMPLATE_KEY_FUNCTION_NAME: name, TEMPLATE_KEY_COMMA: (i < (num_functions - 1))})
 
@@ -1314,8 +1330,8 @@ class Gateway(Typed):
 				self.not_route_members[key] = resolved_value
 
 				if resolved_value != TRUE and resolved_value != FALSE:
-					sys.exit("line " + get_line_and_column(value_ctx) + " Invalid value of " + key + \
-						" (" + resolved_value + "). Must be set to " + TRUE + " or " + FALSE)
+					exit_NaCl(value_ctx, "Invalid value of " + key + " (" + resolved_value + \
+						"). Must be set to " + TRUE + " or " + FALSE)
 			elif key == GATEWAY_KEY_FORWARD:
 				self.process_push(key, value_ctx)
 
@@ -1327,8 +1343,8 @@ class Gateway(Typed):
 			if GATEWAY_KEY_NETMASK not in route or \
 				GATEWAY_KEY_IFACE not in route or \
 				(GATEWAY_KEY_NET not in route and GATEWAY_KEY_HOST not in route):
-				sys.exit("line " + get_line_and_column(route.get("ctx")) + " A Gateway route must specify " + \
-					GATEWAY_KEY_IFACE + ", " + GATEWAY_KEY_NETMASK + " and either " + GATEWAY_KEY_NET + " or " + GATEWAY_KEY_HOST)
+				exit_NaCl(route.get("ctx"), "A Gateway route must specify " + GATEWAY_KEY_IFACE + ", " + \
+					GATEWAY_KEY_NETMASK + " and either " + GATEWAY_KEY_NET + " or " + GATEWAY_KEY_HOST)
 
 			# Add iface_name to ip_forward_ifaces pystache list if it is not in the
 			# list already
@@ -1409,33 +1425,33 @@ class Load_balancer(Typed):
 
 		layer = self.members.get(LB_KEY_LAYER)
 		if layer is None:
-			sys.exit("line " + get_line_and_column(self.ctx) + " Load_balancer member " + LB_KEY_LAYER + " has not been set")
+			exit_NaCl(self.ctx, "Load_balancer member " + LB_KEY_LAYER + " has not been set")
 		if any(lb[TEMPLATE_KEY_LB_LAYER] == layer for lb in load_balancers):
-			sys.exit("line " + get_line_and_column(self.ctx) + " A " + layer.upper() + " Load_balancer has already been defined")
+			exit_NaCl(self.ctx, "A " + layer.upper() + " Load_balancer has already been defined")
 
 		clients = self.members.get(LB_KEY_CLIENTS)
 		if clients is None:
-			sys.exit("line " + get_line_and_column(self.ctx) + " Load_balancer member " + LB_KEY_CLIENTS + " has not been set")
+			exit_NaCl(self.ctx, "Load_balancer member " + LB_KEY_CLIENTS + " has not been set")
 		if not isinstance(clients, dict):
-			sys.exit("line " + get_line_and_column(self.ctx) + " Invalid value of Load_balancer member " + LB_KEY_CLIENTS + \
+			exit_NaCl(self.ctx, "Invalid value of Load_balancer member " + LB_KEY_CLIENTS + \
 				". It needs to be an object containing " + ", ".join(predefined_lb_clients_keys))
 
 		servers = self.members.get(LB_KEY_SERVERS)
 		if servers is None:
-			sys.exit("line " + get_line_and_column(self.ctx) + " Load_balancer member " + LB_KEY_SERVERS + " has not been set")
+			exit_NaCl(self.ctx, "Load_balancer member " + LB_KEY_SERVERS + " has not been set")
 		if not isinstance(servers, dict):
-			sys.exit("line " + get_line_and_column(self.ctx) + " Invalid value of Load_balancer member " + LB_KEY_SERVERS + \
+			exit_NaCl(self.ctx, "Invalid value of Load_balancer member " + LB_KEY_SERVERS + \
 				". It needs to be an object containing " + ", ".join(predefined_lb_servers_keys))
 
 		# Clients
 
 		clients_iface_name = clients.get(LB_KEY_IFACE)
 		if clients_iface_name is None:
-			sys.exit("line " + get_line_and_column(self.ctx) + " Load_balancer member " + LB_KEY_CLIENTS + "." + LB_KEY_IFACE + " has not been set")
+			exit_NaCl(self.ctx, "Load_balancer member " + LB_KEY_CLIENTS + "." + LB_KEY_IFACE + " has not been set")
 
 		port = clients.get(LB_KEY_PORT)
 		if port is None:
-			sys.exit("line " + get_line_and_column(self.ctx) + " Load_balancer member " + LB_KEY_CLIENTS + "." + LB_KEY_PORT + " has not been set")
+			exit_NaCl(self.ctx, "Load_balancer member " + LB_KEY_CLIENTS + "." + LB_KEY_PORT + " has not been set")
 
 		waitq_limit = clients.get(LB_CLIENTS_KEY_WAIT_QUEUE_LIMIT)
 		if waitq_limit is None:
@@ -1449,18 +1465,18 @@ class Load_balancer(Typed):
 
 		servers_iface_name = servers.get(LB_KEY_IFACE)
 		if servers_iface_name is None:
-			sys.exit("line " + get_line_and_column(self.ctx) + " Load_balancer member " + LB_KEY_SERVERS + "." + LB_KEY_IFACE + " has not been set")
+			exit_NaCl(self.ctx, "Load_balancer member " + LB_KEY_SERVERS + "." + LB_KEY_IFACE + " has not been set")
 
 		algo = servers.get(LB_SERVERS_KEY_ALGORITHM)
 		if algo is None:
-			sys.exit("line " + get_line_and_column(self.ctx) + " Load_balancer member " + LB_KEY_SERVERS + "." + LB_SERVERS_KEY_ALGORITHM + " has not been set")
+			exit_NaCl(self.ctx, "Load_balancer member " + LB_KEY_SERVERS + "." + LB_SERVERS_KEY_ALGORITHM + " has not been set")
 
 		# pool is a list of nodes/servers, containing address and port
 		pool = servers.get(LB_SERVERS_KEY_POOL)
 		if pool is None:
-			sys.exit("line " + get_line_and_column(self.ctx) + " Load_balancer member " + LB_KEY_SERVERS + "." + LB_SERVERS_KEY_POOL + " has not been set")
+			exit_NaCl(self.ctx, "Load_balancer member " + LB_KEY_SERVERS + "." + LB_SERVERS_KEY_POOL + " has not been set")
 		if not isinstance(pool, list):
-			sys.exit("line " + get_line_and_column(self.ctx) + " Invalid value of Load_balancer member " + LB_KEY_SERVERS + "." + LB_SERVERS_KEY_POOL + \
+			exit_NaCl(self.ctx, "Invalid value of Load_balancer member " + LB_KEY_SERVERS + "." + LB_SERVERS_KEY_POOL + \
 				". It needs to be a list of objects containing " + ", ".join(predefined_lb_node_keys))
 
 		pystache_pool = []
@@ -1489,16 +1505,16 @@ class Load_balancer(Typed):
 
 		if level == 1:
 			if key not in predefined_lb_keys:
-				sys.exit("line " + get_line_and_column(ctx) + " Invalid " + class_name + " member " + key)
+				exit_NaCl(ctx, "Invalid " + class_name + " member " + key)
 		elif level == 2:
 			if parent_key == "":
-				sys.exit("line " + get_line_and_column(ctx) + " Internal error: Parent key of " + key + " has not been given")
+				exit_NaCl(ctx, "Internal error: Parent key of " + key + " has not been given")
 			if parent_key == LB_KEY_CLIENTS and key not in predefined_lb_clients_keys:
-				sys.exit("line " + get_line_and_column(ctx) + " Invalid " + class_name + " member " + key + " in " + self.name + "." + parent_key)
+				exit_NaCl(ctx, "Invalid " + class_name + " member " + key + " in " + self.name + "." + parent_key)
 			if parent_key == LB_KEY_SERVERS and key not in predefined_lb_servers_keys:
-				sys.exit("line " + get_line_and_column(ctx) + " Invalid " + class_name + " member " + key + " in " + self.name + "." + parent_key)
+				exit_NaCl(ctx, "Invalid " + class_name + " member " + key + " in " + self.name + "." + parent_key)
 		else:
-			sys.exit("line " + get_line_and_column(ctx) + " Invalid " + class_name + " member " + key)
+			exit_NaCl(ctx, "Invalid " + class_name + " member " + key)
 
 	# Called in Element
 	def resolve_lb_value(self, dictionary, key, value):
@@ -1510,47 +1526,46 @@ class Load_balancer(Typed):
 
 		if key == LB_KEY_LAYER:
 			if value.value_name() is None or found_element_value not in valid_lb_layers:
-				sys.exit("line " + get_line_and_column(value) + " Invalid " + LB_KEY_LAYER + " value (" + value.getText() + ")")
+				exit_NaCl(value, "Invalid " + LB_KEY_LAYER + " value (" + value.getText() + ")")
 		elif key == LB_KEY_IFACE:
 			# Then the Iface element's name is to be added, not the resolved Iface
 			if value.value_name() is None:
-				sys.exit("line " + get_line_and_column(value) + " " + class_name + " member " + LB_KEY_IFACE + " contains an invalid value (" + \
+				exit_NaCl(value, class_name + " member " + LB_KEY_IFACE + " contains an invalid value (" + \
 					found_element_value + ")")
 			element = elements.get(found_element_value)
 			if element is None or (hasattr(element, 'type_t') and element.type_t.lower() != TYPE_IFACE):
-				sys.exit("line " + get_line_and_column(value) + " No Iface with the name " + found_element_value + " exists")
+				exit_NaCl(value, "No Iface with the name " + found_element_value + " exists")
 		elif key == LB_SERVERS_KEY_ALGORITHM:
 			if value.value_name() is None or found_element_value not in valid_lb_servers_algos:
-				sys.exit("line " + get_line_and_column(value) + " Invalid algorithm " + value.getText())
+				exit_NaCl(value, "Invalid algorithm " + value.getText())
 		elif key == LB_SERVERS_KEY_POOL:
 			if value.list_t() is None and value.value_name() is None:
-				sys.exit("line " + get_line_and_column(value) + " Invalid " + LB_SERVERS_KEY_POOL + \
-					" value. It needs to be a list of objects or the name of a list of objects containing " + \
-					", ".join(predefined_lb_node_keys))
+				exit_NaCl(value, "Invalid " + LB_SERVERS_KEY_POOL + " value. It needs to be a list of objects or the name " + \
+					"of a list of objects containing " + ", ".join(predefined_lb_node_keys))
 
 			if value.value_name() is not None:
 				element_name = value.value_name().getText()
 				e = elements.get(element_name)
 				if e is None:
-					sys.exit("line " + get_line_and_column(value) + " No element with the name " + element_name + " exists")
+					exit_NaCl(value, "No element with the name " + element_name + " exists")
 				if e.ctx.value().list_t() is None:
-					sys.exit("line " + get_line_and_column(value) + " Element " + element_name + " does not consist of a list")
+					exit_NaCl(value, "Element " + element_name + " does not consist of a list")
 				# Updating value to be the element e's ctx value
 				value = e.ctx.value()
 
 			pool = []
 			for i, node in enumerate(value.list_t().value_list().value()):
 				if node.obj() is None and node.value_name() is None:
-					sys.exit("line " + get_line_and_column(node) + " Invalid " + LB_SERVERS_KEY_POOL + " value. It needs to be a list of objects containing " + \
+					exit_NaCl(node, "Invalid " + LB_SERVERS_KEY_POOL + " value. It needs to be a list of objects containing " + \
 						", ".join(predefined_lb_node_keys))
 
 				if node.value_name() is not None:
 					element_name = node.value_name().getText()
 					e = elements.get(element_name)
 					if e is None:
-						sys.exit("line " + get_line_and_column(node) + " No element with the name " + element_name + " exists")
+						exit_NaCl(node, "No element with the name " + element_name + " exists")
 					if e.ctx.value().obj() is None:
-						sys.exit("line " + get_line_and_column(node) + " Element " + element_name + " must be an object")
+						exit_NaCl(node, "Element " + element_name + " must be an object")
 					node = e.ctx.value()
 
 				n = {}
@@ -1558,13 +1573,11 @@ class Load_balancer(Typed):
 				for pair in node.obj().key_value_list().key_value_pair():
 					node_key = pair.key().getText().lower()
 					if node_key not in predefined_lb_node_keys:
-						sys.exit("line " + get_line_and_column(pair.key()) + " Invalid member in node " + str(i) + " in " + \
-							LB_KEY_SERVERS + "." + LB_SERVERS_KEY_POOL)
+						exit_NaCl(pair.key(), "Invalid member in node " + str(i) + " in " + LB_KEY_SERVERS + "." + LB_SERVERS_KEY_POOL)
 					n[node_key] = resolve_value(LANGUAGE, pair.value())
 
 				if n.get(LB_NODE_KEY_ADDRESS) is None or n.get(LB_KEY_PORT) is None:
-					sys.exit("line " + get_line_and_column(node) + " An object in a " + LB_SERVERS_KEY_POOL + \
-						" needs to specify " + ", ".join(predefined_lb_node_keys))
+					exit_NaCl(node, "An object in a " + LB_SERVERS_KEY_POOL + " needs to specify " + ", ".join(predefined_lb_node_keys))
 
 				pool.append(n)
 
@@ -1574,16 +1587,15 @@ class Load_balancer(Typed):
 				element_name = value.value_name().getText()
 				e = elements.get(element_name)
 				if e is None:
-					sys.exit("line " + get_line_and_column(value) + " No element with the name " + element_name + " exists")
+					exit_NaCl(value, "No element with the name " + element_name + " exists")
 				if e.ctx.value().obj() is None:
-					sys.exit("line " + get_line_and_column(value) + " Element " + element_name + " must be an object")
+					exit_NaCl(value, "Element " + element_name + " must be an object")
 				# Updating value to be the element e's ctx value
 				value = e.ctx.value()
 
 			if value.obj() is None:
 				mandatory_keys = ", ".join(predefined_lb_clients_keys) if key == LB_KEY_CLIENTS else ", ".join(predefined_lb_servers_keys)
-				sys.exit("line " + get_line_and_column(value) + " Invalid " + key + " value. It needs to be an object containing " + \
-					mandatory_keys)
+				exit_NaCl(value, "Invalid " + key + " value. It needs to be an object containing " + mandatory_keys)
 
 			found_element_value = {}
 			for pair in value.obj().key_value_list().key_value_pair():
@@ -1625,7 +1637,7 @@ class Syslog(Typed):
 		port = self.members.get(SYSLOG_KEY_PORT)
 
 		if addr is None or port is None:
-			sys.exit("line " + get_line_and_column(self.ctx) + " Syslog address and/or port have not been specified")
+			exit_NaCl(self.ctx, "Syslog address and/or port have not been specified")
 
 		syslogs.append({ TEMPLATE_KEY_ADDRESS: addr, TEMPLATE_KEY_PORT: port })
 
@@ -1635,9 +1647,9 @@ class Syslog(Typed):
 
 		if level == 1:
 			if key not in predefined_syslog_keys:
-				sys.exit("line " + get_line_and_column(ctx) + " Invalid " + class_name + " member " + key)
+				exit_NaCl(ctx, "Invalid " + class_name + " member " + key)
 		else:
-			sys.exit("line " + get_line_and_column(ctx) + " Invalid " + class_name + " member " + key)
+			exit_NaCl(ctx, "Invalid " + class_name + " member " + key)
 
 	# Called in Element
 	def resolve_syslog_value(self, dictionary, key, value):
@@ -1699,13 +1711,13 @@ class Function(Element):
 						# Display an error message if the function is a Filter and does not end in a default verdict
 						if type_t_lower == TYPE_FILTER:
 							if self.subtype.lower() != IP:
-								sys.exit("line " + get_line_and_column(self.ctx) + " Only a function of subtype IP can be pushed onto an Iface's chain. " + \
+								exit_NaCl(self.ctx, "Only a function of subtype IP can be pushed onto an Iface's chain. " + \
 									"However, you can create and call Filters of any subtype inside an IP Filter")
 
 							elements = list(self.ctx.body().body_element())
 							last_element = elements[len(elements) - 1]
 							if last_element.action() is None or last_element.action().getText() not in valid_default_filter_verdicts:
-								sys.exit("line " + get_line_and_column(self.ctx) + " Missing default verdict at the end of this Filter")
+								exit_NaCl(self.ctx, "Missing default verdict at the end of this Filter")
 
 						if type_t_lower == TYPE_FILTER:
 							filters.append(pystache_function_obj)
@@ -1714,8 +1726,7 @@ class Function(Element):
 						elif type_t_lower == TYPE_REWRITE:
 							rewrites.append(pystache_function_obj)
 						else:
-							sys.exit("line " + get_line_and_column(self.ctx.type_t()) + " Functions of type " + \
-								self.type_t + " are not handled")
+							exit_NaCl(self.ctx.type_t(), "Functions of type " + self.type_t + " are not handled")
 						return self.res
 		# New: ADDED: And the same for pushes_gateway?:
 		# TODO: Reuse the content - move to separate method
@@ -1730,13 +1741,13 @@ class Function(Element):
 						# Display an error message if the function is a Filter and does not end in a default verdict
 						if type_t_lower == TYPE_FILTER:
 							if self.subtype.lower() != IP:
-								sys.exit("line " + get_line_and_column(self.ctx) + " Only a function of subtype IP can be pushed onto an Iface's chain. " + \
+								exit_NaCl(self.ctx, "Only a function of subtype IP can be pushed onto an Iface's chain. " + \
 									"However, you can create and call Filters of any subtype inside an IP Filter")
 
 							elements = list(self.ctx.body().body_element())
 							last_element = elements[len(elements) - 1]
 							if last_element.action() is None or last_element.action().getText() not in valid_default_filter_verdicts:
-								sys.exit("line " + get_line_and_column(self.ctx) + " Missing default verdict at the end of this Filter")
+								exit_NaCl(self.ctx, "Missing default verdict at the end of this Filter")
 
 						if type_t_lower == TYPE_FILTER:
 							filters.append(pystache_function_obj)
@@ -1745,8 +1756,7 @@ class Function(Element):
 						elif type_t_lower == TYPE_REWRITE:
 							rewrites.append(pystache_function_obj)
 						else:
-							sys.exit("line " + get_line_and_column(self.ctx.type_t()) + " Functions of type " + \
-								self.type_t + " are not handled")
+							exit_NaCl(self.ctx.type_t(), "Functions of type " + self.type_t + " are not handled")
 						return self.res
 
 	# Main processing method
@@ -1828,7 +1838,7 @@ def handle_input(nacl_state):
 	print "handle_input - elements:", str(elements)
 
 	if LANGUAGE not in valid_languages:
-		sys.exit("line 1:0 Internal error in handle_input: Cannot transpile to language " + LANGUAGE)
+		exit_NaCl_internal_error("Internal error in handle_input: Cannot transpile to language " + LANGUAGE)
 
 	# TODO: Must indicate if is only allowed to create ONE or more of this type
 
@@ -1927,7 +1937,7 @@ def handle_input(nacl_state):
 		if file is not None:
 			file.write(content)
 	else:
-		sys.exit("line 1:0 Internal error in handle_input: Transpilation to language " + LANGUAGE + " has not been implemented")
+		exit_NaCl_internal_error("Internal error in handle_input: Transpilation to language " + LANGUAGE + " has not been implemented")
 
 	print "Transpilation complete"
 
@@ -2055,8 +2065,7 @@ class NaClRecordingVisitor(NaClVisitor):
 if __name__ == "__main__":
 	nacl_state = NaCl_state()
 	nacl_state.register_all_type_processors() # init
-	# Each type processor calls:
-	# nacl_state.add_type_processor
+	# Each type processor calls nacl_state.add_type_processor
 
 	lexer = NaClLexer(StdinStream())
 	stream = CommonTokenStream(lexer)

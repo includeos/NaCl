@@ -1,5 +1,5 @@
-import sys
 from NaCl import Function
+
 # Move class Function(Element) here later
 
 TYPE_FILTER 		= "filter"

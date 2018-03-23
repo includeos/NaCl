@@ -1,5 +1,4 @@
-import sys
-from NaCl import NaCl_exception, Typed, get_line_and_column, resolve_value, \
+from NaCl import exit_NaCl, NaCl_exception, Typed, get_line_and_column, resolve_value, \
 	BASE_TYPE_TYPED_INIT, BASE_TYPE_FUNCTION, \
 	TRUE, FALSE, LANGUAGE, TEMPLATE_KEY_IFACE, \
 	TYPE_NAT, TEMPLATE_KEY_FUNCTION_NAME, TEMPLATE_KEY_COMMA, \
@@ -125,9 +124,19 @@ class Vlan(Typed):
 			raise NaCl_exception("Invalid Vlan member " + key)
 
 	def validate_members(self):
-		if self.members.get(VLAN_KEY_INDEX) is None or self.members.get(VLAN_KEY_ADDRESS) is None or \
-			self.members.get(VLAN_KEY_NETMASK) is None:
-			sys.exit("line " + get_line_and_column(self.ctx) + " The members index, address and netmask must be set for every Vlan")
+		vlan_index = self.members.get(VLAN_KEY_INDEX)
+		vlan_address = self.members.get(VLAN_KEY_ADDRESS)
+		vlan_netmask = self.members.get(VLAN_KEY_NETMASK)
+
+		if vlan_index is None or vlan_address is None or vlan_netmask is None:
+			exit_NaCl(self.ctx, "The members index, address and netmask must be set for every Vlan")
+
+		if vlan_index.obj() is not None or vlan_index.list_t() is not None:
+			exit_NaCl(vlan_index, "The Vlan member " + VLAN_KEY_INDEX + " can not be an object")
+		if vlan_address.obj() is not None or vlan_address.list_t() is not None:
+			exit_NaCl(vlan_address, "The Vlan member " + VLAN_KEY_ADDRESS + " can not be an object")
+		if vlan_netmask.obj() is not None or vlan_netmask.list_t() is not None:
+			exit_NaCl(vlan_netmask, "The Vlan member " + VLAN_KEY_NETMASK + " can not be an object")
 
 	def process_members(self):
 		# Transpile values
@@ -218,43 +227,43 @@ class Iface(Typed):
 
 	def process_push(self, chain, value_ctx):
 		if self.chains.get(chain) is not None:
-			sys.exit("line " + get_line_and_column(value_ctx) + " Iface chain " + chain + " has already been set")
+			exit_NaCl(value_ctx, "Iface chain " + chain + " has already been set")
 
 		functions = []
 		if value_ctx.list_t() is not None:
 			# More than one function pushed onto chain
 			for list_value in value_ctx.list_t().value_list().value():
 				if list_value.value_name() is None:
-					sys.exit("line " + get_line_and_column(list_value) + " This is not supported: " + value_ctx.getText())
+					exit_NaCl(list_value, "This is not supported: " + value_ctx.getText())
 				functions.append(list_value.value_name())
 		elif value_ctx.value_name() is not None:
 			# Only one function pushed onto chain
 			functions = [ value_ctx.value_name() ]
 		else:
-			sys.exit("line " + get_line_and_column(value_ctx) + " This is not supported: " + value_ctx.getText())
+			exit_NaCl(value_ctx, "This is not supported: " + value_ctx.getText())
 
 		self.chains[chain] = chain # Mark as set
 		self.add_push(chain, functions)
 
 	def validate_members(self):
 		if self.members.get(IFACE_KEY_INDEX) is None:
-			sys.exit("line " + get_line_and_column(self.ctx.value()) + " An index needs to be specified for all Ifaces")
+			exit_NaCl(self.ctx.value(), "An index needs to be specified for all Ifaces")
 
 		config = self.members.get(IFACE_KEY_CONFIG)
 		if config is not None and (config.value_name() is None or config.value_name().getText().lower() not in PREDEFINED_CONFIG_TYPES):
-			sys.exit("line " + get_line_and_column(config) + " Invalid config value " + config.getText())
+			exit_NaCl(config, "Invalid config value " + config.getText())
 
 		if (config is None or config.value_name().getText().lower() != DHCP_CONFIG) and \
 			(self.members.get(IFACE_KEY_ADDRESS) is None or \
 				self.members.get(IFACE_KEY_NETMASK) is None):
-			sys.exit("line " + get_line_and_column(self.ctx.value()) + " The members " + IFACE_KEY_ADDRESS + " and " + IFACE_KEY_NETMASK + \
+			exit_NaCl(self.ctx.value(), "The members " + IFACE_KEY_ADDRESS + " and " + IFACE_KEY_NETMASK + \
 				" must be set for every Iface if the Iface configuration hasn't been set to " + DHCP_CONFIG)
 		elif config is not None and config.value_name().getText().lower() == DHCP_CONFIG and \
 			(self.members.get(IFACE_KEY_ADDRESS) is not None or \
 				self.members.get(IFACE_KEY_NETMASK) is not None or \
 				self.members.get(IFACE_KEY_GATEWAY) is not None or \
 				self.members.get(IFACE_KEY_DNS) is not None):
-			sys.exit("line " + get_line_and_column(config.value_name()) + " An Iface with config set to dhcp should not specify " + IFACE_KEY_ADDRESS + \
+			exit_NaCl(config.value_name(), "An Iface with config set to dhcp should not specify " + IFACE_KEY_ADDRESS + \
 				", " + IFACE_KEY_NETMASK + ", " + IFACE_KEY_GATEWAY + " or " + IFACE_KEY_DNS)
 
 	def is_vlan(self, element):
@@ -268,7 +277,12 @@ class Iface(Typed):
 		if self.members.get(IFACE_KEY_VLAN) is not None:
 			vlan_ctx = self.members.get(IFACE_KEY_VLAN)
 
-			if vlan_ctx.obj() is not None:
+			if vlan_ctx.obj() is not None and any(pair.key().getText().lower() in PREDEFINED_VLAN_KEYS for pair in vlan_ctx.obj().key_value_list().key_value_pair()):
+				# Then handle this as a vlan object in itself, not an obj of vlans
+				vlan_element = Vlan(self.nacl_state, 0, "", vlan_ctx, BASE_TYPE_TYPED_INIT, TYPE_VLAN)
+				vlans.append(vlan_element)
+			elif vlan_ctx.obj() is not None:
+				# If this is a dictionary/map/obj of vlans
 				# Add each Vlan in obj to the vlans list
 				# Each element in the obj needs to be a valid Vlan
 				for pair in vlan_ctx.obj().key_value_list().key_value_pair():
@@ -279,7 +293,7 @@ class Iface(Typed):
 			elif vlan_ctx.list_t() is not None:
 				# Add each Vlan in list_t to the vlans list
 				# Each element in the list_t needs to be a valid Vlan
-				for i, v in enumerate(vlan_ctx.list_t().value_list().value()):
+				for _, v in enumerate(vlan_ctx.list_t().value_list().value()):
 					vlan_element = None
 
 					if v.value_name() is not None:
@@ -287,11 +301,11 @@ class Iface(Typed):
 						# TODO: nacl_state.elements ?:
 						vlan_element = elements.get(vlan_name)
 						if not self.is_vlan(vlan_element):
-							sys.exit("line " + get_line_and_column(v.value_name()) + " Undefined Vlan " + vlan_name)
+							exit_NaCl(v.value_name(), "Undefined Vlan " + vlan_name)
 					elif v.obj() is not None:
 						vlan_element = Vlan(self.nacl_state, 0, "", v, BASE_TYPE_TYPED_INIT, TYPE_VLAN)
 					else:
-						sys.exit("line " + get_line_and_column(v) + " A Vlan list must either contain Vlan objects (key value pairs) or names of Vlans")
+						exit_NaCl(v, "A Vlan list must either contain Vlan objects (key value pairs) or names of Vlans")
 
 					vlans.append(vlan_element)
 			elif vlan_ctx.value_name() is not None:
@@ -299,10 +313,10 @@ class Iface(Typed):
 				# TODO: nacl_state.elements ?:
 				vlan_element = elements.get(vlan_name)
 				if not self.is_vlan(vlan_element):
-					sys.exit("line " + get_line_and_column(vlan_ctx.value_name()) + " Undefined Vlan " + vlan_name)
+					exit_NaCl(vlan_ctx.value_name(), "Undefined Vlan " + vlan_name)
 				vlans.append(vlan_element)
 			else:
-				sys.exit("line " + get_line_and_column(vlan_ctx) + " An Iface's vlan needs to be a list of Vlans")
+				exit_NaCl(vlan_ctx, "An Iface's vlan needs to be a list of Vlans")
 
 		# Loop through self.members and resolve the values
 		for key, member in self.members.iteritems():
@@ -316,14 +330,14 @@ class Iface(Typed):
 						if isinstance(el, Iface) and key != self.name:
 							el_idx = el.members.get(IFACE_KEY_INDEX)
 							if el_idx is not None and el_idx == self.members.get(IFACE_KEY_INDEX):
-								sys.exit("line " + get_line_and_column(member) + " Another Iface has been defined with index " + el_idx)
+								exit_NaCl(member, "Another Iface has been defined with index " + el_idx)
 			elif key == IFACE_KEY_CONFIG:
 				self.members[IFACE_KEY_CONFIG] = member.value_name().getText().lower()
 			else:
 				masq_val = resolve_value(LANGUAGE, member)
 
 				if not isinstance(masq_val, basestring) or (masq_val.lower() != TRUE and masq_val.lower() != FALSE):
-					sys.exit("line " + get_line_and_column(member) + " Invalid masquerade value. Must be set to true or false")
+					exit_NaCl(member, "Invalid masquerade value. Must be set to true or false")
 
 				if masq_val == TRUE:
 					# Old:
@@ -358,7 +372,7 @@ class Iface(Typed):
 			# TODO: nacl_state.elements ?:
 			element = elements.get(name)
 			if element is None or element.base_type != BASE_TYPE_FUNCTION:
-				sys.exit("line " + get_line_and_column(function) + " No function with the name " + name + " exists")
+				exit_NaCl(function, "No function with the name " + name + " exists")
 
 			# If a Nat function is pushed onto an Iface's chain,
 			# push the snat_translate lambda in cpp_template.mustache
