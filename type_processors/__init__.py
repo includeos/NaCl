@@ -1,5 +1,6 @@
 import pkgutil
 import sys
+import os
 
 def init(nacl_state):
     print "init type_processors"
@@ -9,7 +10,11 @@ def init(nacl_state):
     # init_iface(nacl_state)
 
     # Dynamically (if exists in folder):
-    dirname = "type_processors"
+
+    # dirname = "type_processors"
+    # Get the absolute path to the directory that this file is in (type_processors):
+    dirname = os.path.dirname(os.path.abspath(__file__))
+
     for importer, package_name, _ in pkgutil.iter_modules([dirname]):
         full_package_name = '%s.%s' % (dirname, package_name)
         if full_package_name not in sys.modules:

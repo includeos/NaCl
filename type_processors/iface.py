@@ -1,3 +1,6 @@
+from __future__ import absolute_import
+# To avoid: <...>/NaCl/type_processors/iface.py:1: RuntimeWarning: Parent module '<...>/NaCl/type_processors' not found while handling absolute import
+
 from NaCl import exit_NaCl, NaCl_exception, Typed, get_line_and_column, resolve_value, \
 	BASE_TYPE_TYPED_INIT, BASE_TYPE_FUNCTION, \
 	DOT, TRUE, FALSE, LANGUAGE, TEMPLATE_KEY_IFACE, \

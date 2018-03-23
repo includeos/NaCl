@@ -1,3 +1,6 @@
+from __future__ import absolute_import
+# To avoid: <...>/NaCl/type_processors/conntrack.py:1: RuntimeWarning: Parent module '<...>/NaCl/type_processors' not found while handling absolute import
+
 from NaCl import NaCl_exception, TCP, UDP, ICMP, Typed, exit_NaCl, resolve_value, LANGUAGE, \
     TEMPLATE_KEY_NAME
 
