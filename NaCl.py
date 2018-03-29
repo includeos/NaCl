@@ -25,21 +25,29 @@ import os
 
 import pystache
 
+''' Moved to function.py
 # cpp_transpile_function.py also imports cpp_resolve_values.py, which
 # in turn imports shared_constants.py
 from cpp_transpile_function import *
+'''
+# ->
+from shared_constants import * # CPP
+
+from cpp_resolve_values import resolve_value_cpp
 
 # antlr4 -Dlanguage=Python2 NaCl.g4 -visitor
 
-LANGUAGE = CPP # CPP is defined in shared_constants.py, imported in cpp_template.py
+# Old:
+# LANGUAGE = CPP # CPP is defined in shared_constants.py, imported in cpp_template.py
 
 # Pystache keys
 # New:
 # TEMPLATE_KEY_IFACES 				= "ifaces"
 # TEMPLATE_KEY_IFACES_WITH_VLANS	= "ifaces_with_vlans"
-TEMPLATE_KEY_FILTERS 			= "filters"
-TEMPLATE_KEY_NATS 				= "nats"
-TEMPLATE_KEY_REWRITES 			= "rewrites"
+# New: Moved to function.py:
+# TEMPLATE_KEY_FILTERS 				= "filters"
+# TEMPLATE_KEY_NATS 				= "nats"
+# TEMPLATE_KEY_REWRITES 			= "rewrites"
 
 # New:
 # TEMPLATE_KEY_PUSHES 			= "pushes"
@@ -58,13 +66,15 @@ TEMPLATE_KEY_IP_FORWARD_IFACES 	= "ip_forward_ifaces"
 # TEMPLATE_KEY_AUTO_NATTING_IFACES 	= "auto_natting_ifaces"
 
 TEMPLATE_KEY_HAS_GATEWAYS 		= "has_gateways"
+# TODO: Should be moved to function.py, but iface.py also uses this:
 TEMPLATE_KEY_HAS_NATS 			= "has_nats"
 # New:
 # TEMPLATE_KEY_HAS_MASQUERADES 	= "has_masquerades"
 # TEMPLATE_KEY_HAS_VLANS 		= "has_vlans"
 # New:
 # TEMPLATE_KEY_HAS_AUTO_NATTING_IFACES = "has_auto_natting_ifaces"
-TEMPLATE_KEY_HAS_FUNCTIONS 		= "has_functions"
+# New: Moved to function.py:
+# TEMPLATE_KEY_HAS_FUNCTIONS 	= "has_functions"
 TEMPLATE_KEY_HAS_LOAD_BALANCERS = "has_load_balancers"
 TEMPLATE_KEY_HAS_SYSLOGS 		= "has_syslogs"
 
@@ -77,9 +87,10 @@ TEMPLATE_KEY_ENABLE_CT 			= "enable_ct"
 # New: Moved into Iface class:
 # ifaces 				= []
 # ifaces_with_vlans 	= []
-filters 			= []
-rewrites 			= []
-nats 				= []
+# New: Moved into function.py:
+# filters 			= []
+# rewrites 			= []
+# nats 				= []
 # New: Moved into Iface class:
 # pushes 				= []
 gateways 			= []
@@ -112,10 +123,11 @@ TEMPLATE_KEY_NETMASK 		= "netmask"
 TEMPLATE_KEY_GATEWAY 		= "gateway"
 TEMPLATE_KEY_DNS 			= "dns"
 TEMPLATE_KEY_ROUTES 		= "routes"
-TEMPLATE_KEY_CONTENT		= "content"
+# New: Moved to function.py:
+# TEMPLATE_KEY_CONTENT		= "content"
 TEMPLATE_KEY_IFACE_INDEX 	= "iface_index"
 # New:
-# TEMPLATE_KEY_VLANS 			= "vlans"
+# TEMPLATE_KEY_VLANS 		= "vlans"
 TEMPLATE_KEY_IS_GATEWAY_PUSH = "is_gateway_push"
 TEMPLATE_KEY_PORT 			= "port"
 
@@ -150,7 +162,7 @@ class NaCl_exception(Exception):
 	def __str__(self):
 		return repr(self.value)
 
-class NaCl_state():
+class NaCl_state(object):
 	def __init__(self):
 		self.invalid_names = [
 			TCP,
@@ -162,19 +174,47 @@ class NaCl_state():
 		self.nacl_type_processors = {} # e.g. nacl_types/valid_nacl_types
 		self.pystache_data = {} # e.g. data in handle_input
 
-	def register_pystache_data(self, key, value):
+		# Languages that NaCl can be transpiled to
+		self.valid_languages = [
+			CPP
+		]
+		self.language = CPP # default
+
+		# TODO: Move elements dictionary here
+
+		# TODO: Find out:
+		# Will every Element object have a COPY of the nacl_state object when doing
+		# self.nacl_state = nacl_state
+		# in the __init__ method?
+		# Or will self.nacl_state be a reference referring to the ONE NaCl_state object created
+		# in __main__?
+
+	def set_language(self, language):
+		if language not in self.valid_languages:
+			exit_NaCl_internal_error("Internal error in handle_input: Cannot transpile to language " + language)
+		self.language = language
+
+	def resolve_value(self, value_ctx):
+		if self.language == CPP:
+			return resolve_value_cpp(value_ctx)
+
+	def get_router_name(self):
+		if self.language == CPP:
+			return INCLUDEOS_ROUTER_OBJ_NAME
+
+	def register_pystache_data_object(self, key, value):
 		self.pystache_data[key] = value
 
-	def add_pystache_data_structures(self, keys):
+	def create_pystache_data_lists(self, keys):
 		for key in keys:
 			self.pystache_data[key] = []
 
-	def append_to_pystache_data_structure(self, key, value):
-		if key not in self.pystache_data:
-			exit_NaCl_internal_error("Internal error when appending to pystache_data: No member named " + key)
+	def append_to_pystache_data_list(self, list_key, value):
+		if list_key not in self.pystache_data:
+			exit_NaCl_internal_error("Internal error when appending to pystache_data: No member named " + list_key)
 		if not isinstance(value, dict):
-			exit_NaCl_internal_error("Internal error when appending to pystache_data['" + key + "']: Value given is not a dictionary")
-		self.pystache_data[key].append(value)
+			exit_NaCl_internal_error("Internal error when appending to pystache_data['" + list_key + "']: Value given is not a dictionary")
+		self.pystache_data[list_key].append(value)
 
 	def pystache_list_is_empty(self, key):
 		if key not in self.pystache_data:
@@ -205,16 +245,16 @@ class NaCl_state():
 		masquerades = self.pystache_data.get(TEMPLATE_KEY_MASQUERADES)
 
 		if auto_natting_ifaces is not None and (len(auto_natting_ifaces) > 0):
-			self.register_pystache_data(TEMPLATE_KEY_HAS_AUTO_NATTING_IFACES, True) # (len(self.auto_natting_ifaces) > 0)
+			self.register_pystache_data_object(TEMPLATE_KEY_HAS_AUTO_NATTING_IFACES, True) # (len(self.auto_natting_ifaces) > 0)
 		if ifaces_with_vlans is not None and (len(ifaces_with_vlans) > 0):
-			self.register_pystache_data(TEMPLATE_KEY_HAS_VLANS, True)
+			self.register_pystache_data_object(TEMPLATE_KEY_HAS_VLANS, True)
 		if masquerades is not None and (len(masquerades) > 0):
-			self.register_pystache_data(TEMPLATE_KEY_HAS_MASQUERADES, True)
+			self.register_pystache_data_object(TEMPLATE_KEY_HAS_MASQUERADES, True)
 
 		# Old:
-		# self.register_pystache_data(TEMPLATE_KEY_HAS_MASQUERADES, (len(self.masquerades) > 0))
-		# self.register_pystache_data(TEMPLATE_KEY_HAS_AUTO_NATTING_IFACES, (len(self.auto_natting_ifaces) > 0))
-		# self.register_pystache_data(TEMPLATE_KEY_HAS_VLANS, (len(self.ifaces_with_vlans) > 0))
+		# self.register_pystache_data_object(TEMPLATE_KEY_HAS_MASQUERADES, (len(self.masquerades) > 0))
+		# self.register_pystache_data_object(TEMPLATE_KEY_HAS_AUTO_NATTING_IFACES, (len(self.auto_natting_ifaces) > 0))
+		# self.register_pystache_data_object(TEMPLATE_KEY_HAS_VLANS, (len(self.ifaces_with_vlans) > 0))
 	'''
 
 	def register_all_type_processors(self):
@@ -289,13 +329,14 @@ class NaCl_state():
 			exit_NaCl(type_t_ctx, "Undefined type " + type_t)
 
 		# BASE_TYPE_FUNCTION
-
 		if base_type == BASE_TYPE_FUNCTION:
-			elements[name] = Function(self, idx, name, ctx, base_type, type_t, ctx.subtype().getText())
+			# Old:
+			# elements[name] = Function(self, idx, name, ctx, base_type, type_t, ctx.subtype().getText())
+			# New:
+			elements[name] = self.nacl_type_processors[type_t_lower](self, idx, name, ctx, base_type, type_t, ctx.subtype().getText())
 			return
 
 		# BASE_TYPE_TYPED_INIT
-		# TODO: Use dictionary
 		elements[name] = self.nacl_type_processors[type_t_lower](self, idx, name, ctx, base_type, type_t)
 		# TODO: Each class in its own file
 		# Load_balancer / all classes in pyton you can call type processors
@@ -304,7 +345,7 @@ class NaCl_state():
 		# -> NaCl.register("Load_balancer", Load_balancer) in the dictioary nacl_types/valid_nacl_types ()
 		# (So don't need to change)
 
-	# TODO (singleton):
+	# Old:
 	'''
 		type_t_lower = type_t.lower()
 		if type_t_lower == TYPE_IFACE:
@@ -335,10 +376,13 @@ class NaCl_state():
 			sys.exit("line " + get_line_and_column(type_t_ctx) + " NaCl elements of type " + type_t + " are not handled")
 	'''
 
+''' Moved to function.py
 def transpile_function(language, type_t, subtype, ctx):
 	if language == CPP:
 		return transpile_function_cpp(type_t, subtype, ctx)
+'''
 
+''' Moved into NaCl_state:
 def resolve_value(language, ctx):
 	if language == CPP:
 		return resolve_value_cpp(ctx)
@@ -346,6 +390,7 @@ def resolve_value(language, ctx):
 def get_router_name(language):
 	if language == CPP:
 		return INCLUDEOS_ROUTER_OBJ_NAME
+'''
 
 # -------------------- Element --------------------
 
@@ -710,7 +755,7 @@ class Element(object):
 					self.validate_dictionary_key(level_key, parent_key, level, value)
 					self.resolve_dictionary_value(dictionary, level_key, value)
 				else:
-					dictionary[level_key] = resolve_value(LANGUAGE, value)
+					dictionary[level_key] = self.nacl_state.resolve_value(value)
 				return
 
 		if level_key not in dictionary:
@@ -772,7 +817,7 @@ class Element(object):
 				if self.handle_as_untyped:
 					self.resolve_dictionary_value(dictionary, key, pair.value())
 				else:
-					dictionary[key] = resolve_value(LANGUAGE, pair.value())
+					dictionary[key] = self.nacl_state.resolve_value(pair.value())
 			else:
 				# Recursion:
 				# Then we have an obj inside an obj
@@ -1243,7 +1288,7 @@ class Gateway(Typed):
 					"Valid members are: " + ", ".join(predefined_gateway_route_keys))
 
 			if key != GATEWAY_KEY_IFACE:
-				route_obj[key] = resolve_value(LANGUAGE, pair.value())
+				route_obj[key] = self.nacl_state.resolve_value(pair.value())
 			else:
 				# Then the Iface element's name is to be added to the route_obj,
 				# not the resolved Iface
@@ -1352,7 +1397,7 @@ class Gateway(Typed):
 					", ".join(predefined_gateway_route_keys))
 
 			if route_member != GATEWAY_KEY_IFACE:
-				route[route_member] = resolve_value(LANGUAGE, element.ctx.value())
+				route[route_member] = self.nacl_state.resolve_value(element.ctx.value())
 			else:
 				# Then the Iface element's name is to be added to the route obj,
 				# not the resolved Iface
@@ -1412,7 +1457,7 @@ class Gateway(Typed):
 		# New:
 		self.pushes.append({
 			# TEMPLATE_KEY_IS_GATEWAY_PUSH: 	True,
-			TEMPLATE_KEY_NAME:				get_router_name(LANGUAGE),
+			TEMPLATE_KEY_NAME:				self.nacl_state.get_router_name(),
 			TEMPLATE_KEY_CHAIN: 			chain,
 			TEMPLATE_KEY_FUNCTION_NAMES: 	function_names
 		})
@@ -1420,7 +1465,7 @@ class Gateway(Typed):
 	def validate_and_process_not_route_members(self):
 		for key, value_ctx in self.not_route_members.iteritems():
 			if key == GATEWAY_KEY_SEND_TIME_EXCEEDED:
-				resolved_value = resolve_value(LANGUAGE, value_ctx)
+				resolved_value = self.nacl_state.resolve_value(value_ctx)
 				self.not_route_members[key] = resolved_value
 
 				if resolved_value != TRUE and resolved_value != FALSE:
@@ -1459,7 +1504,7 @@ class Gateway(Typed):
 			'''
 			# New:
 			if iface_name is not None and not self.nacl_state.exists_in_pystache_list(TEMPLATE_KEY_ENABLE_CT_IFACES, TEMPLATE_KEY_IFACE, iface_name):
-				self.nacl_state.append_to_pystache_data_structure(TEMPLATE_KEY_ENABLE_CT_IFACES, {
+				self.nacl_state.append_to_pystache_data_list(TEMPLATE_KEY_ENABLE_CT_IFACES, {
 					TEMPLATE_KEY_IFACE: iface_name
 				})
 
@@ -1512,9 +1557,20 @@ class Gateway(Typed):
 
 			# New:
 			# Add self.pushes to pystache data:
-			self.nacl_state.register_pystache_data(TEMPLATE_KEY_GATEWAY_PUSHES, self.pushes)
+			self.nacl_state.register_pystache_data_object(TEMPLATE_KEY_GATEWAY_PUSHES, self.pushes)
 
 		return self.res
+
+	# Called from handle_input (NaCl.py) right before rendering, after the NaCl file has been processed
+	# Register the last data here that can not be registered before this (set has-values f.ex.)
+	@staticmethod
+	def final_registration(nacl_state):
+		gateways_is_empty = nacl_state.pystache_list_is_empty(TEMPLATE_KEY_GATEWAYS)
+
+		# handle_input previously:
+		# nacl_state.register_pystache_data_object(TEMPLATE_KEY_ENABLE_CT, (len(nats) > 0 or len(filters) > 0 or len(gateways) > 0))
+		if not gateways_is_empty:
+			nacl_state.register_pystache_data_object(TEMPLATE_KEY_ENABLE_CT, True)
 
 # < Gateway
 
@@ -1686,7 +1742,7 @@ class Load_balancer(Typed):
 					node_key = pair.key().getText().lower()
 					if node_key not in predefined_lb_node_keys:
 						exit_NaCl(pair.key(), "Invalid member in node " + str(i) + " in " + LB_KEY_SERVERS + "." + LB_SERVERS_KEY_POOL)
-					n[node_key] = resolve_value(LANGUAGE, pair.value())
+					n[node_key] = self.nacl_state.resolve_value(pair.value())
 
 				if n.get(LB_NODE_KEY_ADDRESS) is None or n.get(LB_KEY_PORT) is None:
 					exit_NaCl(node, "An object in a " + LB_SERVERS_KEY_POOL + " needs to specify " + ", ".join(predefined_lb_node_keys))
@@ -1723,7 +1779,7 @@ class Load_balancer(Typed):
 				# New:
 				self.resolve_dictionary_value(found_element_value, k, pair.value())
 		else:
-			found_element_value = resolve_value(LANGUAGE, value_ctx)
+			found_element_value = self.nacl_state.resolve_value(value_ctx)
 
 		# Add found value
 		dictionary[key] = found_element_value
@@ -1781,7 +1837,7 @@ class Syslog(Typed):
 	# New:
 	# Overriding
 	def resolve_dictionary_value(self, dictionary, key, value):
-		dictionary[key] = resolve_value(LANGUAGE, value)
+		dictionary[key] = self.nacl_state.resolve_value(value)
 
 	# Overriding
 	# def validate_and_resolve_dictionary_val(self, dictionary, level_key, parent_key, level, value):
@@ -1802,6 +1858,7 @@ class Syslog(Typed):
 
 # < Syslog (settings)
 
+'''
 # -------------------- Function --------------------
 
 # Filter and Nat are examples of functions
@@ -1902,6 +1959,7 @@ class Function(Element):
 		return self.res
 
 # < Function
+'''
 
 # -------------------- 2. Process elements and write content to file --------------------
 
@@ -1972,9 +2030,6 @@ class Cpp_template(object):
 def handle_input(nacl_state):
 	print "handle_input - elements:", str(elements)
 
-	if LANGUAGE not in valid_languages:
-		exit_NaCl_internal_error("Internal error in handle_input: Cannot transpile to language " + LANGUAGE)
-
 	# TODO: Must indicate if is only allowed to create ONE or more of this type
 
 	# Process / transpile / fill the pystache lists
@@ -2024,31 +2079,39 @@ def handle_input(nacl_state):
 	}
 	'''
 	# New:
-	# nacl_state.register_pystache_data(TEMPLATE_KEY_CONNTRACKS, conntracks)
-	nacl_state.register_pystache_data(TEMPLATE_KEY_LOAD_BALANCERS, load_balancers)
-	nacl_state.register_pystache_data(TEMPLATE_KEY_SYSLOGS, syslogs)
-	nacl_state.register_pystache_data(TEMPLATE_KEY_FILTERS, filters)
-	nacl_state.register_pystache_data(TEMPLATE_KEY_NATS, nats)
-	nacl_state.register_pystache_data(TEMPLATE_KEY_REWRITES, rewrites)
-	nacl_state.register_pystache_data(TEMPLATE_KEY_GATEWAYS, gateways)
-	nacl_state.register_pystache_data(TEMPLATE_KEY_IP_FORWARD_IFACES, ip_forward_ifaces)
+	# nacl_state.register_pystache_data_object(TEMPLATE_KEY_CONNTRACKS, conntracks)
+	nacl_state.register_pystache_data_object(TEMPLATE_KEY_LOAD_BALANCERS, load_balancers)
+	nacl_state.register_pystache_data_object(TEMPLATE_KEY_SYSLOGS, syslogs)
+	# New: Moved to function.py:
+	# nacl_state.register_pystache_data_object(TEMPLATE_KEY_FILTERS, filters)
+	# nacl_state.register_pystache_data_object(TEMPLATE_KEY_NATS, nats)
+	# nacl_state.register_pystache_data_object(TEMPLATE_KEY_REWRITES, rewrites)
+	nacl_state.register_pystache_data_object(TEMPLATE_KEY_GATEWAYS, gateways)
+	nacl_state.register_pystache_data_object(TEMPLATE_KEY_IP_FORWARD_IFACES, ip_forward_ifaces)
 	# New:
-	# nacl_state.register_pystache_data(TEMPLATE_KEY_ENABLE_CT_IFACES, enable_ct_ifaces)
-	# nacl_state.register_pystache_data(TEMPLATE_KEY_MASQUERADES, masquerades)
-	nacl_state.register_pystache_data(TEMPLATE_KEY_HAS_GATEWAYS, (len(gateways) > 0))
-	# nacl_state.register_pystache_data(TEMPLATE_KEY_HAS_NATS, (len(nats) > 0 or len(masquerades) > 0))
-	# nacl_state.register_pystache_data(TEMPLATE_KEY_HAS_MASQUERADES, (len(masquerades) > 0))
-	nacl_state.register_pystache_data(TEMPLATE_KEY_HAS_FUNCTIONS, (len(nats) > 0 or len(filters) > 0))
-	nacl_state.register_pystache_data(TEMPLATE_KEY_ENABLE_CT, (len(nats) > 0 or len(filters) > 0 or len(gateways) > 0))
-	nacl_state.register_pystache_data(TEMPLATE_KEY_HAS_LOAD_BALANCERS, (len(load_balancers) > 0))
-	nacl_state.register_pystache_data(TEMPLATE_KEY_HAS_SYSLOGS, (len(syslogs) > 0))
+	# nacl_state.register_pystache_data_object(TEMPLATE_KEY_ENABLE_CT_IFACES, enable_ct_ifaces)
+	# nacl_state.register_pystache_data_object(TEMPLATE_KEY_MASQUERADES, masquerades)
+	nacl_state.register_pystache_data_object(TEMPLATE_KEY_HAS_GATEWAYS, (len(gateways) > 0))
+	# New: Moved into function.py and iface.py:
+	# nacl_state.register_pystache_data_object(TEMPLATE_KEY_HAS_NATS, (len(nats) > 0 or len(masquerades) > 0))
+	# nacl_state.register_pystache_data_object(TEMPLATE_KEY_HAS_MASQUERADES, (len(masquerades) > 0))
 
-	# TODO hmmmm...
+	# New: Moved into function.py:
+	# nacl_state.register_pystache_data_object(TEMPLATE_KEY_HAS_FUNCTIONS, (len(nats) > 0 or len(filters) > 0))
+	# Moved into function.py and Gateway class (only registering if is to be set to True):
+	# nacl_state.register_pystache_data_object(TEMPLATE_KEY_ENABLE_CT, (len(nats) > 0 or len(filters) > 0 or len(gateways) > 0))
+
+	nacl_state.register_pystache_data_object(TEMPLATE_KEY_HAS_LOAD_BALANCERS, (len(load_balancers) > 0))
+	nacl_state.register_pystache_data_object(TEMPLATE_KEY_HAS_SYSLOGS, (len(syslogs) > 0))
+
+	# New: Moved to function.py:
+	'''
 	new_nats = nacl_state.pystache_data.get(TEMPLATE_KEY_NATS)
 	masqs = nacl_state.pystache_data.get("masquerades") # TEMPLATE_KEY_MASQUERADES (defined in Iface class/file)
 	if ((new_nats is not None and (len(new_nats) > 0)) or (masqs is not None and (len(masqs) > 0))):
 		print "HAS NATS"
-		nacl_state.register_pystache_data(TEMPLATE_KEY_HAS_NATS, True)
+		nacl_state.register_pystache_data_object(TEMPLATE_KEY_HAS_NATS, True)
+	'''
 
 	# TODO: Avoid somehow?
 	# Set the last pystache_data values (the has-values) before rendering:
@@ -2057,7 +2120,7 @@ def handle_input(nacl_state):
 	for _, c in nacl_state.nacl_type_processors.iteritems():
 		c.final_registration(nacl_state) # static method
 
-	if LANGUAGE == CPP:
+	if nacl_state.language == CPP:
 		# Combine the data object with the Cpp_template (cpp_template.mustache file)
 		# Pystache returns the transpiled C++ content
 		# Old:
@@ -2073,7 +2136,7 @@ def handle_input(nacl_state):
 		if file is not None:
 			file.write(content)
 	else:
-		exit_NaCl_internal_error("Internal error in handle_input: Transpilation to language " + LANGUAGE + " has not been implemented")
+		exit_NaCl_internal_error("Internal error in handle_input: Transpilation to language " + nacl_state.language + " has not been implemented")
 
 	print "Transpilation complete"
 

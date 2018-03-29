@@ -1,13 +1,14 @@
 from __future__ import absolute_import
 # To avoid: <...>/NaCl/type_processors/iface.py:1: RuntimeWarning: Parent module '<...>/NaCl/type_processors' not found while handling absolute import
 
-from NaCl import exit_NaCl, NaCl_exception, Typed, get_line_and_column, resolve_value, \
+from NaCl import exit_NaCl, NaCl_exception, Typed, get_line_and_column, \
 	BASE_TYPE_TYPED_INIT, BASE_TYPE_FUNCTION, \
-	DOT, TRUE, FALSE, LANGUAGE, TEMPLATE_KEY_IFACE, \
+	DOT, TRUE, FALSE, TEMPLATE_KEY_IFACE, \
 	TYPE_NAT, TEMPLATE_KEY_FUNCTION_NAME, TEMPLATE_KEY_COMMA, \
 	TEMPLATE_KEY_NAME, TEMPLATE_KEY_CHAIN, TEMPLATE_KEY_FUNCTION_NAMES, \
 	TEMPLATE_KEY_INDEX, TEMPLATE_KEY_NETMASK, TEMPLATE_KEY_GATEWAY, TEMPLATE_KEY_ADDRESS, \
 	TEMPLATE_KEY_IFACE_INDEX, TEMPLATE_KEY_TITLE, TEMPLATE_KEY_DNS, \
+	TEMPLATE_KEY_HAS_NATS, \
 	elements
 '''
 ifaces
@@ -16,6 +17,8 @@ pushes
 ifaces_with_vlans
 masquerades
 '''
+
+# Not possible: from function import TEMPLATE_KEY_HAS_NATS
 
 # -------------------- CONSTANTS Iface --------------------
 
@@ -111,7 +114,7 @@ TEMPLATE_KEY_CONFIG_IS_STATIC 			= "config_is_static"
 
 # -------------------- CLASSES --------------------
 
-# ---- CLASS Common (for the below classes Vlan and Iface) ----
+# ---- class Common (base class to the below classes Vlan and Iface) ----
 
 class Common(Typed):
 	def __init__(self, nacl_state, idx, name, ctx, base_type, type_t):
@@ -165,7 +168,9 @@ class Common(Typed):
 				sys.exit("line " + get_line_and_column(element.ctx) + " " + class_name + " member " + member + " has already been set")
 		'''
 
-# ---- CLASS Vlan ----
+# < class Common
+
+# ---- class Vlan ----
 
 class Vlan(Common):
 	def __init__(self, nacl_state, idx, name, ctx, base_type, type_t):
@@ -203,7 +208,7 @@ class Vlan(Common):
 	def process_members(self):
 		# Transpile values
 		for key, member in self.members.iteritems():
-			self.members[key] = resolve_value(LANGUAGE, member)
+			self.members[key] = self.nacl_state.resolve_value(member)
 
 	# Main processing method
 	def process(self):
@@ -221,9 +226,9 @@ class Vlan(Common):
 
 		return self.res
 
-# < CLASS Vlan
+# < class Vlan
 
-# ---- CLASS Iface ----
+# ---- class Iface ----
 
 class Iface(Common):
 	def __init__(self, nacl_state, idx, name, ctx, base_type, type_t):
@@ -385,7 +390,7 @@ class Iface(Common):
 		# Loop through self.members and resolve the values
 		for key, member in self.members.iteritems():
 			if key != IFACE_KEY_CONFIG and key != IFACE_KEY_MASQUERADE:
-				self.members[key] = resolve_value(LANGUAGE, member)
+				self.members[key] = self.nacl_state.resolve_value(member)
 
 				# Validate that an Iface with this Iface's index has not already been defined
 				if key == IFACE_KEY_INDEX:
@@ -398,7 +403,7 @@ class Iface(Common):
 			elif key == IFACE_KEY_CONFIG:
 				self.members[IFACE_KEY_CONFIG] = member.value_name().getText().lower()
 			else:
-				masq_val = resolve_value(LANGUAGE, member)
+				masq_val = self.nacl_state.resolve_value(member)
 
 				if not isinstance(masq_val, basestring) or (masq_val.lower() != TRUE and masq_val.lower() != FALSE):
 					exit_NaCl(member, "Invalid masquerade value. Must be set to true or false")
@@ -407,7 +412,7 @@ class Iface(Common):
 					# Old:
 					# self.masquerades.append({TEMPLATE_KEY_IFACE: self.name})
 					# New:
-					self.nacl_state.append_to_pystache_data_structure(TEMPLATE_KEY_MASQUERADES, {
+					self.nacl_state.append_to_pystache_data_list(TEMPLATE_KEY_MASQUERADES, {
 						TEMPLATE_KEY_IFACE: self.name
 					})
 
@@ -452,7 +457,7 @@ class Iface(Common):
 			# Old:
 			# self.auto_natting_ifaces.append({ TEMPLATE_KEY_IFACE: self.name })
 			# New:
-			self.nacl_state.append_to_pystache_data_structure(TEMPLATE_KEY_AUTO_NATTING_IFACES, {
+			self.nacl_state.append_to_pystache_data_list(TEMPLATE_KEY_AUTO_NATTING_IFACES, {
 				TEMPLATE_KEY_IFACE: self.name
 			})
 
@@ -465,7 +470,7 @@ class Iface(Common):
 		})
 		'''
 		# New:
-		self.nacl_state.append_to_pystache_data_structure(TEMPLATE_KEY_IFACE_PUSHES, {
+		self.nacl_state.append_to_pystache_data_list(TEMPLATE_KEY_IFACE_PUSHES, {
 			TEMPLATE_KEY_NAME:				self.name,
 			TEMPLATE_KEY_CHAIN: 			chain,
 			TEMPLATE_KEY_FUNCTION_NAMES: 	function_names
@@ -498,7 +503,7 @@ class Iface(Common):
 		})
 		'''
 		# New:
-		self.nacl_state.append_to_pystache_data_structure(TEMPLATE_KEY_IFACES_WITH_VLANS, {
+		self.nacl_state.append_to_pystache_data_list(TEMPLATE_KEY_IFACES_WITH_VLANS, {
 			TEMPLATE_KEY_IFACE: 		self.name,
 			TEMPLATE_KEY_IFACE_INDEX: 	self.members.get(IFACE_KEY_INDEX),
 			TEMPLATE_KEY_VLANS: 		pystache_vlans
@@ -512,7 +517,7 @@ class Iface(Common):
 		# Is to be sent to pystache renderer in handle_input function
 		# Old: self.ifaces.append({ ... })
 		# New:
-		self.nacl_state.append_to_pystache_data_structure(TEMPLATE_KEY_IFACES, {
+		self.nacl_state.append_to_pystache_data_list(TEMPLATE_KEY_IFACES, {
 			TEMPLATE_KEY_NAME: 		self.name,
 			TEMPLATE_KEY_TITLE: 	self.name.title(),
 			TEMPLATE_KEY_INDEX: 	self.members.get(IFACE_KEY_INDEX),
@@ -543,7 +548,7 @@ class Iface(Common):
 		if not self.nacl_state.exists_in_pystache_list(TEMPLATE_KEY_ENABLE_CT_IFACES, TEMPLATE_KEY_IFACE, self.name):
 			for chain in CHAIN_NAMES:
 				if self.chains.get(chain) is not None:
-					self.nacl_state.append_to_pystache_data_structure(TEMPLATE_KEY_ENABLE_CT_IFACES, {
+					self.nacl_state.append_to_pystache_data_list(TEMPLATE_KEY_ENABLE_CT_IFACES, {
 						TEMPLATE_KEY_IFACE: self.name
 					})
 					return # Only one entry in enable_ct_ifaces list for each Iface
@@ -564,30 +569,30 @@ class Iface(Common):
 			# Or:
 			# self.res = resolve_value(LANGUAGE, ...)
 
-# TODO: THE LISTS (ifaces, auto_natting_ifaces ++) SHOULD REALLY BE IN NACL_STATE
-# WE WANT TO ADD TO CUSTOM LISTS AND MAKE NACL_STATE ADD KEY AND VALUE TO THE PYSTACHE_DATA
-# WHEN EVERYTHING HAS BEEN TRANSPILED
-# NOT EACH TIME AN OBJECT HAS BEEN TRANSPILED
+			# TODO: THE LISTS (ifaces, auto_natting_ifaces ++) SHOULD REALLY BE IN NACL_STATE
+			# WE WANT TO ADD TO CUSTOM LISTS AND MAKE NACL_STATE ADD KEY AND VALUE TO THE PYSTACHE_DATA
+			# WHEN EVERYTHING HAS BEEN TRANSPILED
+			# NOT EACH TIME AN OBJECT HAS BEEN TRANSPILED
 
-# So in the init-function we want to create lists / data structures in nacl_state that we want to be able
-# to add data to when processing each Iface element f.ex., and that we want NaCl_state to send to pystache_data
-# when everything/the whole file has been transpiled
+			# So in the init-function we want to create lists / data structures in nacl_state that we want to be able
+			# to add data to when processing each Iface element f.ex., and that we want NaCl_state to send to pystache_data
+			# when everything/the whole file has been transpiled
 
-# Moving this:
+			# Moving this:
 			'''
 			# Add to NaCl's data dictionary (pystache/mustache data to be transpiled):
-			self.nacl_state.register_pystache_data(TEMPLATE_KEY_IFACES, self.ifaces)
-			self.nacl_state.register_pystache_data(TEMPLATE_KEY_AUTO_NATTING_IFACES, self.auto_natting_ifaces)
+			self.nacl_state.register_pystache_data_object(TEMPLATE_KEY_IFACES, self.ifaces)
+			self.nacl_state.register_pystache_data_object(TEMPLATE_KEY_AUTO_NATTING_IFACES, self.auto_natting_ifaces)
 			# New that both Iface and Gateway have separate pushes lists (new template keys)
-			self.nacl_state.register_pystache_data(TEMPLATE_KEY_IFACE_PUSHES, self.pushes)
-			self.nacl_state.register_pystache_data(TEMPLATE_KEY_IFACES_WITH_VLANS, self.ifaces_with_vlans)
-			self.nacl_state.register_pystache_data(TEMPLATE_KEY_MASQUERADES, self.masquerades)
+			self.nacl_state.register_pystache_data_object(TEMPLATE_KEY_IFACE_PUSHES, self.pushes)
+			self.nacl_state.register_pystache_data_object(TEMPLATE_KEY_IFACES_WITH_VLANS, self.ifaces_with_vlans)
+			self.nacl_state.register_pystache_data_object(TEMPLATE_KEY_MASQUERADES, self.masquerades)
 
-			Moved to NaCl_state final method to call before pystache rendering:
+			Moved to NaCl_state final_registration method to call before pystache rendering:
 			TODO: Need more dynamic solution
-			self.nacl_state.register_pystache_data(TEMPLATE_KEY_HAS_MASQUERADES, (len(self.masquerades) > 0))
-			self.nacl_state.register_pystache_data(TEMPLATE_KEY_HAS_AUTO_NATTING_IFACES, (len(self.auto_natting_ifaces) > 0))
-			self.nacl_state.register_pystache_data(TEMPLATE_KEY_HAS_VLANS, (len(self.ifaces_with_vlans) > 0))
+			self.nacl_state.register_pystache_data_object(TEMPLATE_KEY_HAS_MASQUERADES, (len(self.masquerades) > 0))
+			self.nacl_state.register_pystache_data_object(TEMPLATE_KEY_HAS_AUTO_NATTING_IFACES, (len(self.auto_natting_ifaces) > 0))
+			self.nacl_state.register_pystache_data_object(TEMPLATE_KEY_HAS_VLANS, (len(self.ifaces_with_vlans) > 0))
 			'''
 
 		return self.res
@@ -597,22 +602,26 @@ class Iface(Common):
 	@staticmethod
 	def final_registration(nacl_state):
 		if not nacl_state.pystache_list_is_empty(TEMPLATE_KEY_AUTO_NATTING_IFACES):
-			# nacl_state.append_to_pystache_data_structure(TEMPLATE_KEY_HAS_AUTO_NATTING_IFACES, {
+			# nacl_state.append_to_pystache_data_list(TEMPLATE_KEY_HAS_AUTO_NATTING_IFACES, {
 			#	TEMPLATE_KEY_HAS_AUTO_NATTING_IFACES: True
 			# })
-			nacl_state.register_pystache_data(TEMPLATE_KEY_HAS_AUTO_NATTING_IFACES, True)
+			nacl_state.register_pystache_data_object(TEMPLATE_KEY_HAS_AUTO_NATTING_IFACES, True)
 
 		if not nacl_state.pystache_list_is_empty(TEMPLATE_KEY_IFACES_WITH_VLANS):
-			# nacl_state.append_to_pystache_data_structure(TEMPLATE_KEY_HAS_VLANS, {
+			# nacl_state.append_to_pystache_data_list(TEMPLATE_KEY_HAS_VLANS, {
 			#	TEMPLATE_KEY_HAS_VLANS: True
 			# })
-			nacl_state.register_pystache_data(TEMPLATE_KEY_HAS_VLANS, True)
+			nacl_state.register_pystache_data_object(TEMPLATE_KEY_HAS_VLANS, True)
 
 		if not nacl_state.pystache_list_is_empty(TEMPLATE_KEY_MASQUERADES):
-			# nacl_state.append_to_pystache_data_structure(TEMPLATE_KEY_HAS_MASQUERADES, {
+			# nacl_state.append_to_pystache_data_list(TEMPLATE_KEY_HAS_MASQUERADES, {
 			#	TEMPLATE_KEY_HAS_MASQUERADES: True
 			# })
-			nacl_state.register_pystache_data(TEMPLATE_KEY_HAS_MASQUERADES, True)
+			nacl_state.register_pystache_data_object(TEMPLATE_KEY_HAS_MASQUERADES, True)
+
+			# handle_input previously:
+			# nacl_state.register_pystache_data_object(TEMPLATE_KEY_HAS_NATS, (len(nats) > 0 or len(masquerades) > 0))
+			nacl_state.register_pystache_data_object(TEMPLATE_KEY_HAS_NATS, True)
 
 		'''
 		# In NaCl_state:
@@ -621,14 +630,14 @@ class Iface(Common):
 		masquerades = self.pystache_data.get(TEMPLATE_KEY_MASQUERADES)
 
 		if auto_natting_ifaces is not None and (len(auto_natting_ifaces) > 0):
-			self.register_pystache_data(TEMPLATE_KEY_HAS_AUTO_NATTING_IFACES, True) # (len(self.auto_natting_ifaces) > 0)
+			self.register_pystache_data_object(TEMPLATE_KEY_HAS_AUTO_NATTING_IFACES, True) # (len(self.auto_natting_ifaces) > 0)
 		if ifaces_with_vlans is not None and (len(ifaces_with_vlans) > 0):
-			self.register_pystache_data(TEMPLATE_KEY_HAS_VLANS, True)
+			self.register_pystache_data_object(TEMPLATE_KEY_HAS_VLANS, True)
 		if masquerades is not None and (len(masquerades) > 0):
-			self.register_pystache_data(TEMPLATE_KEY_HAS_MASQUERADES, True)
+			self.register_pystache_data_object(TEMPLATE_KEY_HAS_MASQUERADES, True)
 		'''
 
-# < CLASS Iface
+# < class Iface
 
 # -------------------- INIT --------------------
 
@@ -636,8 +645,8 @@ class Iface(Common):
 # pystache_data{}
 # pystache_data[TEMPLATE_KEY] = []
 
-def register_iface_pystache_structures(nacl_state):
-	nacl_state.add_pystache_data_structures([ \
+def create_iface_pystache_lists(nacl_state):
+	nacl_state.create_pystache_data_lists([ \
 		TEMPLATE_KEY_IFACES, \
 		TEMPLATE_KEY_AUTO_NATTING_IFACES, \
 		TEMPLATE_KEY_IFACE_PUSHES, \
@@ -652,8 +661,8 @@ def register_iface_pystache_structures(nacl_state):
 		# These three are added in the final_registration method
 	])
 
-# def register_vlan_pystache_structures(nacl_state):
-#	nacl_state.add_pystache_data_structures(...)
+# def create_vlan_pystache_lists(nacl_state):
+#	nacl_state.create_pystache_data_lists(...)
 
 def init(nacl_state):
 	print "Init iface: Iface and Vlan"
@@ -661,5 +670,5 @@ def init(nacl_state):
 	nacl_state.add_type_processor(TYPE_IFACE, Iface)
 	nacl_state.add_type_processor(TYPE_VLAN, Vlan)
 
-	register_iface_pystache_structures(nacl_state)
-	# register_vlan_pystache_structures(nacl_state) # No structures to register
+	create_iface_pystache_lists(nacl_state)
+	# create_vlan_pystache_lists(nacl_state) # No lists to create

@@ -1,7 +1,7 @@
 from __future__ import absolute_import
 # To avoid: <...>/NaCl/type_processors/conntrack.py:1: RuntimeWarning: Parent module '<...>/NaCl/type_processors' not found while handling absolute import
 
-from NaCl import NaCl_exception, TCP, UDP, ICMP, Typed, exit_NaCl, resolve_value, LANGUAGE, \
+from NaCl import NaCl_exception, TCP, UDP, ICMP, Typed, exit_NaCl, \
     TEMPLATE_KEY_NAME
 
 # -------------------- CONSTANTS Conntrack --------------------
@@ -43,23 +43,23 @@ TEMPLATE_KEY_CONNTRACKS = "conntracks"
 TEMPLATE_KEY_CONNTRACK_TIMEOUTS 	= "timeouts"
 TEMPLATE_KEY_CONNTRACK_TYPE 		= "type"
 
-# -------------------- Conntrack --------------------
+# -------------------- class Conntrack --------------------
 
 class Conntrack(Typed):
-    def __init__(self, nacl_state, idx, name, ctx, base_type, type_t):
-        super(Conntrack, self).__init__(nacl_state, idx, name, ctx, base_type, type_t)
+	def __init__(self, nacl_state, idx, name, ctx, base_type, type_t):
+		super(Conntrack, self).__init__(nacl_state, idx, name, ctx, base_type, type_t)
 
-    def add_conntrack(self):
-        timeout = self.members.get(CONNTRACK_KEY_TIMEOUT)
-        timeouts = []
+	def add_conntrack(self):
+		timeout = self.members.get(CONNTRACK_KEY_TIMEOUT)
+		timeouts = []
 
-        if timeout is not None:
-            class_name = self.get_class_name()
+		if timeout is not None:
+			class_name = self.get_class_name()
 
-            if not isinstance(timeout, dict):
-                exit_NaCl(self.ctx, "Invalid " + CONNTRACK_KEY_TIMEOUT + " value of " + class_name + " (needs to be an object)")
+			if not isinstance(timeout, dict):
+				exit_NaCl(self.ctx, "Invalid " + CONNTRACK_KEY_TIMEOUT + " value of " + class_name + " (needs to be an object)")
 
-            for conntrack_type in timeout:
+			for conntrack_type in timeout:
 				t = timeout.get(conntrack_type)
 
 				if not isinstance(t, dict):
@@ -76,12 +76,12 @@ class Conntrack(Typed):
 					ICMP: icmp_timeout
 				})
 
-        self.nacl_state.append_to_pystache_data_structure(TEMPLATE_KEY_CONNTRACKS, {
-            TEMPLATE_KEY_NAME: 					self.name,
-            CONNTRACK_KEY_LIMIT: 				self.members.get(CONNTRACK_KEY_LIMIT),
-            CONNTRACK_KEY_RESERVE: 				self.members.get(CONNTRACK_KEY_RESERVE),
-            TEMPLATE_KEY_CONNTRACK_TIMEOUTS: 	timeouts
-        })
+		self.nacl_state.append_to_pystache_data_list(TEMPLATE_KEY_CONNTRACKS, {
+			TEMPLATE_KEY_NAME: 					self.name,
+			CONNTRACK_KEY_LIMIT: 				self.members.get(CONNTRACK_KEY_LIMIT),
+			CONNTRACK_KEY_RESERVE: 				self.members.get(CONNTRACK_KEY_RESERVE),
+			TEMPLATE_KEY_CONNTRACK_TIMEOUTS: 	timeouts
+		})
         # Old:
         '''
         conntracks.append({
@@ -92,11 +92,11 @@ class Conntrack(Typed):
 		})
         '''
 
-    # Old:
-    # def validate_conntrack_key(self, key, parent_key, level, ctx):
-    # New:
-    # Overriding
-    def validate_dictionary_key(self, key, parent_key, level, value_ctx):
+	# Old:
+	# def validate_conntrack_key(self, key, parent_key, level, ctx):
+	# New:
+	# Overriding
+	def validate_dictionary_key(self, key, parent_key, level, value_ctx):
 		class_name = self.get_class_name()
 
 		if level == 1:
@@ -118,21 +118,21 @@ class Conntrack(Typed):
 		else:
 			exit_NaCl(value_ctx, "Invalid " + class_name + " member " + key)
 
-    # Old:
-    # def resolve_conntrack_value(self, dictionary, key, value):
-    # New:
-    # Overriding
-    def resolve_dictionary_value(self, dictionary, key, value):
+	# Old:
+	# def resolve_conntrack_value(self, dictionary, key, value):
+	# New:
+	# Overriding
+	def resolve_dictionary_value(self, dictionary, key, value):
 		# Add found value
-		dictionary[key] = resolve_value(LANGUAGE, value)
+		dictionary[key] = self.nacl_state.resolve_value(value)
 
-    # Overriding
-    # def validate_and_resolve_dictionary_val(self, dictionary, level_key, parent_key, level, value):
-    #    self.validate_conntrack_key(level_key, parent_key, level, value)
-    #    self.resolve_conntrack_value(dictionary, level_key, value)
+	# Overriding
+	# def validate_and_resolve_dictionary_val(self, dictionary, level_key, parent_key, level, value):
+	#    self.validate_conntrack_key(level_key, parent_key, level, value)
+	#    self.resolve_conntrack_value(dictionary, level_key, value)
 
 	# Main processing method
-    def process(self):
+	def process(self):
 		if self.res is None:
 			# Then process
 
@@ -146,8 +146,10 @@ class Conntrack(Typed):
 
 		return self.res
 
-def register_connstrack_pystache_structures(nacl_state):
-	nacl_state.add_pystache_data_structures([
+# < class Conntrack
+
+def create_connstrack_pystache_lists(nacl_state):
+	nacl_state.create_pystache_data_lists([
         TEMPLATE_KEY_CONNTRACKS
 	])
 
@@ -158,4 +160,4 @@ def init(nacl_state):
 
     nacl_state.add_type_processor(TYPE_CONNTRACK, Conntrack)
 
-    register_connstrack_pystache_structures(nacl_state)
+    create_connstrack_pystache_lists(nacl_state)

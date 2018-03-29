@@ -16,13 +16,7 @@
 
 import sys
 
-# Languages that NaCl can be transpiled to
-
 CPP = "cpp"
-
-valid_languages = [
-	CPP
-]
 
 # Operators
 
@@ -368,6 +362,7 @@ SYSLOG 	= 'syslog'
 SNAT 	= 'snat'
 DNAT 	= 'dnat'
 
+# TODO: Move to function.py
 valid_default_filter_verdicts = [
 	ACCEPT,
 	DROP
