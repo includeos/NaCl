@@ -278,6 +278,7 @@ valid_lb_layers = [
 	TCP
 ]
 
+''' Moved to syslog.py:
 # ---- Syslog keys ----
 
 SYSLOG_KEY_ADDRESS 	= "address" # Old: IFACE_KEY_ADDRESS
@@ -287,6 +288,7 @@ predefined_syslog_keys = [
 	SYSLOG_KEY_ADDRESS,
 	SYSLOG_KEY_PORT
 ]
+'''
 
 # ---- Syslog severity levels ----
 

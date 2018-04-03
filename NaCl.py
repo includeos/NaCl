@@ -58,7 +58,8 @@ TEMPLATE_KEY_GATEWAYS 			= "gateways"
 # New:
 # TEMPLATE_KEY_CONNTRACKS 		= "conntracks"
 TEMPLATE_KEY_LOAD_BALANCERS 	= "load_balancers"
-TEMPLATE_KEY_SYSLOGS 			= "syslogs"
+# New: Moved to syslog.py:
+# TEMPLATE_KEY_SYSLOGS 			= "syslogs"
 TEMPLATE_KEY_IP_FORWARD_IFACES 	= "ip_forward_ifaces"
 # New:
 # TEMPLATE_KEY_ENABLE_CT_IFACES 	= "enable_ct_ifaces"
@@ -76,7 +77,8 @@ TEMPLATE_KEY_HAS_NATS 			= "has_nats"
 # New: Moved to function.py:
 # TEMPLATE_KEY_HAS_FUNCTIONS 	= "has_functions"
 TEMPLATE_KEY_HAS_LOAD_BALANCERS = "has_load_balancers"
-TEMPLATE_KEY_HAS_SYSLOGS 		= "has_syslogs"
+# New: Moved to syslog.py:
+# TEMPLATE_KEY_HAS_SYSLOGS 		= "has_syslogs"
 
 TEMPLATE_KEY_ENABLE_CT 			= "enable_ct"
 
@@ -1805,6 +1807,7 @@ class Load_balancer(Typed):
 
 # < Load_balancer
 
+'''
 # -------------------- Syslog (settings) --------------------
 
 class Syslog(Typed):
@@ -1857,6 +1860,7 @@ class Syslog(Typed):
 		return self.res
 
 # < Syslog (settings)
+'''
 
 '''
 # -------------------- Function --------------------
@@ -2081,7 +2085,8 @@ def handle_input(nacl_state):
 	# New:
 	# nacl_state.register_pystache_data_object(TEMPLATE_KEY_CONNTRACKS, conntracks)
 	nacl_state.register_pystache_data_object(TEMPLATE_KEY_LOAD_BALANCERS, load_balancers)
-	nacl_state.register_pystache_data_object(TEMPLATE_KEY_SYSLOGS, syslogs)
+	# New: Moved to syslog.py:
+	# nacl_state.register_pystache_data_object(TEMPLATE_KEY_SYSLOGS, syslogs)
 	# New: Moved to function.py:
 	# nacl_state.register_pystache_data_object(TEMPLATE_KEY_FILTERS, filters)
 	# nacl_state.register_pystache_data_object(TEMPLATE_KEY_NATS, nats)
@@ -2102,7 +2107,8 @@ def handle_input(nacl_state):
 	# nacl_state.register_pystache_data_object(TEMPLATE_KEY_ENABLE_CT, (len(nats) > 0 or len(filters) > 0 or len(gateways) > 0))
 
 	nacl_state.register_pystache_data_object(TEMPLATE_KEY_HAS_LOAD_BALANCERS, (len(load_balancers) > 0))
-	nacl_state.register_pystache_data_object(TEMPLATE_KEY_HAS_SYSLOGS, (len(syslogs) > 0))
+	# New: Moved to syslog.py:
+	# nacl_state.register_pystache_data_object(TEMPLATE_KEY_HAS_SYSLOGS, (len(syslogs) > 0))
 
 	# New: Moved to function.py:
 	'''
