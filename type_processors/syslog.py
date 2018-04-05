@@ -1,7 +1,7 @@
 from __future__ import absolute_import
 # To avoid: <...>/NaCl/type_processors/syslog.py:1: RuntimeWarning: Parent module '<...>/NaCl/type_processors' not found while handling absolute import
 
-from NaCl import exit_NaCl, Typed, TEMPLATE_KEY_ADDRESS, TEMPLATE_KEY_PORT
+from NaCl import exit_NaCl, Typed
 
 # -------------------- CONSTANTS Syslog --------------------
 
@@ -17,7 +17,12 @@ PREDEFINED_SYSLOG_KEYS = [
 	SYSLOG_KEY_PORT
 ]
 
+# ---- TEMPLATE KEYS (pystache) ----
+
 TEMPLATE_KEY_SYSLOGS        = "syslogs"
+TEMPLATE_KEY_ADDRESS        = "address"
+TEMPLATE_KEY_PORT           = "port"
+
 TEMPLATE_KEY_HAS_SYSLOGS    = "has_syslogs"
 
 # -------------------- Syslog (settings) --------------------
