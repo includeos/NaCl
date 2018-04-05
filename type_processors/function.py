@@ -21,7 +21,7 @@ TYPE_NAT 			= "nat"
 
 # TODO: FIX (for now, just to make it run, I import the variables here):
 from NaCl import TEMPLATE_KEY_NAME, TEMPLATE_KEY_TITLE, TEMPLATE_KEY_ENABLE_CT, TEMPLATE_KEY_HAS_NATS, \
-    TEMPLATE_KEY_GATEWAY_PUSHES, TEMPLATE_KEY_FUNCTION_NAMES, TEMPLATE_KEY_FUNCTION_NAME, \
+    TEMPLATE_KEY_FUNCTION_NAMES, TEMPLATE_KEY_FUNCTION_NAME, \
     valid_default_filter_verdicts
 
 # ---- TEMPLATE KEYS (pystache) ----
@@ -38,6 +38,10 @@ TEMPLATE_KEY_HAS_FUNCTIONS  = "has_functions"
 # from iface import TEMPLATE_KEY_IFACE_PUSHES
 # instead of defining this constant here as well as in iface.py:
 TEMPLATE_KEY_IFACE_PUSHES = "pushes_iface"
+# Would also like to do:
+# from gateway import TEMPLATE_KEY_GATEWAY_PUSHES
+# instead of this:
+TEMPLATE_KEY_GATEWAY_PUSHES = "pushes_gateway"
 
 # -------------------- class Function --------------------
 

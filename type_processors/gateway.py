@@ -4,7 +4,7 @@ from __future__ import absolute_import
 # TODO later: Own mustache file as well for Gateway - then import into main mustache file if possible
 
 # TODO
-from NaCl import exit_NaCl, Typed, TRUE, FALSE, DOT, TEMPLATE_KEY_ENABLE_CT, TEMPLATE_KEY_GATEWAY_PUSHES, TEMPLATE_KEY_IFACE, \
+from NaCl import exit_NaCl, Typed, TRUE, FALSE, DOT, TEMPLATE_KEY_ENABLE_CT, TEMPLATE_KEY_IFACE, \
     TEMPLATE_KEY_NAME, TEMPLATE_KEY_CHAIN, BASE_TYPE_FUNCTION, TEMPLATE_KEY_FUNCTION_NAME, TEMPLATE_KEY_COMMA, \
     TEMPLATE_KEY_FUNCTION_NAMES, \
     elements
@@ -53,6 +53,7 @@ PREDEFINED_GATEWAY_KEYS = [
 TEMPLATE_KEY_GATEWAYS           = "gateways"
 TEMPLATE_KEY_IP_FORWARD_IFACES  = "ip_forward_ifaces"
 TEMPLATE_KEY_ROUTES             = "routes"
+TEMPLATE_KEY_GATEWAY_PUSHES     = "pushes_gateway"
 
 TEMPLATE_KEY_HAS_GATEWAYS       = "has_gateways"
 

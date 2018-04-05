@@ -222,6 +222,7 @@ predefined_conntrack_timeout_inner_keys = [
 ]
 '''
 
+''' Moved to load_balancer.py:
 # ---- Load_balancer keys ----
 
 LB_KEY_LAYER = "layer"
@@ -266,6 +267,7 @@ predefined_lb_node_keys = [
 # Load balancer algorithms
 # Note: Only round_robin is supported in microLB for now (the algo/algorithm field is ignored)
 ROUND_ROBIN = "round_robin"
+
 # FEWEST_CONNECTIONS = "fewest_connections"
 valid_lb_servers_algos = [
 	ROUND_ROBIN
@@ -279,6 +281,7 @@ INCLUDEOS_ROUND_ROBIN = ROUND_ROBIN
 valid_lb_layers = [
 	TCP
 ]
+'''
 
 ''' Moved to syslog.py:
 # ---- Syslog keys ----
@@ -538,6 +541,8 @@ INCLUDEOS_FLAG_CWR 	= TCP_FLAG_NS + "CWR"
 INCLUDEOS_FLAG_ECE 	= TCP_FLAG_NS + "ECE"
 INCLUDEOS_FLAG_NS 	= TCP_FLAG_NS + "NS"
 
+# TODO: Move this into the NaCl_state class?
+# If so, cpp_resolve_values.py should be moved here as well or imported?
 # All elements (Iface, Filter, Port, etc.) that have been identified in the NaCl file
 # (by the visitor) are placed here because each language template (f.ex. cpp_template.py)
 # needs to access the elements when resolving a variable name f.ex.
@@ -573,6 +578,8 @@ INCLUDEOS_OIFNAME 	= "stack2.oifname()"
 INCLUDEOS_IIF 		= "stack.iif()"
 INCLUDEOS_IIFNAME 	= "stack.iifname()"
 
+# TODO: Move this dictionary into the NaCl_state class and implement register methods
+# so that the different modules can check in/register their values
 # Built-in/predefined constants that can be used as values in NaCl
 predefined_values_cpp = {
 
@@ -624,10 +631,11 @@ predefined_values_cpp = {
 	ESTABLISHED: 	INCLUDEOS_STATE_ESTABLISHED,
 	NEW: 			INCLUDEOS_STATE_NEW,
 	RELATED: 		INCLUDEOS_STATE_RELATED,
-	INVALID: 		INCLUDEOS_STATE_INVALID,
+	INVALID: 		INCLUDEOS_STATE_INVALID
 
+	# New: Moved into load_balancer.py:
 	# TCP Load balancer
-	ROUND_ROBIN: 	INCLUDEOS_ROUND_ROBIN
+	# ROUND_ROBIN: 	INCLUDEOS_ROUND_ROBIN
 }
 
 class Tcp:

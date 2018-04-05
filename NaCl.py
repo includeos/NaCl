@@ -33,6 +33,8 @@ from cpp_transpile_function import *
 # ->
 from shared_constants import * # CPP
 
+# TODO: Move this into the NaCl_state class instead? (if elements dictionary is moved here as well):
+# cpp_resolve_values.py
 from cpp_resolve_values import resolve_value_cpp
 
 # antlr4 -Dlanguage=Python2 NaCl.g4 -visitor
@@ -53,13 +55,15 @@ from cpp_resolve_values import resolve_value_cpp
 # TEMPLATE_KEY_PUSHES 			= "pushes"
 # TODO: Move to Gateway class/file and import from this in function.py?
 # This is used by gateway.py and function.py:
-TEMPLATE_KEY_GATEWAY_PUSHES 	= "pushes_gateway"
+# Has been moved into both gateway.py and function.py for now:
+# TEMPLATE_KEY_GATEWAY_PUSHES 	= "pushes_gateway"
 
 # New: Moved to gateway.py:
 # TEMPLATE_KEY_GATEWAYS 			= "gateways"
-# New:
+# New: Moved to conntrack.py:
 # TEMPLATE_KEY_CONNTRACKS 		= "conntracks"
-TEMPLATE_KEY_LOAD_BALANCERS 	= "load_balancers"
+# New: Moved to load_balancer.py:
+# TEMPLATE_KEY_LOAD_BALANCERS 	= "load_balancers"
 # New: Moved to syslog.py:
 # TEMPLATE_KEY_SYSLOGS 			= "syslogs"
 # New: Moved to gateway.py:
@@ -80,7 +84,8 @@ TEMPLATE_KEY_HAS_NATS 			= "has_nats"
 # TEMPLATE_KEY_HAS_AUTO_NATTING_IFACES = "has_auto_natting_ifaces"
 # New: Moved to function.py:
 # TEMPLATE_KEY_HAS_FUNCTIONS 	= "has_functions"
-TEMPLATE_KEY_HAS_LOAD_BALANCERS = "has_load_balancers"
+# New: Moved to load_balancer.py:
+# TEMPLATE_KEY_HAS_LOAD_BALANCERS = "has_load_balancers"
 # New: Moved to syslog.py:
 # TEMPLATE_KEY_HAS_SYSLOGS 		= "has_syslogs"
 
@@ -103,7 +108,8 @@ TEMPLATE_KEY_ENABLE_CT 			= "enable_ct"
 # gateways 			= []
 # New: Moved to conntrack.py:
 # conntracks 		= []
-load_balancers 		= []
+# New: Moved to load_balancer.py:
+# load_balancers 	= []
 # New: Moved to syslog.py:
 # syslogs 			= []
 # New: Moved to gateway.py:
@@ -145,6 +151,8 @@ TEMPLATE_KEY_TITLE 			= "title"
 # TEMPLATE_KEY_VLANS 		= "vlans"
 # TEMPLATE_KEY_IS_GATEWAY_PUSH = "is_gateway_push"
 
+# New: Moved into load_balancer.py:
+'''
 TEMPLATE_KEY_INDEX 					= "index"
 TEMPLATE_KEY_PORT 					= "port"
 TEMPLATE_KEY_LB_LAYER 				= "layer"
@@ -156,6 +164,7 @@ TEMPLATE_KEY_LB_SERVERS_IFACE 		= "servers_iface_name"
 TEMPLATE_KEY_LB_POOL 				= "pool"
 TEMPLATE_KEY_LB_NODE_ADDRESS 		= "address"
 TEMPLATE_KEY_LB_NODE_PORT 			= "port"
+'''
 
 '''
 TEMPLATE_KEY_CONNTRACK_TIMEOUTS 	= "timeouts"
@@ -1596,6 +1605,7 @@ class Gateway(Typed):
 # < Gateway
 '''
 
+'''
 # -------------------- Load_balancer --------------------
 
 class Load_balancer(Typed):
@@ -1826,6 +1836,7 @@ class Load_balancer(Typed):
 		return self.res
 
 # < Load_balancer
+'''
 
 '''
 # -------------------- Syslog (settings) --------------------
@@ -2104,7 +2115,8 @@ def handle_input(nacl_state):
 	'''
 	# New:
 	# nacl_state.register_pystache_data_object(TEMPLATE_KEY_CONNTRACKS, conntracks)
-	nacl_state.register_pystache_data_object(TEMPLATE_KEY_LOAD_BALANCERS, load_balancers)
+	# New: Moved to load_balancer.py:
+	# nacl_state.register_pystache_data_object(TEMPLATE_KEY_LOAD_BALANCERS, load_balancers)
 	# New: Moved to syslog.py:
 	# nacl_state.register_pystache_data_object(TEMPLATE_KEY_SYSLOGS, syslogs)
 	# New: Moved to function.py:
@@ -2129,7 +2141,8 @@ def handle_input(nacl_state):
 	# Moved into function.py and Gateway class (only registering if is to be set to True):
 	# nacl_state.register_pystache_data_object(TEMPLATE_KEY_ENABLE_CT, (len(nats) > 0 or len(filters) > 0 or len(gateways) > 0))
 
-	nacl_state.register_pystache_data_object(TEMPLATE_KEY_HAS_LOAD_BALANCERS, (len(load_balancers) > 0))
+	# New: Moved to load_balancer.py:
+	# nacl_state.register_pystache_data_object(TEMPLATE_KEY_HAS_LOAD_BALANCERS, (len(load_balancers) > 0))
 	# New: Moved to syslog.py:
 	# nacl_state.register_pystache_data_object(TEMPLATE_KEY_HAS_SYSLOGS, (len(syslogs) > 0))
 
@@ -2142,10 +2155,7 @@ def handle_input(nacl_state):
 		nacl_state.register_pystache_data_object(TEMPLATE_KEY_HAS_NATS, True)
 	'''
 
-	# TODO: Avoid somehow?
 	# Set the last pystache_data values (the has-values) before rendering:
-	# nacl_state.set_has_values()
-	# Maybe solution?:
 	for _, c in nacl_state.nacl_type_processors.iteritems():
 		c.final_registration(nacl_state) # static method
 
