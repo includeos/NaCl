@@ -99,6 +99,6 @@ def create_syslog_pystache_lists(nacl_state):
 def init(nacl_state):
     print "Init syslog: Syslog"
 
-    nacl_state.add_type_processor(TYPE_SYSLOG, Syslog)
+    nacl_state.add_type_processor(TYPE_SYSLOG, Syslog, True)
 
     create_syslog_pystache_lists(nacl_state)

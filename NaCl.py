@@ -118,10 +118,10 @@ TEMPLATE_KEY_ENABLE_CT 			= "enable_ct"
 # enable_ct_ifaces 	= []
 # masquerades 		= []
 # auto_natting_ifaces = []
-# TODO:
-gateway_exists 		= False
-conntrack_exists 	= False
-syslog_exists 		= False
+# New: Moved into NaCl_state (add_type_processor method takes is_singleton bool value as parameter):
+# gateway_exists 	= False
+# conntrack_exists 	= False
+# syslog_exists 	= False
 
 TEMPLATE_KEY_FUNCTION_NAME 	= "function_name"
 TEMPLATE_KEY_COMMA 			= "comma"
@@ -197,6 +197,8 @@ class NaCl_state(object):
 			IP
 		]
 		self.nacl_type_processors = {} # e.g. nacl_types/valid_nacl_types
+		self.singletons = [] 	# list of NaCl types (nacl_type_processors) that
+								# there's only allowed to create ONE element of
 		self.pystache_data = {} # e.g. data in handle_input
 
 		# Languages that NaCl can be transpiled to
@@ -284,29 +286,17 @@ class NaCl_state(object):
 
 	def register_all_type_processors(self):
 		print "Register all type processors"
-		# For each file in the type_processors folder, call the register function
-		# from type_processors.iface import register
-		#type_proc_dir = "type_processors"
-		#import importlib
-		# Call the register function in all type_processors
-		#for filename in os.listdir(type_proc_dir):
-		#	if filename.startswith("type") and filename.endswith(".py"):
-		#		filename = filename[:-3] # remove .py
-		#		path_to_file = os.path.join(type_proc_dir, filename)
-		#		processor = importlib.import_module(path_to_file)
-		#		processor.register()
-
-		# import type_processors
-		# type_processors.__init__()
-
-		# from type_processors import __init__ as init
-		# init()
-
+		# The init function in type_processors/__init__.py will loop through all the modules (.py files)
+		# in the folder and will in turn call each module's init function:
 		from type_processors import init as init_type_processors
 		init_type_processors(self)
 
-	def add_type_processor(self, name, class_constructor):
-		self.nacl_type_processors[name] = class_constructor
+	def add_type_processor(self, type_name, class_constructor, is_singleton=False):
+		# The name of a NaCl type should always be stored in lower case to make it easy to compare:
+		type_name_lower = type_name.lower()
+		self.nacl_type_processors[type_name_lower] = class_constructor
+		if is_singleton:
+			self.singletons.append(type_name_lower)
 
 	# Validate the name that the user has given an element
 	# Called in save_element function
@@ -319,6 +309,11 @@ class NaCl_state(object):
 
 		if name.lower() in self.invalid_names:
 			exit_NaCl(name_ctx, "Invalid name " + name)
+
+	def element_of_type_exists(self, type_name):
+		if any(hasattr(e, 'type_t') and e.type_t.lower() == type_name for _, e in elements.iteritems()):
+			return True
+		return False
 
 	# Add visited element to the elements dictionary
 	def save_element(self, base_type, ctx):
@@ -352,6 +347,11 @@ class NaCl_state(object):
 		# New:
 		if type_t_lower not in self.nacl_type_processors:
 			exit_NaCl(type_t_ctx, "Undefined type " + type_t)
+
+		# If only ONE element of this type is allowed and an element of the type already exists,
+		# exit with error
+		if type_t_lower in self.singletons and self.element_of_type_exists(type_t_lower):
+			exit_NaCl(type_t_ctx, "A " + type_t + " has already been defined")
 
 		# BASE_TYPE_FUNCTION
 		if base_type == BASE_TYPE_FUNCTION:
