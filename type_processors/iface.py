@@ -2,12 +2,12 @@ from __future__ import absolute_import
 # To avoid: <...>/NaCl/type_processors/iface.py:1: RuntimeWarning: Parent module '<...>/NaCl/type_processors' not found while handling absolute import
 
 # TODO
-from NaCl import exit_NaCl, NaCl_exception, Typed, get_line_and_column, \
+from NaCl import exit_NaCl, NaCl_exception, Typed, \
 	BASE_TYPE_TYPED_INIT, BASE_TYPE_FUNCTION, \
 	DOT, TRUE, FALSE, TEMPLATE_KEY_IFACE, \
 	TYPE_NAT, TEMPLATE_KEY_FUNCTION_NAME, TEMPLATE_KEY_COMMA, \
 	TEMPLATE_KEY_NAME, TEMPLATE_KEY_CHAIN, TEMPLATE_KEY_FUNCTION_NAMES, \
-	TEMPLATE_KEY_IFACE_INDEX, TEMPLATE_KEY_TITLE, \
+	TEMPLATE_KEY_TITLE, \
 	TEMPLATE_KEY_HAS_NATS, \
 	elements
 '''
@@ -117,6 +117,8 @@ TEMPLATE_KEY_ADDRESS 					= "address"
 TEMPLATE_KEY_NETMASK 					= "netmask"
 TEMPLATE_KEY_GATEWAY 					= "gateway"
 TEMPLATE_KEY_DNS 						= "dns"
+
+TEMPLATE_KEY_IFACE_INDEX 				= "iface_index"
 
 # -------------------- CLASSES --------------------
 
