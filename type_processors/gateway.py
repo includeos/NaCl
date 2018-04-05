@@ -6,7 +6,7 @@ from __future__ import absolute_import
 # TODO
 from NaCl import exit_NaCl, Typed, TRUE, FALSE, DOT, TEMPLATE_KEY_ENABLE_CT, TEMPLATE_KEY_IFACE, \
     TEMPLATE_KEY_NAME, TEMPLATE_KEY_CHAIN, BASE_TYPE_FUNCTION, TEMPLATE_KEY_FUNCTION_NAME, TEMPLATE_KEY_COMMA, \
-    TEMPLATE_KEY_FUNCTION_NAMES, \
+    TEMPLATE_KEY_FUNCTION_NAMES, INCLUDEOS_ROUTER_OBJ_NAME, CPP, \
     elements
 
 TYPE_GATEWAY = "gateway"
@@ -257,10 +257,12 @@ class Gateway(Typed):
         })
         '''
         # New:
+        router_obj_name = INCLUDEOS_ROUTER_OBJ_NAME if self.nacl_state.language == CPP else exit_NaCl(self.ctx, \
+            "Gateway can not transpile to other languages than C++")
         self.pushes.append({
-            TEMPLATE_KEY_NAME:				self.nacl_state.get_router_name(),
-            TEMPLATE_KEY_CHAIN: 			chain,
-            TEMPLATE_KEY_FUNCTION_NAMES: 	function_names
+            TEMPLATE_KEY_NAME:              router_obj_name,
+            TEMPLATE_KEY_CHAIN:             chain,
+            TEMPLATE_KEY_FUNCTION_NAMES:    function_names
         })
 
     def validate_and_process_not_route_members(self):

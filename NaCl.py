@@ -225,10 +225,6 @@ class NaCl_state(object):
 		if self.language == CPP:
 			return resolve_value_cpp(value_ctx)
 
-	def get_router_name(self):
-		if self.language == CPP:
-			return INCLUDEOS_ROUTER_OBJ_NAME
-
 	def register_pystache_data_object(self, key, value):
 		self.pystache_data[key] = value
 
@@ -411,7 +407,9 @@ def transpile_function(language, type_t, subtype, ctx):
 def resolve_value(language, ctx):
 	if language == CPP:
 		return resolve_value_cpp(ctx)
+'''
 
+''' Functionality moved into gateway.py (inside the add_push method):
 def get_router_name(language):
 	if language == CPP:
 		return INCLUDEOS_ROUTER_OBJ_NAME
