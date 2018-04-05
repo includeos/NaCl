@@ -100,7 +100,6 @@ void register_plugin_nacl() {
 
 	custom_made_classes_from_nacl::Natting natting;
 
-
 	eth0.ip_obj().prerouting_chain().chain.push_back(natting);
 
 	// Router
