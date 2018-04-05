@@ -51,22 +51,26 @@ from cpp_resolve_values import resolve_value_cpp
 
 # New:
 # TEMPLATE_KEY_PUSHES 			= "pushes"
-# TODO: Move to Gateway class/file:
+# TODO: Move to Gateway class/file and import from this in function.py?
+# This is used by gateway.py and function.py:
 TEMPLATE_KEY_GATEWAY_PUSHES 	= "pushes_gateway"
 
-TEMPLATE_KEY_GATEWAYS 			= "gateways"
+# New: Moved to gateway.py:
+# TEMPLATE_KEY_GATEWAYS 			= "gateways"
 # New:
 # TEMPLATE_KEY_CONNTRACKS 		= "conntracks"
 TEMPLATE_KEY_LOAD_BALANCERS 	= "load_balancers"
 # New: Moved to syslog.py:
 # TEMPLATE_KEY_SYSLOGS 			= "syslogs"
-TEMPLATE_KEY_IP_FORWARD_IFACES 	= "ip_forward_ifaces"
+# New: Moved to gateway.py:
+# TEMPLATE_KEY_IP_FORWARD_IFACES 	= "ip_forward_ifaces"
 # New:
 # TEMPLATE_KEY_ENABLE_CT_IFACES 	= "enable_ct_ifaces"
 # TEMPLATE_KEY_MASQUERADES 			= "masquerades"
 # TEMPLATE_KEY_AUTO_NATTING_IFACES 	= "auto_natting_ifaces"
 
-TEMPLATE_KEY_HAS_GATEWAYS 		= "has_gateways"
+# New: Moved to gateway.py:
+# TEMPLATE_KEY_HAS_GATEWAYS 		= "has_gateways"
 # TODO: Should be moved to function.py, but iface.py also uses this:
 TEMPLATE_KEY_HAS_NATS 			= "has_nats"
 # New:
@@ -80,10 +84,10 @@ TEMPLATE_KEY_HAS_LOAD_BALANCERS = "has_load_balancers"
 # New: Moved to syslog.py:
 # TEMPLATE_KEY_HAS_SYSLOGS 		= "has_syslogs"
 
+# Note/TODO: Is used by both function.py and gateway.py:
 TEMPLATE_KEY_ENABLE_CT 			= "enable_ct"
 
 # TODO: Moving this into class NaCl_state:
-
 # Data to be sent to pystache renderer
 # Each list are to contain objects consisting of key value pairs
 # New: Moved into Iface class:
@@ -94,16 +98,21 @@ TEMPLATE_KEY_ENABLE_CT 			= "enable_ct"
 # rewrites 			= []
 # nats 				= []
 # New: Moved into Iface class:
-# pushes 				= []
-gateways 			= []
-conntracks 			= []
+# pushes 			= []
+# New: Moved to gateway.py:
+# gateways 			= []
+# New: Moved to conntrack.py:
+# conntracks 		= []
 load_balancers 		= []
-syslogs 			= []
-ip_forward_ifaces 	= []
+# New: Moved to syslog.py:
+# syslogs 			= []
+# New: Moved to gateway.py:
+# ip_forward_ifaces = []
 # New: Moved into Iface class:
 # enable_ct_ifaces 	= []
 # masquerades 		= []
 # auto_natting_ifaces = []
+# TODO:
 gateway_exists 		= False
 conntrack_exists 	= False
 syslog_exists 		= False
@@ -119,20 +128,25 @@ TEMPLATE_KEY_TITLE 			= "title"
 # TEMPLATE_KEY_CONFIG_IS_DHCP 			= "config_is_dhcp"
 # TEMPLATE_KEY_CONFIG_IS_DHCP_FALLBACK 	= "config_is_dhcp_fallback"
 # TEMPLATE_KEY_CONFIG_IS_STATIC 		= "config_is_static"
-TEMPLATE_KEY_INDEX 			= "index"
-TEMPLATE_KEY_ADDRESS 		= "address"
-TEMPLATE_KEY_NETMASK 		= "netmask"
-TEMPLATE_KEY_GATEWAY 		= "gateway"
-TEMPLATE_KEY_DNS 			= "dns"
-TEMPLATE_KEY_ROUTES 		= "routes"
+# TEMPLATE_KEY_INDEX 		= "index"
+# Moved into iface.py and syslog.py:
+# TEMPLATE_KEY_ADDRESS 		= "address"
+# Moved into iface.py:
+# TEMPLATE_KEY_NETMASK 		= "netmask"
+# TEMPLATE_KEY_GATEWAY 		= "gateway"
+# TEMPLATE_KEY_DNS 			= "dns"
+# New: Moved to gateway.py:
+# TEMPLATE_KEY_ROUTES 		= "routes"
 # New: Moved to function.py:
 # TEMPLATE_KEY_CONTENT		= "content"
-TEMPLATE_KEY_IFACE_INDEX 	= "iface_index"
+# Moved to iface.py:
+# TEMPLATE_KEY_IFACE_INDEX 	= "iface_index"
 # New:
 # TEMPLATE_KEY_VLANS 		= "vlans"
-TEMPLATE_KEY_IS_GATEWAY_PUSH = "is_gateway_push"
-TEMPLATE_KEY_PORT 			= "port"
+# TEMPLATE_KEY_IS_GATEWAY_PUSH = "is_gateway_push"
 
+TEMPLATE_KEY_INDEX 					= "index"
+TEMPLATE_KEY_PORT 					= "port"
 TEMPLATE_KEY_LB_LAYER 				= "layer"
 TEMPLATE_KEY_LB_ALGORITHM 			= "algorithm"
 TEMPLATE_KEY_LB_WAIT_QUEUE_LIMIT 	= "wait_queue_limit"
@@ -140,8 +154,8 @@ TEMPLATE_KEY_LB_SESSION_LIMIT 		= "session_limit"
 TEMPLATE_KEY_LB_CLIENTS_IFACE 		= "clients_iface_name"
 TEMPLATE_KEY_LB_SERVERS_IFACE 		= "servers_iface_name"
 TEMPLATE_KEY_LB_POOL 				= "pool"
-TEMPLATE_KEY_LB_NODE_ADDRESS 		= TEMPLATE_KEY_ADDRESS
-TEMPLATE_KEY_LB_NODE_PORT 			= TEMPLATE_KEY_PORT
+TEMPLATE_KEY_LB_NODE_ADDRESS 		= "address"
+TEMPLATE_KEY_LB_NODE_PORT 			= "port"
 
 '''
 TEMPLATE_KEY_CONNTRACK_TIMEOUTS 	= "timeouts"
@@ -1257,6 +1271,7 @@ class Vlan(Typed):
 # < Vlan
 '''
 
+'''
 # -------------------- Gateway --------------------
 
 class Gateway(Typed):
@@ -1448,14 +1463,12 @@ class Gateway(Typed):
 			function_names.append({TEMPLATE_KEY_FUNCTION_NAME: name, TEMPLATE_KEY_COMMA: (i < (num_functions - 1))})
 
 		# Old:
-		'''
-		pushes.append({
-			TEMPLATE_KEY_IS_GATEWAY_PUSH: 	True,
-			TEMPLATE_KEY_NAME:				get_router_name(LANGUAGE),
-			TEMPLATE_KEY_CHAIN: 			chain,
-			TEMPLATE_KEY_FUNCTION_NAMES: 	function_names
-		})
-		'''
+		# pushes.append({
+		#	TEMPLATE_KEY_IS_GATEWAY_PUSH: 	True,
+		#	TEMPLATE_KEY_NAME:				get_router_name(LANGUAGE),
+		#	TEMPLATE_KEY_CHAIN: 			chain,
+		#	TEMPLATE_KEY_FUNCTION_NAMES: 	function_names
+		# })
 		# New:
 		self.pushes.append({
 			# TEMPLATE_KEY_IS_GATEWAY_PUSH: 	True,
@@ -1500,10 +1513,8 @@ class Gateway(Typed):
 			# Add iface_name to enable_ct_ifaces pystache list if it is not in the
 			# list already
 			# Old:
-			'''
-			if iface_name is not None and not any(enable_ct_iface[TEMPLATE_KEY_IFACE] == iface_name for enable_ct_iface in enable_ct_ifaces):
-				enable_ct_ifaces.append({TEMPLATE_KEY_IFACE: iface_name})
-			'''
+			# if iface_name is not None and not any(enable_ct_iface[TEMPLATE_KEY_IFACE] == iface_name for enable_ct_iface in enable_ct_ifaces):
+			#	enable_ct_ifaces.append({TEMPLATE_KEY_IFACE: iface_name})
 			# New:
 			if iface_name is not None and not self.nacl_state.exists_in_pystache_list(TEMPLATE_KEY_ENABLE_CT_IFACES, TEMPLATE_KEY_IFACE, iface_name):
 				self.nacl_state.append_to_pystache_data_list(TEMPLATE_KEY_ENABLE_CT_IFACES, {
@@ -1575,6 +1586,7 @@ class Gateway(Typed):
 			nacl_state.register_pystache_data_object(TEMPLATE_KEY_ENABLE_CT, True)
 
 # < Gateway
+'''
 
 # -------------------- Load_balancer --------------------
 
@@ -2091,12 +2103,15 @@ def handle_input(nacl_state):
 	# nacl_state.register_pystache_data_object(TEMPLATE_KEY_FILTERS, filters)
 	# nacl_state.register_pystache_data_object(TEMPLATE_KEY_NATS, nats)
 	# nacl_state.register_pystache_data_object(TEMPLATE_KEY_REWRITES, rewrites)
-	nacl_state.register_pystache_data_object(TEMPLATE_KEY_GATEWAYS, gateways)
-	nacl_state.register_pystache_data_object(TEMPLATE_KEY_IP_FORWARD_IFACES, ip_forward_ifaces)
+	# New: Moved to gateway.py:
+	# nacl_state.register_pystache_data_object(TEMPLATE_KEY_GATEWAYS, gateways)
+	# New: Moved to gateway.py:
+	# nacl_state.register_pystache_data_object(TEMPLATE_KEY_IP_FORWARD_IFACES, ip_forward_ifaces)
 	# New:
 	# nacl_state.register_pystache_data_object(TEMPLATE_KEY_ENABLE_CT_IFACES, enable_ct_ifaces)
 	# nacl_state.register_pystache_data_object(TEMPLATE_KEY_MASQUERADES, masquerades)
-	nacl_state.register_pystache_data_object(TEMPLATE_KEY_HAS_GATEWAYS, (len(gateways) > 0))
+	# New: Moved to gateway.py:
+	# nacl_state.register_pystache_data_object(TEMPLATE_KEY_HAS_GATEWAYS, (len(gateways) > 0))
 	# New: Moved into function.py and iface.py:
 	# nacl_state.register_pystache_data_object(TEMPLATE_KEY_HAS_NATS, (len(nats) > 0 or len(masquerades) > 0))
 	# nacl_state.register_pystache_data_object(TEMPLATE_KEY_HAS_MASQUERADES, (len(masquerades) > 0))

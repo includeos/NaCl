@@ -152,6 +152,7 @@ predefined_vlan_keys = [
 ]
 '''
 
+''' Moved to gateway.py:
 # ---- Gateway keys ----
 
 GATEWAY_KEY_SEND_TIME_EXCEEDED 	= "send_time_exceeded"
@@ -179,6 +180,7 @@ predefined_gateway_keys = [
 	GATEWAY_KEY_SEND_TIME_EXCEEDED,
 	GATEWAY_KEY_FORWARD
 ]
+'''
 
 # ---- General ----
 
