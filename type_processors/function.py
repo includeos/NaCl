@@ -24,6 +24,8 @@ from NaCl import TEMPLATE_KEY_NAME, TEMPLATE_KEY_TITLE, TEMPLATE_KEY_ENABLE_CT, 
     TEMPLATE_KEY_GATEWAY_PUSHES, TEMPLATE_KEY_FUNCTION_NAMES, TEMPLATE_KEY_FUNCTION_NAME, \
     valid_default_filter_verdicts
 
+# ---- TEMPLATE KEYS (pystache) ----
+
 TEMPLATE_KEY_CONTENT		= "content"
 TEMPLATE_KEY_FILTERS 		= "filters"
 TEMPLATE_KEY_NATS 			= "nats"
@@ -31,6 +33,11 @@ TEMPLATE_KEY_REWRITES 		= "rewrites"
 TEMPLATE_KEY_HAS_FUNCTIONS  = "has_functions"
 # Should be moved here from NaCl.py, but iface.py also uses this:
 # TEMPLATE_KEY_HAS_NATS 	= "has_nats"
+
+# Would like to do:
+# from iface import TEMPLATE_KEY_IFACE_PUSHES
+# instead of defining this constant here as well as in iface.py:
+TEMPLATE_KEY_IFACE_PUSHES = "pushes_iface"
 
 # -------------------- class Function --------------------
 
@@ -63,8 +70,6 @@ class Function(Element):
         # Old 2:
         # for p in self.nacl_state.pushes:
         # New:
-        # TODO: Constant
-        TEMPLATE_KEY_IFACE_PUSHES = "pushes_iface"
         iface_pushes = self.nacl_state.pystache_data.get(TEMPLATE_KEY_IFACE_PUSHES)
         gateway_pushes = self.nacl_state.pystache_data.get(TEMPLATE_KEY_GATEWAY_PUSHES)
 
