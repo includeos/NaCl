@@ -849,6 +849,14 @@ class Untyped(Element):
 	def __init__(self, nacl_state, idx, name, ctx, base_type):
 		super(Untyped, self).__init__(nacl_state, idx, name, ctx, base_type)
 
+	# Overriding
+	def validate_dictionary_key(self, key, parent_key, level, value_ctx):
+		pass
+
+	# Overriding
+	def resolve_dictionary_value(self, dictionary, key, value_ctx):
+		dictionary[key] = self.nacl_state.resolve_value(value_ctx)
+
 	# Main processing method
 	def process(self):
 		if self.res is None:
