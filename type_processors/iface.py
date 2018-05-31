@@ -5,24 +5,18 @@ from __future__ import absolute_import
 from NaCl import exit_NaCl, NaCl_exception, Typed, \
 	BASE_TYPE_TYPED_INIT, BASE_TYPE_FUNCTION, \
 	DOT, TRUE, FALSE, TEMPLATE_KEY_IFACE, \
-	TYPE_NAT, TEMPLATE_KEY_FUNCTION_NAME, TEMPLATE_KEY_COMMA, \
+	TEMPLATE_KEY_FUNCTION_NAME, TEMPLATE_KEY_COMMA, \
 	TEMPLATE_KEY_NAME, TEMPLATE_KEY_CHAIN, TEMPLATE_KEY_FUNCTION_NAMES, \
 	TEMPLATE_KEY_TITLE, \
-	TEMPLATE_KEY_HAS_NATS, \
 	elements
-'''
-ifaces
-auto_natting_ifaces
-pushes
-ifaces_with_vlans
-masquerades
-'''
 
-# Not possible: from function import TEMPLATE_KEY_HAS_NATS
+from shared_between_type_processors import TYPE_IFACE, TYPE_NAT, \
+	TEMPLATE_KEY_IFACE_PUSHES, TEMPLATE_KEY_ENABLE_CT_IFACES, TEMPLATE_KEY_HAS_NATS
+# Moved to shared.py: from type_processors.function import TEMPLATE_KEY_HAS_NATS
 
 # -------------------- CONSTANTS Iface --------------------
 
-TYPE_IFACE 	= "iface"
+# Moved to shared.py: TYPE_IFACE = "iface"
 
 # Iface keys
 
@@ -98,11 +92,11 @@ TEMPLATE_KEY_VLANS 			= "vlans"
 
 TEMPLATE_KEY_IFACES 					= "ifaces"
 TEMPLATE_KEY_IFACES_WITH_VLANS			= "ifaces_with_vlans"
-TEMPLATE_KEY_IFACE_PUSHES 				= "pushes_iface"
+# Moved to shared.py: TEMPLATE_KEY_IFACE_PUSHES = "pushes_iface"
 TEMPLATE_KEY_AUTO_NATTING_IFACES 		= "auto_natting_ifaces"
 TEMPLATE_KEY_MASQUERADES 				= "masquerades"
 
-TEMPLATE_KEY_ENABLE_CT_IFACES 			= "enable_ct_ifaces"
+# Moved to shared.py: TEMPLATE_KEY_ENABLE_CT_IFACES = "enable_ct_ifaces"
 
 TEMPLATE_KEY_HAS_AUTO_NATTING_IFACES 	= "has_auto_natting_ifaces"
 TEMPLATE_KEY_HAS_VLANS 					= "has_vlans"
@@ -243,15 +237,6 @@ class Iface(Common):
 		super(Iface, self).__init__(nacl_state, idx, name, ctx, base_type, type_t)
 
 		self.handle_as_untyped = False
-
-		# No - moving this to NaCl_state
-		# New:
-		# pystache/mustache containers:
-		# self.ifaces 				= []
-		# self.auto_natting_ifaces 	= []
-		# self.pushes 				= []
-		# self.ifaces_with_vlans 		= []
-		# self.masquerades 			= []
 
 		self.config_is_dhcp 			= False
 		self.config_is_dhcp_fallback 	= False
@@ -660,8 +645,6 @@ def create_iface_pystache_lists(nacl_state):
 		TEMPLATE_KEY_IFACE_PUSHES, \
 		TEMPLATE_KEY_IFACES_WITH_VLANS, \
 		TEMPLATE_KEY_MASQUERADES, \
-		# Also adding here (used by Gateway too):
-		# So gateway needs to import this from iface:
 		TEMPLATE_KEY_ENABLE_CT_IFACES
 		# TEMPLATE_KEY_HAS_MASQUERADES, \
 		# TEMPLATE_KEY_HAS_AUTO_NATTING_IFACES, \

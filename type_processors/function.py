@@ -5,7 +5,7 @@ from NaCl import Element, exit_NaCl, CPP, IP
 
 # cpp_transpile_function.py also imports cpp_resolve_values.py, which
 # in turn imports shared_constants.py
-from cpp_transpile_function import transpile_function_cpp
+from cpp_transpile_function import transpile_function_cpp, ACCEPT, DROP
 
 # Old:
 '''
@@ -17,12 +17,18 @@ def transpile_function(language, type_t, subtype, ctx):
 
 TYPE_FILTER 		= "filter"
 TYPE_REWRITE 		= "rewrite"
-TYPE_NAT 			= "nat"
+# Moved to shared.py: TYPE_NAT = "nat"
 
 # TODO: FIX (for now, just to make it run, I import the variables here):
-from NaCl import TEMPLATE_KEY_NAME, TEMPLATE_KEY_TITLE, TEMPLATE_KEY_ENABLE_CT, TEMPLATE_KEY_HAS_NATS, \
-    TEMPLATE_KEY_FUNCTION_NAMES, TEMPLATE_KEY_FUNCTION_NAME, \
-    valid_default_filter_verdicts
+from NaCl import TEMPLATE_KEY_NAME, TEMPLATE_KEY_TITLE, \
+    TEMPLATE_KEY_FUNCTION_NAMES, TEMPLATE_KEY_FUNCTION_NAME
+
+from shared_between_type_processors import TYPE_NAT, TEMPLATE_KEY_IFACE_PUSHES, TEMPLATE_KEY_GATEWAY_PUSHES, TEMPLATE_KEY_ENABLE_CT, TEMPLATE_KEY_HAS_NATS
+
+VALID_DEFAULT_FILTER_VERDICTS = [
+	ACCEPT,
+	DROP
+]
 
 # ---- TEMPLATE KEYS (pystache) ----
 
@@ -31,17 +37,7 @@ TEMPLATE_KEY_FILTERS 		= "filters"
 TEMPLATE_KEY_NATS 			= "nats"
 TEMPLATE_KEY_REWRITES 		= "rewrites"
 TEMPLATE_KEY_HAS_FUNCTIONS  = "has_functions"
-# Should be moved here from NaCl.py, but iface.py also uses this:
-# TEMPLATE_KEY_HAS_NATS 	= "has_nats"
-
-# Would like to do:
-# from iface import TEMPLATE_KEY_IFACE_PUSHES
-# instead of defining this constant here as well as in iface.py:
-TEMPLATE_KEY_IFACE_PUSHES = "pushes_iface"
-# Would also like to do:
-# from gateway import TEMPLATE_KEY_GATEWAY_PUSHES
-# instead of this:
-TEMPLATE_KEY_GATEWAY_PUSHES = "pushes_gateway"
+# Moved to shared.py: TEMPLATE_KEY_HAS_NATS = "has_nats"
 
 # -------------------- class Function --------------------
 
@@ -94,7 +90,7 @@ class Function(Element):
 
                             elements = list(self.ctx.body().body_element())
                             last_element = elements[len(elements) - 1]
-                            if last_element.action() is None or last_element.action().getText() not in valid_default_filter_verdicts:
+                            if last_element.action() is None or last_element.action().getText() not in VALID_DEFAULT_FILTER_VERDICTS:
                                 exit_NaCl(self.ctx, "Missing default verdict at the end of this Filter")
 
                         if type_t_lower == TYPE_FILTER:
@@ -132,7 +128,7 @@ class Function(Element):
 
                             elements = list(self.ctx.body().body_element())
                             last_element = elements[len(elements) - 1]
-                            if last_element.action() is None or last_element.action().getText() not in valid_default_filter_verdicts:
+                            if last_element.action() is None or last_element.action().getText() not in VALID_DEFAULT_FILTER_VERDICTS:
                                 exit_NaCl(self.ctx, "Missing default verdict at the end of this Filter")
 
                         if type_t_lower == TYPE_FILTER:

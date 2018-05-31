@@ -53,13 +53,11 @@ from cpp_resolve_values import resolve_value_cpp
 
 # New:
 # TEMPLATE_KEY_PUSHES 			= "pushes"
-# TODO: Move to Gateway class/file and import from this in function.py?
-# This is used by gateway.py and function.py:
-# Has been moved into both gateway.py and function.py for now:
+# New: Moved to gateway.py:
 # TEMPLATE_KEY_GATEWAY_PUSHES 	= "pushes_gateway"
 
 # New: Moved to gateway.py:
-# TEMPLATE_KEY_GATEWAYS 			= "gateways"
+# TEMPLATE_KEY_GATEWAYS 		= "gateways"
 # New: Moved to conntrack.py:
 # TEMPLATE_KEY_CONNTRACKS 		= "conntracks"
 # New: Moved to load_balancer.py:
@@ -74,9 +72,9 @@ from cpp_resolve_values import resolve_value_cpp
 # TEMPLATE_KEY_AUTO_NATTING_IFACES 	= "auto_natting_ifaces"
 
 # New: Moved to gateway.py:
-# TEMPLATE_KEY_HAS_GATEWAYS 		= "has_gateways"
-# TODO: Should be moved to function.py, but iface.py also uses this:
-TEMPLATE_KEY_HAS_NATS 			= "has_nats"
+# TEMPLATE_KEY_HAS_GATEWAYS 	= "has_gateways"
+# New: Moved to function.py:
+# TEMPLATE_KEY_HAS_NATS 		= "has_nats"
 # New:
 # TEMPLATE_KEY_HAS_MASQUERADES 	= "has_masquerades"
 # TEMPLATE_KEY_HAS_VLANS 		= "has_vlans"
@@ -89,10 +87,10 @@ TEMPLATE_KEY_HAS_NATS 			= "has_nats"
 # New: Moved to syslog.py:
 # TEMPLATE_KEY_HAS_SYSLOGS 		= "has_syslogs"
 
-# Note/TODO: Is used by both function.py and gateway.py:
-TEMPLATE_KEY_ENABLE_CT 			= "enable_ct"
+# Note: Moved to conntrack.py:
+# TEMPLATE_KEY_ENABLE_CT 		= "enable_ct"
 
-# TODO: Moving this into class NaCl_state:
+# New: Moving this into class NaCl_state:
 # Data to be sent to pystache renderer
 # Each list are to contain objects consisting of key value pairs
 # New: Moved into Iface class:

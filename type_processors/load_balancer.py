@@ -7,12 +7,10 @@ from NaCl import Typed, exit_NaCl, predefined_values_cpp, \
     TEMPLATE_KEY_NAME, TCP, \
     elements
 
-TYPE_LOAD_BALANCER = "load_balancer"
+from shared_between_type_processors import TYPE_IFACE
+# Moved to shared.py: from type_processors.iface import TYPE_IFACE
 
-# TODO: Would like to:
-# from iface import TYPE_IFACE
-# instead of:
-TYPE_IFACE = "iface"
+TYPE_LOAD_BALANCER = "load_balancer"
 
 # ---- Load_balancer keys ----
 

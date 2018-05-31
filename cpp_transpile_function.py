@@ -14,7 +14,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# TODO: This file should really be incorporated into type_processors/function.py
+
 from cpp_resolve_values import *
+
+from type_processors.syslog import EMERG, ALERT, CRIT, ERR, WARNING, NOTICE, INFO, DEBUG, \
+	INCLUDEOS_SYSLOG_SEVERITY_EMERG, INCLUDEOS_SYSLOG_SEVERITY_ALERT, INCLUDEOS_SYSLOG_SEVERITY_CRIT, \
+	INCLUDEOS_SYSLOG_SEVERITY_ERR, INCLUDEOS_SYSLOG_SEVERITY_WARNING, INCLUDEOS_SYSLOG_SEVERITY_NOTICE, \
+	INCLUDEOS_SYSLOG_SEVERITY_INFO, INCLUDEOS_SYSLOG_SEVERITY_DEBUG
+
+TYPE_FILTER = "filter"
+TYPE_NAT 	= "nat" # TODO: Defined in type_processors/shared.py as well
+
+# NaCl verdicts/actions
+ACCEPT 	= 'accept'
+DROP 	= 'drop'
+LOG 	= 'log'
+SYSLOG 	= 'syslog'
+SNAT 	= 'snat'
+DNAT 	= 'dnat'
 
 # NOTE
 # Action_handler was previously placed in shared_constants.py together with the

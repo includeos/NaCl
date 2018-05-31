@@ -51,6 +51,7 @@ TRUE 	= "true"
 FALSE 	= "false"
 
 # Available NaCl types
+'''
 TYPE_IFACE 			= "iface"
 TYPE_VLAN 			= "vlan"
 TYPE_GATEWAY 		= "gateway"
@@ -61,9 +62,6 @@ TYPE_FILTER 		= "filter"
 TYPE_REWRITE 		= "rewrite"
 TYPE_NAT 			= "nat"
 
-# TODO: Change to dictionary
-# Value: Create object
-# -> nacl_types
 valid_nacl_types = [
 	TYPE_IFACE,
 	TYPE_VLAN,
@@ -75,12 +73,7 @@ valid_nacl_types = [
 	TYPE_REWRITE,
 	TYPE_NAT
 ]
-# ->
-# nacl_types = {
-	# Later: each type processor can register into this dictionary
-#	TYPE_IFACE: Iface()
-#}
-# -> Moved into NaCl.py to have access to the different types for testing
+'''
 
 BASE_TYPE_FUNCTION 		= "function"
 BASE_TYPE_UNTYPED_INIT 	= "untyped_init"
@@ -295,6 +288,7 @@ predefined_syslog_keys = [
 ]
 '''
 
+''' Moved to syslog.py:
 # ---- Syslog severity levels ----
 
 EMERG = "emerg"
@@ -316,6 +310,7 @@ INCLUDEOS_SYSLOG_SEVERITY_WARNING = "LOG_WARNING"
 INCLUDEOS_SYSLOG_SEVERITY_NOTICE = "LOG_NOTICE"
 INCLUDEOS_SYSLOG_SEVERITY_INFO = "LOG_INFO"
 INCLUDEOS_SYSLOG_SEVERITY_DEBUG = "LOG_DEBUG"
+'''
 
 # ---- General ----
 
@@ -361,6 +356,8 @@ INCLUDEOS_REFERENCE_OP = "&"
 INCLUDEOS_IP4_ADDR_CLASS = "IP4::addr"
 INCLUDEOS_IP4_CIDR_CLASS = "ip4::Cidr"
 
+# New: Moved to function.py:
+'''
 # NaCl verdicts/actions
 ACCEPT 	= 'accept'
 DROP 	= 'drop'
@@ -369,13 +366,11 @@ SYSLOG 	= 'syslog'
 SNAT 	= 'snat'
 DNAT 	= 'dnat'
 
-# TODO: Move to function.py
 valid_default_filter_verdicts = [
 	ACCEPT,
 	DROP
 ]
-
-MASQUERADE = "masquerade"
+'''
 
 # IncludeOS (C++) Filter return values
 INCLUDEOS_VERDICT_TYPE = "Filter_verdict_type::"

@@ -4,21 +4,19 @@ from __future__ import absolute_import
 # TODO later: Own mustache file as well for Gateway - then import into main mustache file if possible
 
 # TODO
-from NaCl import exit_NaCl, Typed, TRUE, FALSE, DOT, TEMPLATE_KEY_ENABLE_CT, TEMPLATE_KEY_IFACE, \
+from NaCl import exit_NaCl, Typed, TRUE, FALSE, DOT, TEMPLATE_KEY_IFACE, \
     TEMPLATE_KEY_NAME, TEMPLATE_KEY_CHAIN, BASE_TYPE_FUNCTION, TEMPLATE_KEY_FUNCTION_NAME, TEMPLATE_KEY_COMMA, \
     TEMPLATE_KEY_FUNCTION_NAMES, INCLUDEOS_ROUTER_OBJ_NAME, CPP, \
     elements
 
-TYPE_GATEWAY = "gateway"
+from shared_between_type_processors import TYPE_IFACE, TYPE_NAT, \
+    TEMPLATE_KEY_GATEWAY_PUSHES, TEMPLATE_KEY_ENABLE_CT, TEMPLATE_KEY_ENABLE_CT_IFACES
+''' Moved to shared.py:
+from type_processors.iface import TEMPLATE_KEY_ENABLE_CT_IFACES, TYPE_IFACE
+from type_processors.function import TYPE_NAT
+'''
 
-# TODO Would be nice:
-# from iface import TYPE_IFACE
-# instead of:
-TYPE_IFACE = "iface"
-# And:
-# from function import TYPE_NAT
-# instead of:
-TYPE_NAT = "nat"
+TYPE_GATEWAY = "gateway"
 
 # ---- Gateway keys ----
 
@@ -53,7 +51,7 @@ PREDEFINED_GATEWAY_KEYS = [
 TEMPLATE_KEY_GATEWAYS           = "gateways"
 TEMPLATE_KEY_IP_FORWARD_IFACES  = "ip_forward_ifaces"
 TEMPLATE_KEY_ROUTES             = "routes"
-TEMPLATE_KEY_GATEWAY_PUSHES     = "pushes_gateway"
+# Moved to shared.py: TEMPLATE_KEY_GATEWAY_PUSHES = "pushes_gateway"
 
 TEMPLATE_KEY_HAS_GATEWAYS       = "has_gateways"
 
@@ -281,9 +279,6 @@ class Gateway(Typed):
         routes = []
         index = 0
         num_routes = len(self.members)
-
-        # New:
-        from type_processors.iface import TEMPLATE_KEY_ENABLE_CT_IFACES
 
         for _, route in self.members.iteritems():
             if GATEWAY_KEY_NETMASK not in route or \
