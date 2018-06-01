@@ -278,12 +278,14 @@ class NaCl_state(object):
 		# self.register_pystache_data_object(TEMPLATE_KEY_HAS_VLANS, (len(self.ifaces_with_vlans) > 0))
 	'''
 
+	''' Option 1:
 	def register_all_type_processors(self):
 		print "Register all type processors"
 		# The init function in type_processors/__init__.py will loop through all the modules (.py files)
 		# in the folder and will in turn call each module's init function:
 		from type_processors import init as init_type_processors
 		init_type_processors(self)
+	'''
 
 	def add_type_processor(self, type_name, class_constructor, is_singleton=False):
 		# The name of a NaCl type should always be stored in lower case to make it easy to compare:
@@ -2298,8 +2300,17 @@ class NaClRecordingVisitor(NaClVisitor):
 # Code to be executed when NaCl.py is run directly, but not when imported:
 if __name__ == "__main__":
 	nacl_state = NaCl_state()
-	nacl_state.register_all_type_processors() # init
+
+	# Option 1:
+	# nacl_state.register_all_type_processors() # init
 	# Each type processor calls nacl_state.add_type_processor
+
+	# Option 2:
+	print "Register all type processors"
+	# The init function in type_processors/__init__.py will loop through all the modules (.py files)
+	# in the folder and will in turn call each module's init function:
+	from type_processors import init as init_type_processors
+	init_type_processors(nacl_state)
 
 	lexer = NaClLexer(StdinStream())
 	stream = CommonTokenStream(lexer)
