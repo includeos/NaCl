@@ -121,6 +121,8 @@ from cpp_resolve_values import resolve_value_cpp
 # conntrack_exists 	= False
 # syslog_exists 	= False
 
+# Moved into shared_between_type_processors.py:
+'''
 TEMPLATE_KEY_FUNCTION_NAME 	= "function_name"
 TEMPLATE_KEY_COMMA 			= "comma"
 TEMPLATE_KEY_IFACE 			= "iface"
@@ -128,6 +130,7 @@ TEMPLATE_KEY_CHAIN 			= "chain"
 TEMPLATE_KEY_FUNCTION_NAMES = "function_names"
 TEMPLATE_KEY_NAME 			= "name"
 TEMPLATE_KEY_TITLE 			= "title"
+'''
 # New: Moved into Iface class:
 # TEMPLATE_KEY_CONFIG_IS_DHCP 			= "config_is_dhcp"
 # TEMPLATE_KEY_CONFIG_IS_DHCP_FALLBACK 	= "config_is_dhcp_fallback"

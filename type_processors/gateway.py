@@ -20,17 +20,10 @@ from __future__ import absolute_import
 # TODO later: Own mustache file as well for Gateway - then import into main mustache file if possible
 
 # TODO
-from NaCl import exit_NaCl, Typed, TRUE, FALSE, DOT, TEMPLATE_KEY_IFACE, \
-    TEMPLATE_KEY_NAME, TEMPLATE_KEY_CHAIN, BASE_TYPE_FUNCTION, TEMPLATE_KEY_FUNCTION_NAME, TEMPLATE_KEY_COMMA, \
-    TEMPLATE_KEY_FUNCTION_NAMES, INCLUDEOS_ROUTER_OBJ_NAME, CPP, \
+from NaCl import exit_NaCl, Typed, TRUE, FALSE, DOT, BASE_TYPE_FUNCTION, INCLUDEOS_ROUTER_OBJ_NAME, CPP, \
     elements
 
-from shared_between_type_processors import TYPE_IFACE, TYPE_NAT, \
-    TEMPLATE_KEY_GATEWAY_PUSHES, TEMPLATE_KEY_ENABLE_CT, TEMPLATE_KEY_ENABLE_CT_IFACES
-''' Moved to shared.py:
-from type_processors.iface import TEMPLATE_KEY_ENABLE_CT_IFACES, TYPE_IFACE
-from type_processors.function import TYPE_NAT
-'''
+from shared_between_type_processors import *
 
 TYPE_GATEWAY = "gateway"
 

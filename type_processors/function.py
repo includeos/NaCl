@@ -35,11 +35,8 @@ TYPE_FILTER 		= "filter"
 TYPE_REWRITE 		= "rewrite"
 # Moved to shared.py: TYPE_NAT = "nat"
 
-# TODO: FIX (for now, just to make it run, I import the variables here):
-from NaCl import TEMPLATE_KEY_NAME, TEMPLATE_KEY_TITLE, \
-    TEMPLATE_KEY_FUNCTION_NAMES, TEMPLATE_KEY_FUNCTION_NAME
-
-from shared_between_type_processors import TYPE_NAT, TEMPLATE_KEY_IFACE_PUSHES, TEMPLATE_KEY_GATEWAY_PUSHES, TEMPLATE_KEY_ENABLE_CT, TEMPLATE_KEY_HAS_NATS
+from shared_between_type_processors import *
+# TYPE_NAT, TEMPLATE_KEY_IFACE_PUSHES, TEMPLATE_KEY_GATEWAY_PUSHES, TEMPLATE_KEY_ENABLE_CT, TEMPLATE_KEY_HAS_NATS
 
 VALID_DEFAULT_FILTER_VERDICTS = [
 	ACCEPT,

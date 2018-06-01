@@ -15,6 +15,15 @@
 # limitations under the License.
 
 # Containing constants that needs to be available for more than one type_processor
+# Mainly related to mustache
+
+TEMPLATE_KEY_FUNCTION_NAME 	= "function_name"
+TEMPLATE_KEY_COMMA 			= "comma"
+TEMPLATE_KEY_IFACE 			= "iface"
+TEMPLATE_KEY_CHAIN 			= "chain"
+TEMPLATE_KEY_FUNCTION_NAMES = "function_names"
+TEMPLATE_KEY_NAME 			= "name"
+TEMPLATE_KEY_TITLE 			= "title"
 
 # Constants closely connected to the Iface type_processor:
 TYPE_IFACE = "iface"    # from type_processors.iface import TYPE_IFACE

@@ -19,12 +19,10 @@ from __future__ import absolute_import
 
 # TODO later: Own mustache file as well for Load_balancer - then import into main mustache file if possible
 
-from NaCl import Typed, exit_NaCl, predefined_values_cpp, \
-    TEMPLATE_KEY_NAME, TCP, \
+from NaCl import Typed, exit_NaCl, predefined_values_cpp, TCP, \
     elements
 
-from shared_between_type_processors import TYPE_IFACE
-# Moved to shared.py: from type_processors.iface import TYPE_IFACE
+from shared_between_type_processors import *
 
 TYPE_LOAD_BALANCER = "load_balancer"
 
