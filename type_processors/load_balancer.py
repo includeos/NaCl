@@ -19,8 +19,7 @@ from __future__ import absolute_import
 
 # TODO later: Own mustache file as well for Load_balancer - then import into main mustache file if possible
 
-from NaCl import Typed, exit_NaCl, predefined_values_cpp, TCP, \
-    elements
+from NaCl import Typed, exit_NaCl, predefined_values_cpp, TCP
 
 from shared_between_type_processors import *
 
@@ -252,7 +251,7 @@ class Load_balancer(Typed):
             if value_ctx.value_name() is None:
                 exit_NaCl(value_ctx, "Load_balancer member " + LB_KEY_IFACE + " contains an invalid value (" + \
                     found_element_value + ")")
-            element = elements.get(found_element_value)
+            element = self.nacl_state.elements.get(found_element_value)
             if element is None or (hasattr(element, 'type_t') and element.type_t.lower() != TYPE_IFACE):
                 exit_NaCl(value_ctx, "No Iface with the name " + found_element_value + " exists")
         elif key == LB_SERVERS_KEY_ALGORITHM:
@@ -265,7 +264,7 @@ class Load_balancer(Typed):
 
             if value_ctx.value_name() is not None:
                 element_name = value_ctx.value_name().getText()
-                e = elements.get(element_name)
+                e = self.nacl_state.elements.get(element_name)
                 if e is None:
                     exit_NaCl(value_ctx, "No element with the name " + element_name + " exists")
                 if e.ctx.value().list_t() is None:
@@ -281,7 +280,7 @@ class Load_balancer(Typed):
 
                 if node.value_name() is not None:
                     element_name = node.value_name().getText()
-                    e = elements.get(element_name)
+                    e = self.nacl_state.elements.get(element_name)
                     if e is None:
                         exit_NaCl(node, "No element with the name " + element_name + " exists")
                     if e.ctx.value().obj() is None:
@@ -305,7 +304,7 @@ class Load_balancer(Typed):
         elif key == LB_KEY_CLIENTS or key == LB_KEY_SERVERS:
             if value_ctx.value_name() is not None:
                 element_name = value_ctx.value_name().getText()
-                e = elements.get(element_name)
+                e = self.nacl_state.elements.get(element_name)
                 if e is None:
                     exit_NaCl(value_ctx, "No element with the name " + element_name + " exists")
                 if e.ctx.value().obj() is None:

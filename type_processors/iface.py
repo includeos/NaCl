@@ -18,9 +18,7 @@ from __future__ import absolute_import
 # To avoid: <...>/NaCl/type_processors/iface.py:1: RuntimeWarning: Parent module '<...>/NaCl/type_processors' not found while handling absolute import
 
 # TODO
-from NaCl import exit_NaCl, NaCl_exception, Typed, \
-	BASE_TYPE_TYPED_INIT, BASE_TYPE_FUNCTION, DOT, TRUE, FALSE, \
-	elements
+from NaCl import exit_NaCl, NaCl_exception, Typed, BASE_TYPE_TYPED_INIT, BASE_TYPE_FUNCTION, DOT, TRUE, FALSE
 
 from shared_between_type_processors import *
 # TYPE_IFACE, TYPE_NAT, TEMPLATE_KEY_IFACE_PUSHES, TEMPLATE_KEY_ENABLE_CT_IFACES, TEMPLATE_KEY_HAS_NATS
@@ -136,7 +134,7 @@ class Common(Typed):
 	def process_assignment(self, element_key):
 		print "process assignment Common"
 
-		element = elements.get(element_key)
+		element = self.nacl_state.elements.get(element_key)
 
 		name_parts = element_key.split(DOT)
 		orig_member = name_parts[1]
@@ -371,8 +369,7 @@ class Iface(Common):
 
 					if v.value_name() is not None:
 						vlan_name = v.value_name().getText()
-						# TODO: nacl_state.elements ?:
-						vlan_element = elements.get(vlan_name)
+						vlan_element = self.nacl_state.elements.get(vlan_name)
 						if not self.is_vlan(vlan_element):
 							exit_NaCl(v.value_name(), "Undefined Vlan " + vlan_name)
 					elif v.obj() is not None:
@@ -383,8 +380,7 @@ class Iface(Common):
 					vlans.append(vlan_element)
 			elif vlan_ctx.value_name() is not None:
 				vlan_name = vlan_ctx.value_name().getText()
-				# TODO: nacl_state.elements ?:
-				vlan_element = elements.get(vlan_name)
+				vlan_element = self.nacl_state.elements.get(vlan_name)
 				if not self.is_vlan(vlan_element):
 					exit_NaCl(vlan_ctx.value_name(), "Undefined Vlan " + vlan_name)
 				vlans.append(vlan_element)
@@ -398,8 +394,7 @@ class Iface(Common):
 
 				# Validate that an Iface with this Iface's index has not already been defined
 				if key == IFACE_KEY_INDEX:
-					# TODO: nacl_state.elements ?:
-					for key, el in elements.iteritems():
+					for key, el in self.nacl_state.elements.iteritems():
 						if isinstance(el, Iface) and key != self.name:
 							el_idx = el.members.get(IFACE_KEY_INDEX)
 							if el_idx is not None and el_idx == self.members.get(IFACE_KEY_INDEX):
@@ -442,8 +437,7 @@ class Iface(Common):
 		num_functions = len(functions)
 		for i, function in enumerate(functions):
 			name = function.getText()
-			# TODO: nacl_state.elements ?:
-			element = elements.get(name)
+			element = self.nacl_state.elements.get(name)
 			if element is None or element.base_type != BASE_TYPE_FUNCTION:
 				exit_NaCl(function, "No function with the name " + name + " exists")
 

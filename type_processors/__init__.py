@@ -19,7 +19,7 @@ import sys
 import os
 
 def init(nacl_state):
-    print "init type_processors"
+    print "Init type_processors"
 
     # If we already know the package name:
     # from iface import init as init_iface

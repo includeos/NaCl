@@ -18,6 +18,8 @@ import sys
 
 CPP = "cpp"
 
+VALUE_RESOLVER = "value_resolver"
+
 # Operators
 
 GREATER_THAN_OR_EQUAL 	= ">="
@@ -340,6 +342,7 @@ INCLUDEOS_UDP_PCKT_CLASS 	= "PacketUDP"
 INCLUDEOS_ICMP_PCKT_CLASS 	= "icmp4::Packet"
 INCLUDEOS_IP_PCKT_CLASS 	= "IP4::IP_packet"
 
+# TODO: Move into Cpp_value_resolver?
 cpp_pckt_classes = {
 	TCP: 	INCLUDEOS_TCP_PCKT_CLASS,
 	UDP: 	INCLUDEOS_UDP_PCKT_CLASS,
@@ -543,7 +546,7 @@ INCLUDEOS_FLAG_NS 	= TCP_FLAG_NS + "NS"
 # needs to access the elements when resolving a variable name f.ex.
 # Dictionary where key is the name of the Element and the value is the Element object or
 # subtype of this
-elements = {}
+# elements = {}
 
 # Available/legal object types for given subtypes (tcp, udp, icmp, ip)
 legal_obj_types = {

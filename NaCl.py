@@ -32,10 +32,7 @@ from cpp_transpile_function import *
 '''
 # ->
 from shared_constants import * # CPP
-
-# TODO: Move this into the NaCl_state class instead? (if elements dictionary is moved here as well):
-# cpp_resolve_values.py
-from cpp_resolve_values import resolve_value_cpp
+from cpp_resolve_values import Cpp_value_resolver # resolve_value_cpp
 
 # antlr4 -Dlanguage=Python2 NaCl.g4 -visitor
 
@@ -172,6 +169,8 @@ TEMPLATE_KEY_CONNTRACK_TIMEOUTS 	= "timeouts"
 TEMPLATE_KEY_CONNTRACK_TYPE 		= "type"
 '''
 
+# class Resolver ? (Inherited by Cpp_value_resolver and Cpp_function_resolver f.ex.?)
+
 def exit_NaCl(ctx, message):
 	sys.exit("line " + get_line_and_column(ctx) + " " + message)
 
@@ -189,7 +188,14 @@ class NaCl_exception(Exception):
 		return repr(self.value)
 
 class NaCl_state(object):
-	def __init__(self):
+	def __init__(self, language):
+		# All elements (Iface, Filter, Port, etc.) that have been identified in the NaCl file
+		# (by the visitor) are placed here because each language template (f.ex. cpp_template.py)
+		# needs to access the elements when resolving a variable name f.ex.
+		# Dictionary where key is the name of the Element and the value is the Element object or
+		# subtype of this
+		self.elements = {}
+
 		self.invalid_names = [
 			TCP,
 			UDP,
@@ -206,9 +212,13 @@ class NaCl_state(object):
 		self.valid_languages = [
 			CPP
 		]
-		self.language = CPP # default
-
-		# TODO: Move elements dictionary here
+		self.set_language(language)
+		# self.language = CPP # default
+		# The language is only CPP for now:
+		# self.value_resolver = Cpp_value_resolver(self.elements)
+		self.resolvers = {
+			VALUE_RESOLVER: Cpp_value_resolver(self.elements) # Cpp_value_resolver(self)
+		}
 
 		# TODO: Find out:
 		# Will every Element object have a COPY of the nacl_state object when doing
@@ -217,14 +227,18 @@ class NaCl_state(object):
 		# Or will self.nacl_state be a reference referring to the ONE NaCl_state object created
 		# in __main__?
 
+	def register_custom_resolver(self, key, value):
+		# F.ex. Cpp_function_resolver
+		self.resolvers[key] = value
+
 	def set_language(self, language):
 		if language not in self.valid_languages:
 			exit_NaCl_internal_error("Internal error in handle_input: Cannot transpile to language " + language)
 		self.language = language
 
-	def resolve_value(self, value_ctx):
-		if self.language == CPP:
-			return resolve_value_cpp(value_ctx)
+	def resolve_value(self, value_ctx, subtype=""):
+		# if self.language == CPP:
+		return self.resolvers[VALUE_RESOLVER].resolve(value_ctx, subtype) # resolve_value_cpp(value_ctx)
 
 	def register_pystache_data_object(self, key, value):
 		self.pystache_data[key] = value
@@ -310,7 +324,7 @@ class NaCl_state(object):
 			exit_NaCl(name_ctx, "Invalid name " + name)
 
 	def element_of_type_exists(self, type_name):
-		if any(hasattr(e, 'type_t') and e.type_t.lower() == type_name for _, e in elements.iteritems()):
+		if any(hasattr(e, 'type_t') and e.type_t.lower() == type_name for _, e in self.elements.iteritems()):
 			return True
 		return False
 
@@ -324,18 +338,18 @@ class NaCl_state(object):
 		name_ctx = ctx.name() if base_type != BASE_TYPE_UNTYPED_INIT else ctx.value_name()
 		if name_ctx is None:
 			exit_NaCl(ctx, "Missing name of element")
-		if name_ctx.getText() in elements:
+		if name_ctx.getText() in self.elements:
 			exit_NaCl(name_ctx, "Element " + name_ctx.getText() + " has already been defined")
 
 		self.validate_name(name_ctx)
 
 		name = name_ctx.getText()
-		idx = len(elements)
+		idx = len(self.elements)
 
 		# BASE_TYPE_UNTYPED_INIT
 
 		if base_type == BASE_TYPE_UNTYPED_INIT:
-			elements[name] = Untyped(self, idx, name, ctx, base_type)
+			self.elements[name] = Untyped(self, idx, name, ctx, base_type)
 			return
 
 		type_t_ctx = ctx.type_t()
@@ -357,11 +371,11 @@ class NaCl_state(object):
 			# Old:
 			# elements[name] = Function(self, idx, name, ctx, base_type, type_t, ctx.subtype().getText())
 			# New:
-			elements[name] = self.nacl_type_processors[type_t_lower](self, idx, name, ctx, base_type, type_t, ctx.subtype().getText())
+			self.elements[name] = self.nacl_type_processors[type_t_lower](self, idx, name, ctx, base_type, type_t, ctx.subtype().getText())
 			return
 
 		# BASE_TYPE_TYPED_INIT
-		elements[name] = self.nacl_type_processors[type_t_lower](self, idx, name, ctx, base_type, type_t)
+		self.elements[name] = self.nacl_type_processors[type_t_lower](self, idx, name, ctx, base_type, type_t)
 		# TODO: Each class in its own file
 		# Load_balancer / all classes in pyton you can call type processors
 		# Type_processors (folder) contains one file per class
@@ -611,7 +625,7 @@ class Element(object):
 		# Get the keys of all the assignment elements that manipulates this Element's members
 		# If the name of the assignment element (= dictionary key) starts with the name of this Element and a DOT,
 		# we know we have to do with an assignment element that manipulates this Element
-		assignments_to_process = [key for key in elements if key.startswith(self.name + DOT)]
+		assignments_to_process = [key for key in self.nacl_state.elements if key.startswith(self.name + DOT)]
 
 		if len(assignments_to_process) > 1:
 			# Sorting the list based on length of element.name of each assignment element (shortest first)
@@ -690,7 +704,7 @@ class Element(object):
 	def process_assignment(self, element_key):
 		# Could be either Untyped, Load_balancer, Conntrack or Syslog
 
-		element = elements.get(element_key)
+		element = self.nacl_state.elements.get(element_key)
 
 		# Remove first part (the name of this element)
 		assignment_name_parts = element.name.split(DOT)
@@ -751,8 +765,9 @@ class Element(object):
 		level_key = key_list[0] if not is_lb and not is_conntrack and not is_syslog else key_list[0].lower()
 		'''
 		# New:
+		level_key = key_list[0] if self.handle_as_untyped else key_list[0].lower()
 		# TODO: The other way around?
-		level_key = key_list[0] if not self.handle_as_untyped else key_list[0].lower()
+		# level_key = key_list[0] if not self.handle_as_untyped else key_list[0].lower()
 
 		# End of recursion condition
 		if len(key_list) == 1:
@@ -807,8 +822,7 @@ class Element(object):
 			# Old:
 			# key = pair.key().getText() if not is_lb and not is_conntrack and not is_syslog else pair.key().getText().lower()
 			# New:
-			# TODO: The other way around?
-			key = pair.key().getText() if not self.handle_as_untyped else pair.key().getText().lower()
+			key = pair.key().getText() if self.handle_as_untyped else pair.key().getText().lower()
 
 			if dictionary.get(key) is not None:
 				exit_NaCl(pair.key(), "Member " + key + " has already been set")
@@ -875,7 +889,7 @@ class Untyped(Element):
 			if len(name_parts) > 1:
 				# This is an assignment to an already existing element
 				element_name = name_parts[0]
-				if elements.get(element_name) is None:
+				if self.nacl_state.elements.get(element_name) is None:
 					exit_NaCl(self.ctx, "No element with the name " + element_name + " exists")
 			else:
 				if self.ctx.value().obj() is not None:
@@ -2064,13 +2078,11 @@ class Cpp_template(object):
 # Main function
 # Called after all the elements in the NaCl text have been visited and saved in the elements dictionary
 def handle_input(nacl_state):
-	print "handle_input - elements:", str(elements)
-
-	# TODO: Must indicate if is only allowed to create ONE or more of this type
+	print "handle_input - elements:", str(nacl_state.elements)
 
 	# Process / transpile / fill the pystache lists
 	function_elements = []
-	for _, e in elements.iteritems():
+	for _, e in nacl_state.elements.iteritems():
 		if e.base_type != BASE_TYPE_FUNCTION:
 			e.process()
 		else:
@@ -2302,7 +2314,7 @@ class NaClRecordingVisitor(NaClVisitor):
 
 # Code to be executed when NaCl.py is run directly, but not when imported:
 if __name__ == "__main__":
-	nacl_state = NaCl_state()
+	nacl_state = NaCl_state(CPP)
 
 	# Option 1:
 	# nacl_state.register_all_type_processors() # init

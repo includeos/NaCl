@@ -20,8 +20,7 @@ from __future__ import absolute_import
 # TODO later: Own mustache file as well for Gateway - then import into main mustache file if possible
 
 # TODO
-from NaCl import exit_NaCl, Typed, TRUE, FALSE, DOT, BASE_TYPE_FUNCTION, INCLUDEOS_ROUTER_OBJ_NAME, CPP, \
-    elements
+from NaCl import exit_NaCl, Typed, TRUE, FALSE, DOT, BASE_TYPE_FUNCTION, INCLUDEOS_ROUTER_OBJ_NAME, CPP
 
 from shared_between_type_processors import *
 
@@ -106,7 +105,7 @@ class Gateway(Typed):
                 if pair.value().value_name() is None:
                     exit_NaCl(pair.value(), "Gateway route member iface contains an invalid value (" + iface_name + ")")
 
-                element = elements.get(iface_name)
+                element = self.nacl_state.elements.get(iface_name)
                 if element is None or (hasattr(element, 'type_t') and element.type_t.lower() != TYPE_IFACE):
                     exit_NaCl(pair.value(), "No Iface with the name " + iface_name + " exists")
 
@@ -159,7 +158,7 @@ class Gateway(Typed):
     # New:
     # Overriding:
     def process_assignment(self, element_key):
-        element = elements.get(element_key)
+        element = self.nacl_state.elements.get(element_key)
 
         name_parts = element.name.split(DOT)
         orig_member = name_parts[1]
@@ -215,7 +214,7 @@ class Gateway(Typed):
                 if element.ctx.value().value_name() is None:
                     exit_NaCl(element.ctx.value(), "Invalid iface value " + iface_name + " (the value must be the name of an Iface)")
 
-                iface_element = elements.get(iface_name)
+                iface_element = self.nacl_state.elements.get(iface_name)
                 if iface_element is None or (hasattr(iface_element, 'type_t') and iface_element.type_t.lower() != TYPE_IFACE):
                     exit_NaCl(element.ctx.value(), "No Iface with the name " + iface_name + " exists")
 
@@ -245,7 +244,7 @@ class Gateway(Typed):
         num_functions = len(functions)
         for i, function in enumerate(functions):
             name = function.getText()
-            element = elements.get(name)
+            element = self.nacl_state.elements.get(name)
             if element is None or element.base_type != BASE_TYPE_FUNCTION:
                 exit_NaCl(function, "No function with the name " + name + " exists")
 

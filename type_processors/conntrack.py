@@ -170,8 +170,6 @@ def create_connstrack_pystache_lists(nacl_state):
         TEMPLATE_KEY_CONNTRACKS
 	])
 
-# TODO: Set only allowed to create ONE Conntrack object per NaCl
-
 def init(nacl_state):
     print "Init conntrack: Conntrack"
 
