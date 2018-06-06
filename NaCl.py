@@ -31,6 +31,8 @@ from cpp_resolve_values import Cpp_value_resolver # resolve_value_cpp
 
 # class Resolver ? (Inherited by Cpp_value_resolver and Cpp_function_resolver f.ex.?)
 
+# -------------------- Error handling --------------------
+
 def exit_NaCl(ctx, message):
 	sys.exit("line " + get_line_and_column(ctx) + " " + message)
 
@@ -47,6 +49,11 @@ class NaCl_exception(Exception):
 	def __str__(self):
 		return repr(self.value)
 
+# < Error handling
+
+# -------------------- NaCl_state --------------------
+
+# Singleton?
 class NaCl_state(object):
 	def __init__(self, language):
 		# All elements (Iface, Filter, Port, etc.) that have been identified in the NaCl file
@@ -79,13 +86,6 @@ class NaCl_state(object):
 		self.resolvers = {
 			VALUE_RESOLVER: Cpp_value_resolver(self.elements) # Cpp_value_resolver(self)
 		}
-
-		# TODO: Find out:
-		# Will every Element object have a COPY of the nacl_state object when doing
-		# self.nacl_state = nacl_state
-		# in the __init__ method?
-		# Or will self.nacl_state be a reference referring to the ONE NaCl_state object created
-		# in __main__?
 
 	def register_custom_resolver(self, key, value):
 		# F.ex. Cpp_function_resolver
@@ -197,7 +197,11 @@ class NaCl_state(object):
 		# BASE_TYPE_TYPED_INIT
 		self.elements[name] = self.nacl_type_processors[type_t_lower](self, idx, name, ctx, base_type, type_t)
 
+# < NaCl_state
+
 # -------------------- Element --------------------
+# Each Element is a top NaCl element from the NaCl file given as input to this python script
+# The Antlr parser identifies these elements and they are visited in
 
 class Element(object):
 	def __init__(self, nacl_state, idx, name, ctx, base_type):
@@ -323,54 +327,6 @@ class Element(object):
 
 		for key in assignments_to_process:
 			self.process_assignment(key)
-
-			'''
-				# Override process_assignment in Iface and Vlan with (moved to class Common in iface module:
-				name_parts = key.split(DOT)
-				orig_member = name_parts[1]
-				member = orig_member.lower()
-
-				if len(name_parts) != 2:
-					exit_NaCl(element.ctx, "Invalid " + class_name + " member " + element.name)
-
-				# TODO: Call validate_key (same as in process_ctx)
-				# New:
-				try:
-					self.validate_key(orig_member)
-				except NaCl_exception as e:
-					exit_NaCl(element.ctx, e.value)
-				# Old:
-				# TODO: Vlan and Conntrack validate_key
-			'''
-			'''
-				if (isinstance(self, Iface) and member not in predefined_iface_keys) or \
-					(isinstance(self, Vlan) and member not in predefined_vlan_keys) or \
-					(isinstance(self, Conntrack) and member not in predefined_conntrack_keys):
-					# Note: If Conntrack: Would have never come here because of if above
-					sys.exit("line " + get_line_and_column(element.ctx) + " Invalid " + class_name + " member " + orig_member)
-			'''
-			'''
-				if self.members.get(member) is not None:
-					exit_NaCl(element.ctx, "Member " + member + " has already been set")
-
-				# New:
-				found_element_value = element.ctx.value()
-				try:
-					self.add_member(member, found_element_value)
-				except NaCl_exception as e:
-					exit_NaCl(element.ctx, e.value)
-				# Old:
-			'''
-			'''
-				found_element_value = element.ctx.value()
-				if isinstance(self, Iface) and member in chains:
-					self.process_push(member, found_element_value)
-				else:
-					if self.members.get(member) is None:
-						self.members[member] = found_element_value
-					else:
-						sys.exit("line " + get_line_and_column(element.ctx) + " " + class_name + " member " + member + " has already been set")
-			'''
 
 	# ---------- Methods related to dictionary self.members (for Untyped, Load_balancer, Conntrack and Syslog) ----------
 
@@ -536,19 +492,18 @@ class Typed(Element):
 
 # < Typed
 
-# -------------------- 2. Process elements and write content to file --------------------
+# -------------------- 2. Process elements and write transpiled content to file --------------------
 
-# -------------------- Pystache --------------------
-
+# ---- Pystache ----
 # Connected to cpp_template.mustache
 class Cpp_template(object):
 	def __init__(self):
 		pass
-
-# ------------------ < Pystache ------------------
+# < Pystache
 
 # Main function
-# Called after all the elements in the NaCl text have been visited and saved in the elements dictionary
+# Called after all the elements in the NaCl file have been visited and saved in the
+# nacl_state's elements dictionary
 def handle_input(nacl_state):
 	# print "handle_input - elements:", str(nacl_state.elements)
 
@@ -584,22 +539,28 @@ def handle_input(nacl_state):
 
 	print "Transpilation complete"
 
+# < 2. Process elements and write transpiled content to file
+
 # -------------------- 1. Visiting --------------------
+# Visiting each NaCl element in the NaCl file given as input to this python script
 
 class NaClRecordingVisitor(NaClVisitor):
 	def __init__(self, nacl_state):
 		self.nacl_state = nacl_state
 
+	# Executed when a typed_initializer is identified in the NaCl file by the Antlr parser (defined in NaCl.g4)
 	def visitTyped_initializer(self, ctx):
 		# Typed: Could indicate that C++ code is going to be created from this - depends on the
 		# type_t specified (Iface, Gateway special)
 		self.nacl_state.save_element(BASE_TYPE_TYPED_INIT, ctx)
 
+	# Executed when an initializer is identified in the NaCl file by the Antlr parser (defined in NaCl.g4)
 	def visitInitializer(self, ctx):
 		# Untyped: Means generally that no C++ code is going to be created from this - exists only in NaCl
 		# Except: Assignments
 		self.nacl_state.save_element(BASE_TYPE_UNTYPED_INIT, ctx)
 
+	# Executed when a function is identified in the NaCl file by the Antlr parser (defined in NaCl.g4)
 	def visitFunction(self, ctx):
 		self.nacl_state.save_element(BASE_TYPE_FUNCTION, ctx)
 
@@ -617,7 +578,10 @@ if __name__ == "__main__":
 	stream = CommonTokenStream(lexer)
 	parser = NaClParser(stream)
 	tree = parser.prog()
+	# Visit
 	visitor = NaClRecordingVisitor(nacl_state)
 	visitor.visit(tree)
-
+	# Process the visited elements that have been registered in the nacl_state's elements dictionary
 	handle_input(nacl_state)
+
+# < 1. Visiting
