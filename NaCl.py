@@ -330,7 +330,7 @@ class NaCl_state(object):
 
 	# Add visited element to the elements dictionary
 	def save_element(self, base_type, ctx):
-		print "save_element - content of nacl_type_processors: ", str(self.nacl_type_processors)
+		# print "save_element - content of nacl_type_processors: ", str(self.nacl_type_processors)
 
 		if base_type != BASE_TYPE_TYPED_INIT and base_type != BASE_TYPE_UNTYPED_INIT and base_type != BASE_TYPE_FUNCTION:
 			exit_NaCl(ctx, "NaCl elements of base type " + base_type + " are not handled")
@@ -2082,7 +2082,7 @@ class Cpp_template(object):
 # Main function
 # Called after all the elements in the NaCl text have been visited and saved in the elements dictionary
 def handle_input(nacl_state):
-	print "handle_input - elements:", str(nacl_state.elements)
+	# print "handle_input - elements:", str(nacl_state.elements)
 
 	# Process / transpile / fill the pystache lists
 	function_elements = []
@@ -2325,7 +2325,7 @@ if __name__ == "__main__":
 	# Each type processor calls nacl_state.add_type_processor
 
 	# Option 2:
-	print "Register all type processors"
+	# print "Register all type processors"
 	# The init function in type_processors/__init__.py will loop through all the modules (.py files)
 	# in the folder and will in turn call each module's init function:
 	from type_processors import init as init_type_processors

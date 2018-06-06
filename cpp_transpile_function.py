@@ -43,7 +43,7 @@ DNAT 	= 'dnat'
 # method. Also, actions are only used in functions.
 class Action_resolver(object):
 	def __init__(self, nacl_state):
-		print "Action_resolver"
+		# print "Action_resolver"
 		self.nacl_state = nacl_state
 
 		self.actions = {
@@ -71,7 +71,7 @@ class Action_resolver(object):
 class Cpp_action_resolver(Action_resolver):
 	def __init__(self, nacl_state):
 		super(Cpp_action_resolver, self).__init__(nacl_state)
-		print "Cpp_action_resolver"
+		# print "Cpp_action_resolver"
 
 		self.actions = {
 			ACCEPT: self.transpile_accept,
@@ -244,7 +244,7 @@ class Cpp_action_resolver(Action_resolver):
 class Function_resolver(object):
 	def __init__(self, nacl_state):
 		self.nacl_state = nacl_state
-		print "Function resolver"
+		# print "Function resolver"
 		# Default?:
 		# self.action_resolver = Action_resolver(nacl_state)
 
@@ -260,7 +260,7 @@ class Cpp_function_resolver(Function_resolver):
 	def __init__(self, nacl_state):
 		super(Cpp_function_resolver, self).__init__(nacl_state)
 		self.action_resolver = Cpp_action_resolver(nacl_state)
-		print "Cpp_function_resolver"
+		# print "Cpp_function_resolver"
 
 	# Main function - starting point to transpile a NaCl function:
 	# def transpile_function(self, type_t, subtype, ctx, parent_subtype=""):

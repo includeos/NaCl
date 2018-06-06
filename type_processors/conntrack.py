@@ -171,7 +171,7 @@ def create_connstrack_pystache_lists(nacl_state):
 	])
 
 def init(nacl_state):
-    print "Init conntrack: Conntrack"
+    # print "Init conntrack: Conntrack"
 
     nacl_state.add_type_processor(TYPE_CONNTRACK, Conntrack, True)
 

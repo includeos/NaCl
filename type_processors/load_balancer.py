@@ -374,7 +374,7 @@ def create_load_balancer_pystache_lists(nacl_state):
     ])
 
 def init(nacl_state):
-    print "Init load_balancer: Load_balancer"
+    # print "Init load_balancer: Load_balancer"
 
     nacl_state.add_type_processor(TYPE_LOAD_BALANCER, Load_balancer)
 

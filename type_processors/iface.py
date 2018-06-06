@@ -132,7 +132,7 @@ class Common(Typed):
 		super(Common, self).__init__(nacl_state, idx, name, ctx, base_type, type_t)
 
 	def process_assignment(self, element_key):
-		print "process assignment Common"
+		# print "process assignment Common"
 
 		element = self.nacl_state.elements.get(element_key)
 
@@ -661,7 +661,7 @@ def create_iface_pystache_lists(nacl_state):
 #	nacl_state.create_pystache_data_lists(...)
 
 def init(nacl_state):
-	print "Init iface: Iface and Vlan"
+	# print "Init iface: Iface and Vlan"
 
 	nacl_state.add_type_processor(TYPE_IFACE, Iface)
 	nacl_state.add_type_processor(TYPE_VLAN, Vlan)

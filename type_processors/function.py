@@ -220,7 +220,7 @@ def create_function_pystache_lists(nacl_state):
     # So pystache/mustache lists in nacl_state: filters, nats, rewrites
 
 def init(nacl_state):
-    print "Init function: Function (Filter, Nat, Rewrite)"
+    # print "Init function: Function (Filter, Nat, Rewrite)"
 
     nacl_state.register_custom_resolver(FUNCTION_RESOLVER, Cpp_function_resolver(nacl_state))
 

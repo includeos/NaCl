@@ -406,7 +406,7 @@ def create_gateway_pystache_lists(nacl_state):
     ])
 
 def init(nacl_state):
-    print "Init gateway: Gateway"
+    # print "Init gateway: Gateway"
 
     nacl_state.add_type_processor(TYPE_GATEWAY, Gateway, True)
 

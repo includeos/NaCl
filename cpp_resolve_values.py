@@ -38,7 +38,7 @@ class Value_resolver(object):
 class Cpp_value_resolver(Value_resolver):
 	def __init__(self, elements):
 		super(Cpp_value_resolver, self).__init__(elements)
-		print "Cpp_value_resolver"
+		# print "Cpp_value_resolver"
 
 	# Main function when processing
 	def resolve(self, val_ctx, subtype=""):
