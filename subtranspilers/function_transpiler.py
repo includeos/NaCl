@@ -14,16 +14,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# from cpp_resolve_values import *
+from __future__ import absolute_import
+# To avoid: <...>/NaCl/subtranspilers/function_transpiler.py:1: RuntimeWarning: Parent module '<...>/NaCl/subtranspilers' not found while handling absolute import
 
 from shared_constants import * # INCLUDEOS_CT_ENTRY_NULLPTR_CHECK
+
+from subtranspilers.value_transpiler import VALUE_TRANSPILER
 
 from type_processors.syslog import EMERG, ALERT, CRIT, ERR, WARNING, NOTICE, INFO, DEBUG, \
 	INCLUDEOS_SYSLOG_SEVERITY_EMERG, INCLUDEOS_SYSLOG_SEVERITY_ALERT, INCLUDEOS_SYSLOG_SEVERITY_CRIT, \
 	INCLUDEOS_SYSLOG_SEVERITY_ERR, INCLUDEOS_SYSLOG_SEVERITY_WARNING, INCLUDEOS_SYSLOG_SEVERITY_NOTICE, \
 	INCLUDEOS_SYSLOG_SEVERITY_INFO, INCLUDEOS_SYSLOG_SEVERITY_DEBUG
 
-FUNCTION_RESOLVER = "function_resolver"
+FUNCTION_TRANSPILER = "function_transpiler"
 
 TYPE_FILTER = "filter"
 TYPE_NAT 	= "nat" # TODO: Defined in type_processors/shared.py as well
@@ -36,10 +39,13 @@ SYSLOG 	= 'syslog'
 SNAT 	= 'snat'
 DNAT 	= 'dnat'
 
+# TODO: Move to another file (__init__.py?)
+# -------------------- Action_transpiler --------------------
+
 # Actions are only used in functions
-class Action_resolver(object):
+class Action_transpiler(object):
 	def __init__(self, nacl_state):
-		# print "Action_resolver"
+		# print "Action_transpiler"
 		self.nacl_state = nacl_state
 
 		self.actions = {
@@ -59,15 +65,19 @@ class Action_resolver(object):
 	def get_class_name(self):
 		return self.__class__.__name__
 
-	def resolve(self, type_t, subtype, action_ctx):
+	def transpile(self, type_t, subtype, action_ctx):
 		# Should be implemented by class that extends this class
 		exit_NaCl_internal_error("The class " + self.get_class_name() + " needs to override the method " + \
-			"resolve")
+			"transpile")
 
-class Cpp_action_resolver(Action_resolver):
+# < Action_transpiler
+
+# -------------------- Cpp_action_transpiler --------------------
+
+class Cpp_action_transpiler(Action_transpiler):
 	def __init__(self, nacl_state):
-		super(Cpp_action_resolver, self).__init__(nacl_state)
-		# print "Cpp_action_resolver"
+		super(Cpp_action_transpiler, self).__init__(nacl_state)
+		# print "Cpp_action_transpiler"
 
 		self.actions = {
 			ACCEPT: self.transpile_accept,
@@ -89,7 +99,7 @@ class Cpp_action_resolver(Action_resolver):
 			DEBUG: 		INCLUDEOS_SYSLOG_SEVERITY_DEBUG
 		}
 
-	def resolve(self, type_t, subtype, action_ctx):
+	def transpile(self, type_t, subtype, action_ctx):
 	# def transpile_action_cpp(self, type_t, subtype, action_ctx):
 		parameters = [] if action_ctx.value_list() is None else action_ctx.value_list().value() # list
 		name = action_ctx.name().getText()
@@ -138,7 +148,7 @@ class Cpp_action_resolver(Action_resolver):
 		# Cannot call this and use the element's process method and res attribute because
 		# the pckt name will be affected of/be different based on the subtype of the parent function
 		# Therefore:
-		return self.nacl_state.resolvers[FUNCTION_RESOLVER].resolve(element.type_t, element.subtype, element.ctx, subtype)
+		return self.nacl_state.subtranspilers[FUNCTION_TRANSPILER].transpile(element.type_t, element.subtype, element.ctx, subtype)
 
 	def transpile_accept(self, parameter_ctx_list, subtype, action_ctx):
 		# This was the accept action, and this takes no parameters:
@@ -160,13 +170,13 @@ class Cpp_action_resolver(Action_resolver):
 		if len(parameter_ctx_list) > 0:
 			for i, p in enumerate(parameter_ctx_list):
 				if p.string() is not None:
-					content += self.nacl_state.resolve_value(p, subtype)
+					content += self.nacl_state.transpile_value(p, subtype)
 				else:
-					t = self.nacl_state.resolvers[VALUE_RESOLVER].get_cout_convert_to_type(p)
+					t = self.nacl_state.subtranspilers[VALUE_TRANSPILER].get_cout_convert_to_type(p)
 					if t == TO_UNSIGNED:
-						content += "static_cast<unsigned>(" + self.nacl_state.resolve_value(p, subtype) + ")"
+						content += "static_cast<unsigned>(" + self.nacl_state.transpile_value(p, subtype) + ")"
 					elif t == TO_STRING:
-						content += self.nacl_state.resolve_value(p, subtype) + ".to_string()"
+						content += self.nacl_state.transpile_value(p, subtype) + ".to_string()"
 					else:
 						sys.exit("line " + get_line_and_column(p) + " Internal error: std::cout conversion for " + t + " has not been implemented")
 
@@ -192,16 +202,16 @@ class Cpp_action_resolver(Action_resolver):
 		for i, p in enumerate(parameter_ctx_list):
 			if i > 0:
 				if p.string() is not None:
-					string = self.nacl_state.resolve_value(p, subtype)
+					string = self.nacl_state.transpile_value(p, subtype)
 					main_string += string[1:-1] # Not including first and last character of string (")
 				else:
-					t = self.nacl_state.resolvers[VALUE_RESOLVER].get_cout_convert_to_type(p)
+					t = self.nacl_state.subtranspilers[VALUE_TRANSPILER].get_cout_convert_to_type(p)
 					if t == TO_UNSIGNED:
 						main_string += "%u"
-						parameters_string += ", " + self.nacl_state.resolve_value(p, subtype)
+						parameters_string += ", " + self.nacl_state.transpile_value(p, subtype)
 					elif t == TO_STRING:
 						main_string += "%s"
-						parameters_string += ", " + self.nacl_state.resolve_value(p, subtype) + ".to_string().c_str()"
+						parameters_string += ", " + self.nacl_state.transpile_value(p, subtype) + ".to_string().c_str()"
 					else:
 						sys.exit("line " + get_line_and_column(p) + " Internal error: Syslog conversion for " + t + \
 							" has not been implemented")
@@ -212,17 +222,17 @@ class Cpp_action_resolver(Action_resolver):
 		if type_nat != SNAT and type_nat != DNAT:
 			sys.exit("line 1:0 Internal error in transpile_nat_cpp: Invalid NAT type " + type_nat)
 
-		# pckt_name = self.nacl_state.resolvers[VALUE_RESOLVER].get_pckt_name(subtype)
+		# pckt_name = self.nacl_state.subtranspilers[VALUE_TRANSPILER].get_pckt_name(subtype)
 
 		parameters = ""
 		num_params = len(parameter_ctx_list)
 		if num_params == 1:
-			first = self.nacl_state.resolve_value(parameter_ctx_list[0])
+			first = self.nacl_state.transpile_value(parameter_ctx_list[0])
 			# parameters = pckt_name + ", " + INCLUDEOS_CT_ENTRY + ", " + str(first)
 			parameters = INCLUDEOS_DEREFERENCE_OP + IP_PCKT + ", " + INCLUDEOS_CT_ENTRY + ", " + str(first)
 		elif num_params > 1:
-			first 	= self.nacl_state.resolve_value(parameter_ctx_list[0])
-			second 	= self.nacl_state.resolve_value(parameter_ctx_list[1])
+			first 	= self.nacl_state.transpile_value(parameter_ctx_list[0])
+			second 	= self.nacl_state.transpile_value(parameter_ctx_list[1])
 			# parameters = pckt_name + ", " + INCLUDEOS_CT_ENTRY + ", {" + str(first) + ", " + str(second) + "}"
 			parameters = INCLUDEOS_DEREFERENCE_OP + IP_PCKT + ", " + INCLUDEOS_CT_ENTRY + ", {" + str(first) + ", " + str(second) + "}"
 		else:
@@ -237,30 +247,39 @@ class Cpp_action_resolver(Action_resolver):
 	def transpile_dnat(self, parameter_ctx_list, subtype, action_ctx):
 		return self.transpile_nat(DNAT, parameter_ctx_list, subtype, action_ctx)
 
-class Function_resolver(object):
+# < Cpp_action_transpiler
+
+# TODO: Move to another file (__init__.py?)
+# -------------------- Function_transpiler --------------------
+
+class Function_transpiler(object):
 	def __init__(self, nacl_state):
 		self.nacl_state = nacl_state
-		# print "Function resolver"
+		# print "Function transpiler"
 		# Default?:
-		# self.action_resolver = Action_resolver(nacl_state)
+		# self.action_transpiler = Action_transpiler(nacl_state)
 
 	def get_class_name(self):
 		return self.__class__.__name__
 
-	def resolve(self, type_t, subtype, ctx, parent_subtype=""):
+	def transpile(self, type_t, subtype, ctx, parent_subtype=""):
 		# Should be implemented by class that extends this class
 		exit_NaCl_internal_error("The class " + self.get_class_name() + " needs to override the method " + \
-			"resolve")
+			"transpile")
 
-class Cpp_function_resolver(Function_resolver):
+# < Function_transpiler
+
+# -------------------- Cpp_function_transpiler --------------------
+
+class Cpp_function_transpiler(Function_transpiler):
 	def __init__(self, nacl_state):
-		super(Cpp_function_resolver, self).__init__(nacl_state)
-		self.action_resolver = Cpp_action_resolver(nacl_state)
-		# print "Cpp_function_resolver"
+		super(Cpp_function_transpiler, self).__init__(nacl_state)
+		self.action_transpiler = Cpp_action_transpiler(nacl_state)
+		# print "Cpp_function_transpiler"
 
 	# Main function - starting point to transpile a NaCl function:
 	# def transpile_function(self, type_t, subtype, ctx, parent_subtype=""):
-	def resolve(self, type_t, subtype, ctx, parent_subtype=""):
+	def transpile(self, type_t, subtype, ctx, parent_subtype=""):
 		# Return a string with all the code
 		content = ""
 
@@ -281,21 +300,21 @@ class Cpp_function_resolver(Function_resolver):
 			# If the subtype of the Filter indicates another protocol than IP, the incoming packet
 			# is cast to a packet of the correct protocol, following the test on the packet's protocol field.
 
-			value_resolver = self.nacl_state.resolvers[VALUE_RESOLVER]
+			value_transpiler = self.nacl_state.subtranspilers[VALUE_TRANSPILER]
 
 			protocol_method = Ip_obj.resolve_method_cpp(PROTOCOL, ctx)
 			protocol_val 	= Ip_obj.resolve_protocol_cpp(subtype, ctx)
-			pckt_cast 		= value_resolver.get_pckt_cast(subtype, ctx)
+			pckt_cast 		= value_transpiler.get_pckt_cast(subtype, ctx)
 
 			# If we are in a nested function and the parent function was not IP,
 			# we have another pckt_name than 'pckt' to take into account:
 			if parent_subtype == "" or parent_subtype == IP:
-				content += "if (" + IP_PCKT + value_resolver.get_access_op(IP) + protocol_method + " " + EQUALS + " " + protocol_val + ") {\n" + \
+				content += "if (" + IP_PCKT + value_transpiler.get_access_op(IP) + protocol_method + " " + EQUALS + " " + protocol_val + ") {\n" + \
 					pckt_cast + "\n\n"
 			elif parent_subtype != "" and subtype_lower != parent_subtype and parent_subtype != IP:
 				# If subtype == parent_subtype, we don't need this if-check on protocol at all (has been tested above in the C++ code)
-				parent_pckt_name = value_resolver.get_pckt_name(parent_subtype)
-				parent_access_op = value_resolver.get_access_op(parent_subtype)
+				parent_pckt_name = value_transpiler.get_pckt_name(parent_subtype)
+				parent_access_op = value_transpiler.get_access_op(parent_subtype)
 
 				if parent_subtype == ICMP:
 					protocol_method = INCLUDEOS_ICMP_IP_ACCESS_METHOD + parent_access_op + protocol_method
@@ -429,9 +448,9 @@ class Cpp_function_resolver(Function_resolver):
 
 	def transpile_comparison(self, subtype, comp, op=""):
 		# Resolve the values
-		resolved_lhs = self.nacl_state.resolve_value(comp.lhs().value(), subtype)
+		resolved_lhs = self.nacl_state.transpile_value(comp.lhs().value(), subtype)
 		comparison_op = comp.comparison_operator().getText()
-		resolved_rhs = self.nacl_state.resolve_value(comp.rhs().value(), subtype)
+		resolved_rhs = self.nacl_state.transpile_value(comp.rhs().value(), subtype)
 
 		# And construct the comparison(s) based on the resolved values
 		return self.construct_comparison(comp, resolved_lhs, resolved_rhs, comparison_op, op)
@@ -466,7 +485,7 @@ class Cpp_function_resolver(Function_resolver):
 		if hasattr(expr, 'value') and expr.value() is not None:
 			if hasattr(expr, 'Not') and expr.Not() is not None:
 				content += NOT
-			return content + self.nacl_state.resolve_value(expr.value())
+			return content + self.nacl_state.transpile_value(expr.value())
 
 		# Recursion:
 		if isinstance(expr, list):
@@ -535,7 +554,7 @@ class Cpp_function_resolver(Function_resolver):
 			if e.conditional() is not None:
 				content += self.transpile_conditional(type_t, subtype, e.conditional())
 			elif e.action() is not None:
-				content += self.action_resolver.resolve(type_t, subtype, e.action())
+				content += self.action_transpiler.transpile(type_t, subtype, e.action())
 			elif e.function() is not None:
 				# Validate if valid type_t and subtype
 				nested_type_t 	= e.function().type_t().getText()
@@ -552,6 +571,12 @@ class Cpp_function_resolver(Function_resolver):
 					sys.exit("line " + get_line_and_column(e.function().subtype()) + " You cannot create a function of subtype " + \
 						nested_subtype + " inside a function of subtype " + subtype)
 
-				content += self.resolve(nested_type_t, nested_subtype, e.function(), subtype)
+				content += self.transpile(nested_type_t, nested_subtype, e.function(), subtype)
 
 		return content
+
+# < Cpp_function_transpiler
+
+def init(nacl_state):
+    print "Init function_transpiler: Cpp_function_transpiler"
+    nacl_state.register_subtranspiler(FUNCTION_TRANSPILER, Cpp_function_transpiler(nacl_state))

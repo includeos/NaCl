@@ -18,8 +18,6 @@ import sys
 
 CPP = "cpp"
 
-VALUE_RESOLVER = "value_resolver"
-
 # Operators
 
 GREATER_THAN_OR_EQUAL 	= ">="
@@ -92,7 +90,7 @@ INCLUDEOS_UDP_PCKT_CLASS 	= "PacketUDP"
 INCLUDEOS_ICMP_PCKT_CLASS 	= "icmp4::Packet"
 INCLUDEOS_IP_PCKT_CLASS 	= "IP4::IP_packet"
 
-# TODO: Move into Cpp_value_resolver?
+# TODO: Move into Cpp_value_transpiler?
 cpp_pckt_classes = {
 	TCP: 	INCLUDEOS_TCP_PCKT_CLASS,
 	UDP: 	INCLUDEOS_UDP_PCKT_CLASS,

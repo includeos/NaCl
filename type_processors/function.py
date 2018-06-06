@@ -19,12 +19,9 @@ from __future__ import absolute_import
 
 from NaCl import Element, exit_NaCl, CPP, IP
 
-# cpp_transpile_function.py also imports cpp_resolve_values.py, which
-# in turn imports shared_constants.py
-from cpp_transpile_function import Cpp_function_resolver, FUNCTION_RESOLVER, ACCEPT, DROP
-# from cpp_transpile_function import transpile_function_cpp, ACCEPT, DROP
+from subtranspilers.function_transpiler import FUNCTION_TRANSPILER, ACCEPT, DROP
 
-from shared_between_type_processors import *
+from shared import *
 # TYPE_NAT, TEMPLATE_KEY_IFACE_PUSHES, TEMPLATE_KEY_GATEWAY_PUSHES, TEMPLATE_KEY_ENABLE_CT, TEMPLATE_KEY_HAS_NATS
 
 TYPE_FILTER 		= "filter"
@@ -58,9 +55,7 @@ class Function(Element):
         self.handle_as_untyped = False # Probably not relevant at all (?), but in case
 
     def transpile_function(self):
-        # if self.nacl_state.language == CPP:
-            # return Cpp_function_resolver.transpile_function(self.type_t, self.subtype, self.ctx)
-        return self.nacl_state.resolvers[FUNCTION_RESOLVER].resolve(self.type_t, self.subtype, self.ctx)
+        return self.nacl_state.subtranspilers[FUNCTION_TRANSPILER].transpile(self.type_t, self.subtype, self.ctx)
 
     def add_function(self):
         # Only if a function is mentioned in an assignment that is a push or
@@ -174,7 +169,8 @@ def create_function_pystache_lists(nacl_state):
 def init(nacl_state):
     # print "Init function: Function (Filter, Nat, Rewrite)"
 
-    nacl_state.register_custom_resolver(FUNCTION_RESOLVER, Cpp_function_resolver(nacl_state))
+    # Moved to subtranspilers/function_transpiler.py:
+    # nacl_state.register_subtranspiler(FUNCTION_TRANSPILER, Cpp_function_transpiler(nacl_state))
 
     nacl_state.add_type_processor(TYPE_FILTER, Function)
     nacl_state.add_type_processor(TYPE_REWRITE, Function)

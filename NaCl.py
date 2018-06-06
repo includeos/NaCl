@@ -25,11 +25,10 @@ import os
 import pystache
 
 from shared_constants import * # CPP
-from cpp_resolve_values import Cpp_value_resolver # resolve_value_cpp
+# Temporary:
+from subtranspilers.value_transpiler import VALUE_TRANSPILER
 
 # antlr4 -Dlanguage=Python2 NaCl.g4 -visitor
-
-# class Resolver ? (Inherited by Cpp_value_resolver and Cpp_function_resolver f.ex.?)
 
 # -------------------- Error handling --------------------
 
@@ -82,23 +81,26 @@ class NaCl_state(object):
 		self.set_language(language)
 		# self.language = CPP # default
 		# The language is only CPP for now:
-		# self.value_resolver = Cpp_value_resolver(self.elements)
-		self.resolvers = {
-			VALUE_RESOLVER: Cpp_value_resolver(self.elements) # Cpp_value_resolver(self)
-		}
+		# self.value_transpiler = Cpp_value_transpiler(self.elements)
+		self.subtranspilers = {}
 
-	def register_custom_resolver(self, key, value):
-		# F.ex. Cpp_function_resolver
-		self.resolvers[key] = value
+	def register_subtranspiler(self, key, value):
+		# F.ex. Cpp_value_transpiler
+		self.subtranspilers[key] = value
 
 	def set_language(self, language):
 		if language not in self.valid_languages:
 			exit_NaCl_internal_error("Internal error in handle_input: Cannot transpile to language " + language)
 		self.language = language
 
-	def resolve_value(self, value_ctx, subtype=""):
+	def transpile_value(self, value_ctx, subtype=""):
 		# if self.language == CPP:
-		return self.resolvers[VALUE_RESOLVER].resolve(value_ctx, subtype) # resolve_value_cpp(value_ctx)
+		# TODO: When a type_processor or other module calls self.nacl_state.transpile_value, rather
+		# have it call self.nacl_state.subtranspilers[VALUE_TRANSPILER].transpile(value_ctx, subtype)?
+		return self.subtranspilers[VALUE_TRANSPILER].transpile(value_ctx, subtype)
+	# OR TODO:
+	# def transpile(self, transpiler_key, params):
+	#	return self.subtranspilers[transpiler_key].transpile(params)
 
 	def register_pystache_data_object(self, key, value):
 		self.pystache_data[key] = value
@@ -401,7 +403,7 @@ class Element(object):
 					self.validate_dictionary_key(level_key, parent_key, level, value)
 					self.resolve_dictionary_value(dictionary, level_key, value)
 				else:
-					dictionary[level_key] = self.nacl_state.resolve_value(value)
+					dictionary[level_key] = self.nacl_state.transpile_value(value)
 				return
 
 		if level_key not in dictionary:
@@ -434,7 +436,7 @@ class Element(object):
 				if self.handle_as_untyped:
 					self.resolve_dictionary_value(dictionary, key, pair.value())
 				else:
-					dictionary[key] = self.nacl_state.resolve_value(pair.value())
+					dictionary[key] = self.nacl_state.transpile_value(pair.value())
 			else:
 				# Recursion:
 				# Then we have an obj inside an obj
@@ -456,7 +458,7 @@ class Untyped(Element):
 
 	# Overriding
 	def resolve_dictionary_value(self, dictionary, key, value_ctx):
-		dictionary[key] = self.nacl_state.resolve_value(value_ctx)
+		dictionary[key] = self.nacl_state.transpile_value(value_ctx)
 
 	# Main processing method
 	def process(self):
@@ -568,7 +570,11 @@ class NaClRecordingVisitor(NaClVisitor):
 if __name__ == "__main__":
 	nacl_state = NaCl_state(CPP)
 
-	# print "Register all type processors"
+	print "Register all subtranspilers"
+	from subtranspilers import init as init_subtranspilers
+	init_subtranspilers(nacl_state)
+
+	print "Register all type processors"
 	# The init function in type_processors/__init__.py will loop through all the modules (.py files)
 	# in the folder and will in turn call each module's init function:
 	from type_processors import init as init_type_processors

@@ -20,7 +20,7 @@ from __future__ import absolute_import
 # TODO
 from NaCl import exit_NaCl, NaCl_exception, Typed, BASE_TYPE_TYPED_INIT, BASE_TYPE_FUNCTION, DOT, TRUE, FALSE
 
-from shared_between_type_processors import *
+from shared import *
 # TYPE_IFACE, TYPE_NAT, TEMPLATE_KEY_IFACE_PUSHES, TEMPLATE_KEY_ENABLE_CT_IFACES, TEMPLATE_KEY_HAS_NATS
 
 # -------------------- CONSTANTS Iface --------------------
@@ -197,7 +197,7 @@ class Vlan(Common):
 	def process_members(self):
 		# Transpile values
 		for key, member in self.members.iteritems():
-			self.members[key] = self.nacl_state.resolve_value(member)
+			self.members[key] = self.nacl_state.transpile_value(member)
 
 	# Main processing method
 	def process(self):
@@ -210,8 +210,6 @@ class Vlan(Common):
 			self.process_members()
 
 			self.res = self.members
-			# Or:
-			# self.res = resolve_value(LANGUAGE, ...)
 
 		return self.res
 
@@ -365,10 +363,10 @@ class Iface(Common):
 			else:
 				exit_NaCl(vlan_ctx, "An Iface's vlan needs to be a list of Vlans")
 
-		# Loop through self.members and resolve the values
+		# Loop through self.members and transpile the values
 		for key, member in self.members.iteritems():
 			if key != IFACE_KEY_CONFIG and key != IFACE_KEY_MASQUERADE:
-				self.members[key] = self.nacl_state.resolve_value(member)
+				self.members[key] = self.nacl_state.transpile_value(member)
 
 				# Validate that an Iface with this Iface's index has not already been defined
 				if key == IFACE_KEY_INDEX:
@@ -380,7 +378,7 @@ class Iface(Common):
 			elif key == IFACE_KEY_CONFIG:
 				self.members[IFACE_KEY_CONFIG] = member.value_name().getText().lower()
 			else:
-				masq_val = self.nacl_state.resolve_value(member)
+				masq_val = self.nacl_state.transpile_value(member)
 
 				if not isinstance(masq_val, basestring) or (masq_val.lower() != TRUE and masq_val.lower() != FALSE):
 					exit_NaCl(member, "Invalid masquerade value. Must be set to true or false")
@@ -505,8 +503,6 @@ class Iface(Common):
 			self.enable_ct()
 
 			self.res = self.members
-			# Or:
-			# self.res = resolve_value(LANGUAGE, ...)
 
 		return self.res
 

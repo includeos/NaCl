@@ -14,11 +14,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
+from __future__ import absolute_import
+# To avoid: <...>/NaCl/subtranspilers/value_transpiler.py:1: RuntimeWarning: Parent module '<...>/NaCl/subtranspilers' not found while handling absolute import
+
+import sys # TODO: Use error handling methods defined in NaCl.py instead
+
 from shared_constants import *
 
-# TODO: Move to another file (NaCl.py?)
-class Value_resolver(object):
+VALUE_TRANSPILER = "value_transpiler"
+
+# TODO: Move to another file (__init__.py?)
+# -------------------- Value_transpiler --------------------
+
+class Value_transpiler(object):
 	def __init__(self, elements):
 		# All elements (Iface, Filter, Port, etc.) that have been identified in the NaCl file
 		# (by the visitor) are placed here because each language template (f.ex. cpp_template.py)
@@ -30,18 +38,22 @@ class Value_resolver(object):
 	def get_class_name(self):
 		return self.__class__.__name__
 
-	def resolve(self, val_ctx, subtype=""):
+	def transpile(self, val_ctx, subtype=""):
 		# Should be implemented by class that extends this class
 		exit_NaCl_internal_error("The class " + self.get_class_name() + " needs to override the method " + \
-			"resolve")
+			"transpile")
 
-class Cpp_value_resolver(Value_resolver):
+# < Value_transpiler
+
+# -------------------- Cpp_value_transpiler --------------------
+
+class Cpp_value_transpiler(Value_transpiler):
 	def __init__(self, elements):
-		super(Cpp_value_resolver, self).__init__(elements)
-		# print "Cpp_value_resolver"
+		super(Cpp_value_transpiler, self).__init__(elements)
+		# print "Cpp_value_transpiler"
 
 	# Main function when processing
-	def resolve(self, val_ctx, subtype=""):
+	def transpile(self, val_ctx, subtype=""):
 		if val_ctx is None:
 			return ""
 
@@ -91,13 +103,13 @@ class Cpp_value_resolver(Value_resolver):
 	def resolve_object(self, obj_ctx):
 		resolved_values = [ IS_LIST ]
 		for pair in obj_ctx.key_value_list().key_value_pair():
-			resolved_values.append(self.resolve(pair.value()))
+			resolved_values.append(self.transpile(pair.value()))
 		return resolved_values
 
 	def resolve_list_t(self, list_ctx):
 		resolved_values = [ IS_LIST ]
 		for val in list_ctx.value_list().value():
-			resolved_values.append(self.resolve(val))
+			resolved_values.append(self.transpile(val))
 		return resolved_values
 
 	def transpile_value_name(self, val_ctx, subtype):
@@ -179,7 +191,7 @@ class Cpp_value_resolver(Value_resolver):
 			sys.exit("line " + get_line_and_column(ctx) + " The name of a function (" + \
 				element.name + ") cannot be used as a value name in a comparison")
 
-		return self.resolve(element.ctx.value())
+		return self.transpile(element.ctx.value())
 
 	def resolve_member_value_from_obj(self, obj_ctx, member_list):
 		member = member_list[0]
@@ -188,7 +200,7 @@ class Cpp_value_resolver(Value_resolver):
 			if pair.key().getText() == member:
 				# End of recursion condition:
 				if len(member_list) == 1:
-					return self.resolve(pair.value())
+					return self.transpile(pair.value())
 
 				# Recursion
 				if pair.value().obj() is not None:
@@ -210,7 +222,7 @@ class Cpp_value_resolver(Value_resolver):
 			return e
 			# if e.ctx.value().obj() is not None:
 			#	return self.resolve_member_value_from_obj(e.ctx.value().obj(), orig_name)
-			# return self.resolve(e.ctx.value())
+			# return self.transpile(e.ctx.value())
 		else:
 			# Remove last part (after DOT) to see if an element exists with this name
 			name_parts = name_parts[:-1]
@@ -268,7 +280,7 @@ class Cpp_value_resolver(Value_resolver):
 					else:
 						sys.exit("line " + get_line_and_column(ctx) + " Could not identify " + element.name + "." + ".".join(member_list))
 
-				return self.resolve(e.ctx.value())
+				return self.transpile(e.ctx.value())
 
 		sys.exit("line " + get_line_and_column(ctx) + " No support for handling element of base type " + element.base_type)
 
@@ -375,3 +387,9 @@ class Cpp_value_resolver(Value_resolver):
 		return INCLUDEOS_IP4_CIDR_CLASS + "{" + part0 + "," + part1 + "," + part2 + "," + part3 + "," + mask + "}"
 
 	# ---- < Helper functions ----
+
+# < Cpp_value_transpiler
+
+def init(nacl_state):
+    print "Init value_transpiler: Cpp_value_transpiler"
+    nacl_state.register_subtranspiler(VALUE_TRANSPILER, Cpp_value_transpiler(nacl_state.elements))

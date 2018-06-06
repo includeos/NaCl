@@ -19,7 +19,7 @@ from __future__ import absolute_import
 
 from NaCl import NaCl_exception, TCP, UDP, ICMP, Typed, exit_NaCl
 
-from shared_between_type_processors import TEMPLATE_KEY_NAME
+from shared import TEMPLATE_KEY_NAME
 
 # -------------------- CONSTANTS Conntrack --------------------
 
@@ -126,7 +126,7 @@ class Conntrack(Typed):
 	# Overriding
 	def resolve_dictionary_value(self, dictionary, key, value):
 		# Add found value
-		dictionary[key] = self.nacl_state.resolve_value(value)
+		dictionary[key] = self.nacl_state.transpile_value(value)
 
 	# Overriding
 	# def validate_and_resolve_dictionary_val(self, dictionary, level_key, parent_key, level, value):
@@ -143,8 +143,6 @@ class Conntrack(Typed):
 			self.add_conntrack()
 
 			self.res = self.members
-			# Or:
-			# self.res = resolve_value(LANGUAGE, ...)
 
 		return self.res
 

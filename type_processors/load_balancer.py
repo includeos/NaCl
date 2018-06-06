@@ -21,7 +21,7 @@ from __future__ import absolute_import
 
 from NaCl import Typed, exit_NaCl, predefined_values_cpp, TCP
 
-from shared_between_type_processors import *
+from shared import *
 
 TYPE_LOAD_BALANCER = "load_balancer"
 
@@ -222,7 +222,7 @@ class Load_balancer(Typed):
             if value_ctx.value_name() is None or found_element_value not in VALID_LB_LAYERS:
                 exit_NaCl(value_ctx, "Invalid " + LB_KEY_LAYER + " value (" + value_ctx.getText() + ")")
         elif key == LB_KEY_IFACE:
-            # Then the Iface element's name is to be added, not the resolved Iface
+            # Then the Iface element's name is to be added, not the transpiled Iface
             if value_ctx.value_name() is None:
                 exit_NaCl(value_ctx, "Load_balancer member " + LB_KEY_IFACE + " contains an invalid value (" + \
                     found_element_value + ")")
@@ -268,7 +268,7 @@ class Load_balancer(Typed):
                     node_key = pair.key().getText().lower()
                     if node_key not in predefined_lb_node_keys:
                         exit_NaCl(pair.key(), "Invalid member in node " + str(i) + " in " + LB_KEY_SERVERS + "." + LB_SERVERS_KEY_POOL)
-                    n[node_key] = self.nacl_state.resolve_value(pair.value())
+                    n[node_key] = self.nacl_state.transpile_value(pair.value())
 
                 if n.get(LB_NODE_KEY_ADDRESS) is None or n.get(LB_KEY_PORT) is None:
                     exit_NaCl(node, "An object in a " + LB_SERVERS_KEY_POOL + " needs to specify " + ", ".join(predefined_lb_node_keys))
@@ -299,7 +299,7 @@ class Load_balancer(Typed):
                 # Then resolve the value
                 self.resolve_dictionary_value(found_element_value, k, pair.value())
         else:
-            found_element_value = self.nacl_state.resolve_value(value_ctx)
+            found_element_value = self.nacl_state.transpile_value(value_ctx)
 
         # Add found value
         dictionary[key] = found_element_value
@@ -318,8 +318,6 @@ class Load_balancer(Typed):
             self.add_load_balancer()
 
             self.res = self.members
-            # Or:
-            # self.res = resolve_value(LANGUAGE, ...)
 
         return self.res
 

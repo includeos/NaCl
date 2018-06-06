@@ -91,7 +91,7 @@ class Syslog(Typed):
 
     # Overriding
     def resolve_dictionary_value(self, dictionary, key, value):
-        dictionary[key] = self.nacl_state.resolve_value(value)
+        dictionary[key] = self.nacl_state.transpile_value(value)
 
     # Overriding
     # def validate_and_resolve_dictionary_val(self, dictionary, level_key, parent_key, level, value):

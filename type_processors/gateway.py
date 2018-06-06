@@ -22,7 +22,7 @@ from __future__ import absolute_import
 # TODO
 from NaCl import exit_NaCl, Typed, TRUE, FALSE, DOT, BASE_TYPE_FUNCTION, INCLUDEOS_ROUTER_OBJ_NAME, CPP
 
-from shared_between_type_processors import *
+from shared import *
 
 TYPE_GATEWAY = "gateway"
 
@@ -94,10 +94,10 @@ class Gateway(Typed):
                     "Valid members are: " + ", ".join(PREDEFINED_GATEWAY_ROUTE_KEYS))
 
             if key != GATEWAY_KEY_IFACE:
-                route_obj[key] = self.nacl_state.resolve_value(pair.value())
+                route_obj[key] = self.nacl_state.transpile_value(pair.value())
             else:
                 # Then the Iface element's name is to be added to the route_obj,
-                # not the resolved Iface
+                # not the transpiled Iface
                 iface_name = pair.value().getText()
 
                 if pair.value().value_name() is None:
@@ -200,10 +200,10 @@ class Gateway(Typed):
                     ", ".join(PREDEFINED_GATEWAY_ROUTE_KEYS))
 
             if route_member != GATEWAY_KEY_IFACE:
-                route[route_member] = self.nacl_state.resolve_value(element.ctx.value())
+                route[route_member] = self.nacl_state.transpile_value(element.ctx.value())
             else:
                 # Then the Iface element's name is to be added to the route obj,
-                # not the resolved Iface
+                # not the transpiled Iface
                 iface_name = element.ctx.value().getText()
 
                 if element.ctx.value().value_name() is None:
@@ -259,7 +259,7 @@ class Gateway(Typed):
     def validate_and_process_not_route_members(self):
         for key, value_ctx in self.not_route_members.iteritems():
             if key == GATEWAY_KEY_SEND_TIME_EXCEEDED:
-                resolved_value = self.nacl_state.resolve_value(value_ctx)
+                resolved_value = self.nacl_state.transpile_value(value_ctx)
                 self.not_route_members[key] = resolved_value
 
                 if resolved_value != TRUE and resolved_value != FALSE:
@@ -339,8 +339,6 @@ class Gateway(Typed):
             self.process_members()
 
             self.res = self.members # Indicating that this element (Gateway) has been processed
-            # Or:
-            # self.res = resolve_value(LANGUAGE, ...)
 
             # Add self.pushes to pystache data:
             self.nacl_state.register_pystache_data_object(TEMPLATE_KEY_GATEWAY_PUSHES, self.pushes)
