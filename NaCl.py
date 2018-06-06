@@ -744,8 +744,10 @@ class Element(object):
 					line_and_column = "1:0" if error_ctx is None else get_line_and_column(error_ctx)
 					exit_NaCl_custom_line_and_column(line_and_column, level_key + "." + key_list[1] + " does not exist")
 
-				key_list.pop(0) # Remove first key (level_key) - has been found
-				return self.get_dictionary_val(new_dict, key_list, error_ctx)
+				# key_list.pop(0) # Remove first key (level_key) - has been found
+				# return self.get_dictionary_val(new_dict, key_list, error_ctx)
+				# We don't want to modify the input parameter
+				return self.get_dictionary_val(new_dict, key_list[1:], error_ctx)
 
 	def validate_dictionary_key(self, key, parent_key, level, value_ctx):
 		exit_NaCl(value_ctx, "Internal error: The class " + self.get_class_name() + " needs to override the method " + \
@@ -804,8 +806,10 @@ class Element(object):
 
 		for key in dictionary:
 			if key == level_key:
-				key_list.pop(0) # Remove first key (level_key) - has been found
-				return self.add_dictionary_val(dictionary[key], key_list, value, level, level_key)
+				# key_list.pop(0) # Remove first key (level_key) - has been found
+				# return self.add_dictionary_val(dictionary[key], key_list, value, level, level_key)
+				# We don't want to modify the input parameter
+				return self.add_dictionary_val(dictionary[key], key_list[1:], value, level, level_key)
 
 	def process_obj(self, dictionary, ctx, level=1, parent_key=""):
 		# Could be either Untyped, Load_balancer, Conntrack or Syslog
