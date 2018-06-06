@@ -119,14 +119,10 @@ class Load_balancer(Typed):
         # Note: Only allowed to create one Load_balancer per layer
 
         layer = self.members.get(LB_KEY_LAYER)
+
         if layer is None:
             exit_NaCl(self.ctx, "Load_balancer member " + LB_KEY_LAYER + " has not been set")
-        # Old:
-        '''
-        if any(lb[TEMPLATE_KEY_LB_LAYER] == layer for lb in load_balancers):
-            exit_NaCl(self.ctx, "A " + layer.upper() + " Load_balancer has already been defined")
-        '''
-        # New:
+
         if self.nacl_state.exists_in_pystache_list(TEMPLATE_KEY_LOAD_BALANCERS, TEMPLATE_KEY_LB_LAYER, layer):
             exit_NaCl(self.ctx, "A " + layer.upper() + " Load_balancer has already been defined")
 
@@ -188,21 +184,6 @@ class Load_balancer(Typed):
                 TEMPLATE_KEY_LB_NODE_PORT: 		s.get(LB_KEY_PORT)
             })
 
-        # Old:
-        '''
-        load_balancers.append({
-            TEMPLATE_KEY_NAME: 					self.name,
-            TEMPLATE_KEY_LB_LAYER: 				layer,
-            TEMPLATE_KEY_LB_ALGORITHM: 			algo,
-            TEMPLATE_KEY_LB_WAIT_QUEUE_LIMIT: 	waitq_limit,
-            TEMPLATE_KEY_LB_SESSION_LIMIT: 		session_limit,
-            TEMPLATE_KEY_PORT: 					port,
-            TEMPLATE_KEY_LB_CLIENTS_IFACE: 		clients_iface_name,
-            TEMPLATE_KEY_LB_SERVERS_IFACE: 		servers_iface_name,
-            TEMPLATE_KEY_LB_POOL: 				pystache_pool
-        })
-        '''
-        # New:
         self.nacl_state.append_to_pystache_data_list(TEMPLATE_KEY_LOAD_BALANCERS, {
             TEMPLATE_KEY_NAME: 					self.name,
             TEMPLATE_KEY_LB_LAYER: 				layer,
@@ -215,9 +196,6 @@ class Load_balancer(Typed):
             TEMPLATE_KEY_LB_POOL: 				pystache_pool
         })
 
-    # Old:
-    # def validate_lb_key(self, key, parent_key, level, ctx):
-    # New:
     # Overriding
     def validate_dictionary_key(self, key, parent_key, level, value_ctx):
         if level == 1:
@@ -233,9 +211,6 @@ class Load_balancer(Typed):
         else:
             exit_NaCl(value_ctx, "Invalid Load_balancer member " + key)
 
-    # Old:
-    # def resolve_lb_value(self, dictionary, key, value):
-    # New:
     # Overriding
     def resolve_dictionary_value(self, dictionary, key, value_ctx):
         found_element_value = value_ctx.getText()
@@ -320,14 +295,8 @@ class Load_balancer(Typed):
             for pair in value_ctx.obj().key_value_list().key_value_pair():
                 k = pair.key().getText().lower()
                 # Validate the key first
-                # Old:
-                # self.validate_lb_key(k, key, 2, value_ctx)
-                # New:
                 self.validate_dictionary_key(k, key, 2, value_ctx)
                 # Then resolve the value
-                # Old:
-                # self.resolve_lb_value(found_element_value, k, pair.value())
-                # New:
                 self.resolve_dictionary_value(found_element_value, k, pair.value())
         else:
             found_element_value = self.nacl_state.resolve_value(value_ctx)
@@ -358,9 +327,6 @@ class Load_balancer(Typed):
     # Register the last data here that can not be registered before this (set has-values f.ex.)
     @staticmethod
     def final_registration(nacl_state):
-        # Previously in handle_input:
-        # nacl_state.register_pystache_data_object(TEMPLATE_KEY_HAS_LOAD_BALANCERS, (len(load_balancers) > 0))
-
         load_balancers_is_empty = nacl_state.pystache_list_is_empty(TEMPLATE_KEY_LOAD_BALANCERS)
 
         if not load_balancers_is_empty:
@@ -375,7 +341,5 @@ def create_load_balancer_pystache_lists(nacl_state):
 
 def init(nacl_state):
     # print "Init load_balancer: Load_balancer"
-
     nacl_state.add_type_processor(TYPE_LOAD_BALANCER, Load_balancer)
-
     create_load_balancer_pystache_lists(nacl_state)

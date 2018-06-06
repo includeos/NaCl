@@ -76,17 +76,11 @@ class Syslog(Typed):
         if addr is None or port is None:
             exit_NaCl(self.ctx, "Syslog address and/or port have not been specified")
 
-        # Old:
-        # syslogs.append({ TEMPLATE_KEY_ADDRESS: addr, TEMPLATE_KEY_PORT: port })
-        # New:
         self.nacl_state.append_to_pystache_data_list(TEMPLATE_KEY_SYSLOGS, {
             TEMPLATE_KEY_ADDRESS: addr,
             TEMPLATE_KEY_PORT: port
         })
 
-    # Old:
-    # def validate_syslog_key(self, key, parent_key, level, ctx):
-    # New:
     # Overriding
     def validate_dictionary_key(self, key, parent_key, level, value_ctx):
         if level == 1:
@@ -95,9 +89,6 @@ class Syslog(Typed):
         else:
             exit_NaCl(value_ctx, "Invalid Syslog member " + key)
 
-    # Old:
-    # def resolve_syslog_value(self, dictionary, key, value):
-    # New:
     # Overriding
     def resolve_dictionary_value(self, dictionary, key, value):
         dictionary[key] = self.nacl_state.resolve_value(value)
@@ -123,7 +114,6 @@ class Syslog(Typed):
     # Register the last data here that can not be registered before this (set has-values f.ex.)
     @staticmethod
     def final_registration(nacl_state):
-        # Previously in handle_input: nacl_state.register_pystache_data_object(TEMPLATE_KEY_HAS_SYSLOGS, (len(syslogs) > 0))
         if not nacl_state.pystache_list_is_empty(TEMPLATE_KEY_SYSLOGS):
             nacl_state.register_pystache_data_object(TEMPLATE_KEY_HAS_SYSLOGS, True)
 
@@ -136,7 +126,5 @@ def create_syslog_pystache_lists(nacl_state):
 
 def init(nacl_state):
     # print "Init syslog: Syslog"
-
     nacl_state.add_type_processor(TYPE_SYSLOG, Syslog, True)
-
     create_syslog_pystache_lists(nacl_state)

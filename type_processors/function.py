@@ -27,14 +27,6 @@ from cpp_transpile_function import Cpp_function_resolver, FUNCTION_RESOLVER, ACC
 from shared_between_type_processors import *
 # TYPE_NAT, TEMPLATE_KEY_IFACE_PUSHES, TEMPLATE_KEY_GATEWAY_PUSHES, TEMPLATE_KEY_ENABLE_CT, TEMPLATE_KEY_HAS_NATS
 
-# Old:
-'''
-def transpile_function(language, type_t, subtype, ctx):
-	if language == CPP:
-		return transpile_function_cpp(type_t, subtype, ctx)
-'''
-# New: Moved into the Function class:
-
 TYPE_FILTER 		= "filter"
 TYPE_REWRITE 		= "rewrite"
 # Moved to shared.py: TYPE_NAT = "nat"
@@ -63,7 +55,7 @@ class Function(Element):
         self.type_t 	= type_t
         self.subtype 	= subtype
 
-        self.handle_as_untyped = False # Probably not relevant at all, but in case
+        self.handle_as_untyped = False # Probably not relevant at all (?), but in case
 
     def transpile_function(self):
         # if self.nacl_state.language == CPP:
@@ -80,11 +72,6 @@ class Function(Element):
             TEMPLATE_KEY_CONTENT: 	self.res 	# Contains transpiled content
         }
 
-        # Old:
-        # for p in pushes:
-        # Old 2:
-        # for p in self.nacl_state.pushes:
-        # New:
         iface_pushes = self.nacl_state.pystache_data.get(TEMPLATE_KEY_IFACE_PUSHES)
         gateway_pushes = self.nacl_state.pystache_data.get(TEMPLATE_KEY_GATEWAY_PUSHES)
 
@@ -109,19 +96,11 @@ class Function(Element):
                                 exit_NaCl(self.ctx, "Missing default verdict at the end of this Filter")
 
                         if type_t_lower == TYPE_FILTER:
-                            # Old:
-                            # filters.append(pystache_function_obj)
-                            # New:
                             self.nacl_state.append_to_pystache_data_list(TEMPLATE_KEY_FILTERS, pystache_function_obj)
                         elif type_t_lower == TYPE_NAT:
-							# Old:
-                            # nats.append(pystache_function_obj)
-                            # New:
-                            self.nacl_state.append_to_pystache_data_list(TEMPLATE_KEY_NATS, pystache_function_obj)
+							self.nacl_state.append_to_pystache_data_list(TEMPLATE_KEY_NATS, pystache_function_obj)
                         elif type_t_lower == TYPE_REWRITE:
-							# Old:
-                            # rewrites.append(pystache_function_obj)
-                            self.nacl_state.append_to_pystache_data_list(TEMPLATE_KEY_REWRITES, pystache_function_obj)
+							self.nacl_state.append_to_pystache_data_list(TEMPLATE_KEY_REWRITES, pystache_function_obj)
                         else:
                             exit_NaCl(self.ctx.type_t(), "Functions of type " + self.type_t + " are not handled")
                         return self.res
@@ -147,19 +126,10 @@ class Function(Element):
                                 exit_NaCl(self.ctx, "Missing default verdict at the end of this Filter")
 
                         if type_t_lower == TYPE_FILTER:
-                            # Old:
-                            # filters.append(pystache_function_obj)
-                            # New:
                             self.nacl_state.append_to_pystache_data_list(TEMPLATE_KEY_FILTERS, pystache_function_obj)
                         elif type_t_lower == TYPE_NAT:
-                            # Old:
-                            # nats.append(pystache_function_obj)
-                            # New:
                             self.nacl_state.append_to_pystache_data_list(TEMPLATE_KEY_NATS, pystache_function_obj)
                         elif type_t_lower == TYPE_REWRITE:
-                            # Old:
-                            # rewrites.append(pystache_function_obj)
-                            # New:
                             self.nacl_state.append_to_pystache_data_list(TEMPLATE_KEY_REWRITES, pystache_function_obj)
                         else:
                             exit_NaCl(self.ctx.type_t(), "Functions of type " + self.type_t + " are not handled")
@@ -168,11 +138,6 @@ class Function(Element):
     # Main processing method
     def process(self):
         if self.res is None:
-            # Old:
-            # self.res = transpile_function(LANGUAGE, self.type_t, self.subtype, self.ctx)
-            # Old 2:
-            # self.res = transpile_function(self.type_t, self.subtype, self.ctx)
-            # New:
             self.res = self.transpile_function()
             self.add_function()
         return self.res
@@ -189,23 +154,10 @@ class Function(Element):
         filters_is_empty = nacl_state.pystache_list_is_empty(TEMPLATE_KEY_FILTERS)
         nats_is_empty = nacl_state.pystache_list_is_empty(TEMPLATE_KEY_NATS)
 
-        # handle_input previously:
-        # nacl_state.register_pystache_data_object(TEMPLATE_KEY_HAS_FUNCTIONS, (len(nats) > 0 or len(filters) > 0))
-        # nacl_state.register_pystache_data_object(TEMPLATE_KEY_ENABLE_CT, (len(nats) > 0 or len(filters) > 0 or len(gateways) > 0))
         if (not filters_is_empty) or (not nats_is_empty):
             nacl_state.register_pystache_data_object(TEMPLATE_KEY_HAS_FUNCTIONS, True)
             nacl_state.register_pystache_data_object(TEMPLATE_KEY_ENABLE_CT, True)
 
-        # handle_input previously:
-        # nacl_state.register_pystache_data_object(TEMPLATE_KEY_HAS_NATS, (len(nats) > 0 or len(masquerades) > 0))
-        # replaced with:
-        '''
-        new_nats = nacl_state.pystache_data.get(TEMPLATE_KEY_NATS)
-        masqs = nacl_state.pystache_data.get("masquerades") # TEMPLATE_KEY_MASQUERADES (defined in Iface class/file)
-        if ((new_nats is not None and (len(new_nats) > 0)) or (masqs is not None and (len(masqs) > 0))):
-            print "HAS NATS"
-            nacl_state.register_pystache_data_object(TEMPLATE_KEY_HAS_NATS, True)
-        '''
         if not nats_is_empty:
             nacl_state.register_pystache_data_object(TEMPLATE_KEY_HAS_NATS, True)
 

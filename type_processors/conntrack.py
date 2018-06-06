@@ -99,19 +99,7 @@ class Conntrack(Typed):
 			CONNTRACK_KEY_RESERVE: 				self.members.get(CONNTRACK_KEY_RESERVE),
 			TEMPLATE_KEY_CONNTRACK_TIMEOUTS: 	timeouts
 		})
-        # Old:
-        '''
-        conntracks.append({
-			TEMPLATE_KEY_NAME: 					self.name,
-			CONNTRACK_KEY_LIMIT: 				self.members.get(CONNTRACK_KEY_LIMIT),
-			CONNTRACK_KEY_RESERVE: 				self.members.get(CONNTRACK_KEY_RESERVE),
-			TEMPLATE_KEY_CONNTRACK_TIMEOUTS: 	timeouts
-		})
-        '''
 
-	# Old:
-	# def validate_conntrack_key(self, key, parent_key, level, ctx):
-	# New:
 	# Overriding
 	def validate_dictionary_key(self, key, parent_key, level, value_ctx):
 		class_name = self.get_class_name()
@@ -135,9 +123,6 @@ class Conntrack(Typed):
 		else:
 			exit_NaCl(value_ctx, "Invalid " + class_name + " member " + key)
 
-	# Old:
-	# def resolve_conntrack_value(self, dictionary, key, value):
-	# New:
 	# Overriding
 	def resolve_dictionary_value(self, dictionary, key, value):
 		# Add found value
@@ -172,7 +157,5 @@ def create_connstrack_pystache_lists(nacl_state):
 
 def init(nacl_state):
     # print "Init conntrack: Conntrack"
-
     nacl_state.add_type_processor(TYPE_CONNTRACK, Conntrack, True)
-
     create_connstrack_pystache_lists(nacl_state)

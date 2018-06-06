@@ -143,41 +143,19 @@ class Common(Typed):
 		if len(name_parts) != 2:
 			exit_NaCl(element.ctx, "Invalid " + self.get_class_name() + " member " + element.name)
 
-		# TODO: Call validate_key (same as in process_ctx)
-		# New:
 		try:
 			self.validate_key(orig_member)
 		except NaCl_exception as e:
 			exit_NaCl(element.ctx, e.value)
-		# Old:
-		# TODO: Vlan and Conntrack validate_key
-		'''
-		if (isinstance(self, Iface) and member not in predefined_iface_keys) or \
-			(isinstance(self, Vlan) and member not in predefined_vlan_keys) or \
-			(isinstance(self, Conntrack) and member not in predefined_conntrack_keys):
-			sys.exit("line " + get_line_and_column(element.ctx) + " Invalid " + class_name + " member " + orig_member)
-		'''
 
 		if self.members.get(member) is not None:
 			exit_NaCl(element.ctx, "Member " + member + " has already been set")
 
-		# New:
 		found_element_value = element.ctx.value()
 		try:
 			self.add_member(member, found_element_value)
 		except NaCl_exception as e:
 			exit_NaCl(element.ctx, e.value)
-		# Old:
-		'''
-		found_element_value = element.ctx.value()
-		if isinstance(self, Iface) and member in chains:
-			self.process_push(member, found_element_value)
-		else:
-			if self.members.get(member) is None:
-				self.members[member] = found_element_value
-			else:
-				sys.exit("line " + get_line_and_column(element.ctx) + " " + class_name + " member " + member + " has already been set")
-		'''
 
 # < class Common
 
@@ -408,9 +386,6 @@ class Iface(Common):
 					exit_NaCl(member, "Invalid masquerade value. Must be set to true or false")
 
 				if masq_val == TRUE:
-					# Old:
-					# self.masquerades.append({TEMPLATE_KEY_IFACE: self.name})
-					# New:
 					self.nacl_state.append_to_pystache_data_list(TEMPLATE_KEY_MASQUERADES, {
 						TEMPLATE_KEY_IFACE: self.name
 					})
@@ -452,22 +427,10 @@ class Iface(Common):
 			function_names.append({TEMPLATE_KEY_FUNCTION_NAME: name, TEMPLATE_KEY_COMMA: (i < (num_functions - 1))})
 
 		if add_auto_natting:
-			# Old:
-			# self.auto_natting_ifaces.append({ TEMPLATE_KEY_IFACE: self.name })
-			# New:
 			self.nacl_state.append_to_pystache_data_list(TEMPLATE_KEY_AUTO_NATTING_IFACES, {
 				TEMPLATE_KEY_IFACE: self.name
 			})
 
-		# Old:
-		'''
-		self.pushes.append({
-			TEMPLATE_KEY_NAME:				self.name,
-			TEMPLATE_KEY_CHAIN: 			chain,
-			TEMPLATE_KEY_FUNCTION_NAMES: 	function_names
-		})
-		'''
-		# New:
 		self.nacl_state.append_to_pystache_data_list(TEMPLATE_KEY_IFACE_PUSHES, {
 			TEMPLATE_KEY_NAME:				self.name,
 			TEMPLATE_KEY_CHAIN: 			chain,
@@ -492,15 +455,6 @@ class Iface(Common):
 				TEMPLATE_KEY_GATEWAY: 	gateway
 			})
 
-		# Old:
-		'''
-		self.ifaces_with_vlans.append({
-			TEMPLATE_KEY_IFACE: 		self.name,
-			TEMPLATE_KEY_IFACE_INDEX: 	self.members.get(IFACE_KEY_INDEX),
-			TEMPLATE_KEY_VLANS: 		pystache_vlans
-		})
-		'''
-		# New:
 		self.nacl_state.append_to_pystache_data_list(TEMPLATE_KEY_IFACES_WITH_VLANS, {
 			TEMPLATE_KEY_IFACE: 		self.name,
 			TEMPLATE_KEY_IFACE_INDEX: 	self.members.get(IFACE_KEY_INDEX),
@@ -513,8 +467,6 @@ class Iface(Common):
 		# Create object containing key value pairs with the data we have collected
 		# Append this object to the ifaces list
 		# Is to be sent to pystache renderer in handle_input function
-		# Old: self.ifaces.append({ ... })
-		# New:
 		self.nacl_state.append_to_pystache_data_list(TEMPLATE_KEY_IFACES, {
 			TEMPLATE_KEY_NAME: 		self.name,
 			TEMPLATE_KEY_TITLE: 	self.name.title(),
@@ -530,18 +482,7 @@ class Iface(Common):
 			TEMPLATE_KEY_DNS: 		self.members.get(IFACE_KEY_DNS)
 		})
 
-	# TODO: enable_ct_ifaces needs to be private to NaCl_state (?) - used by Gateway and Iface (?)
 	def enable_ct(self):
-		# Old:
-		'''
-		# Add this Iface's name to enable_ct_ifaces pystache list if it is not in the list already
-		if not any(enable_ct_iface[TEMPLATE_KEY_IFACE] == self.name for enable_ct_iface in enable_ct_ifaces):
-			for chain in CHAIN_NAMES:
-				if self.chains.get(chain) is not None:
-					enable_ct_ifaces.append({TEMPLATE_KEY_IFACE: self.name})
-					return # Only one entry in enable_ct_ifaces list for each Iface
-		'''
-		# New:
 		# Add this Iface's name to enable_ct_ifaces pystache list if it is not in the list already
 		if not self.nacl_state.exists_in_pystache_list(TEMPLATE_KEY_ENABLE_CT_IFACES, TEMPLATE_KEY_IFACE, self.name):
 			for chain in CHAIN_NAMES:
@@ -567,32 +508,6 @@ class Iface(Common):
 			# Or:
 			# self.res = resolve_value(LANGUAGE, ...)
 
-			# TODO: THE LISTS (ifaces, auto_natting_ifaces ++) SHOULD REALLY BE IN NACL_STATE
-			# WE WANT TO ADD TO CUSTOM LISTS AND MAKE NACL_STATE ADD KEY AND VALUE TO THE PYSTACHE_DATA
-			# WHEN EVERYTHING HAS BEEN TRANSPILED
-			# NOT EACH TIME AN OBJECT HAS BEEN TRANSPILED
-
-			# So in the init-function we want to create lists / data structures in nacl_state that we want to be able
-			# to add data to when processing each Iface element f.ex., and that we want NaCl_state to send to pystache_data
-			# when everything/the whole file has been transpiled
-
-			# Moving this:
-			'''
-			# Add to NaCl's data dictionary (pystache/mustache data to be transpiled):
-			self.nacl_state.register_pystache_data_object(TEMPLATE_KEY_IFACES, self.ifaces)
-			self.nacl_state.register_pystache_data_object(TEMPLATE_KEY_AUTO_NATTING_IFACES, self.auto_natting_ifaces)
-			# New that both Iface and Gateway have separate pushes lists (new template keys)
-			self.nacl_state.register_pystache_data_object(TEMPLATE_KEY_IFACE_PUSHES, self.pushes)
-			self.nacl_state.register_pystache_data_object(TEMPLATE_KEY_IFACES_WITH_VLANS, self.ifaces_with_vlans)
-			self.nacl_state.register_pystache_data_object(TEMPLATE_KEY_MASQUERADES, self.masquerades)
-
-			Moved to NaCl_state final_registration method to call before pystache rendering:
-			TODO: Need more dynamic solution
-			self.nacl_state.register_pystache_data_object(TEMPLATE_KEY_HAS_MASQUERADES, (len(self.masquerades) > 0))
-			self.nacl_state.register_pystache_data_object(TEMPLATE_KEY_HAS_AUTO_NATTING_IFACES, (len(self.auto_natting_ifaces) > 0))
-			self.nacl_state.register_pystache_data_object(TEMPLATE_KEY_HAS_VLANS, (len(self.ifaces_with_vlans) > 0))
-			'''
-
 		return self.res
 
 	# Called from handle_input (NaCl.py) right before rendering, after the NaCl file has been processed
@@ -600,40 +515,14 @@ class Iface(Common):
 	@staticmethod
 	def final_registration(nacl_state):
 		if not nacl_state.pystache_list_is_empty(TEMPLATE_KEY_AUTO_NATTING_IFACES):
-			# nacl_state.append_to_pystache_data_list(TEMPLATE_KEY_HAS_AUTO_NATTING_IFACES, {
-			#	TEMPLATE_KEY_HAS_AUTO_NATTING_IFACES: True
-			# })
 			nacl_state.register_pystache_data_object(TEMPLATE_KEY_HAS_AUTO_NATTING_IFACES, True)
 
 		if not nacl_state.pystache_list_is_empty(TEMPLATE_KEY_IFACES_WITH_VLANS):
-			# nacl_state.append_to_pystache_data_list(TEMPLATE_KEY_HAS_VLANS, {
-			#	TEMPLATE_KEY_HAS_VLANS: True
-			# })
 			nacl_state.register_pystache_data_object(TEMPLATE_KEY_HAS_VLANS, True)
 
 		if not nacl_state.pystache_list_is_empty(TEMPLATE_KEY_MASQUERADES):
-			# nacl_state.append_to_pystache_data_list(TEMPLATE_KEY_HAS_MASQUERADES, {
-			#	TEMPLATE_KEY_HAS_MASQUERADES: True
-			# })
 			nacl_state.register_pystache_data_object(TEMPLATE_KEY_HAS_MASQUERADES, True)
-
-			# handle_input previously:
-			# nacl_state.register_pystache_data_object(TEMPLATE_KEY_HAS_NATS, (len(nats) > 0 or len(masquerades) > 0))
 			nacl_state.register_pystache_data_object(TEMPLATE_KEY_HAS_NATS, True)
-
-		'''
-		# In NaCl_state:
-		auto_natting_ifaces = self.pystache_data.get(TEMPLATE_KEY_AUTO_NATTING_IFACES)
-		ifaces_with_vlans = self.pystache_data.get(TEMPLATE_KEY_IFACES_WITH_VLANS)
-		masquerades = self.pystache_data.get(TEMPLATE_KEY_MASQUERADES)
-
-		if auto_natting_ifaces is not None and (len(auto_natting_ifaces) > 0):
-			self.register_pystache_data_object(TEMPLATE_KEY_HAS_AUTO_NATTING_IFACES, True) # (len(self.auto_natting_ifaces) > 0)
-		if ifaces_with_vlans is not None and (len(ifaces_with_vlans) > 0):
-			self.register_pystache_data_object(TEMPLATE_KEY_HAS_VLANS, True)
-		if masquerades is not None and (len(masquerades) > 0):
-			self.register_pystache_data_object(TEMPLATE_KEY_HAS_MASQUERADES, True)
-		'''
 
 # < class Iface
 

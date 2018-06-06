@@ -70,8 +70,6 @@ class Gateway(Typed):
         super(Gateway, self).__init__(nacl_state, idx, name, ctx, base_type, type_t)
 
         self.handle_as_untyped = False
-
-        # New:
         self.pushes = []
 
         # self.members (in Element) to contain this Gateway's members as defined in NaCl file
@@ -153,9 +151,6 @@ class Gateway(Typed):
                 "it must contain a list of objects")
 
     # Called in Element's process_assignments method
-    # Old:
-    # def process_gateway_assignment(self, element):
-    # New:
     # Overriding:
     def process_assignment(self, element_key):
         element = self.nacl_state.elements.get(element_key)
@@ -253,16 +248,6 @@ class Gateway(Typed):
 
             function_names.append({TEMPLATE_KEY_FUNCTION_NAME: name, TEMPLATE_KEY_COMMA: (i < (num_functions - 1))})
 
-        # Old:
-        '''
-        pushes.append({
-            TEMPLATE_KEY_IS_GATEWAY_PUSH: 	True,
-            TEMPLATE_KEY_NAME:				get_router_name(LANGUAGE),
-            TEMPLATE_KEY_CHAIN: 			chain,
-            TEMPLATE_KEY_FUNCTION_NAMES: 	function_names
-        })
-        '''
-        # New:
         router_obj_name = INCLUDEOS_ROUTER_OBJ_NAME if self.nacl_state.language == CPP else exit_NaCl(self.ctx, \
             "Gateway can not transpile to other languages than C++")
         self.pushes.append({
@@ -298,12 +283,6 @@ class Gateway(Typed):
             # Add iface_name to ip_forward_ifaces pystache list if it is not in the
             # list already
             iface_name = route.get(GATEWAY_KEY_IFACE)
-            # Old:
-            '''
-            if iface_name is not None and not any(ip_forward_iface[TEMPLATE_KEY_IFACE] == iface_name for ip_forward_iface in ip_forward_ifaces):
-                ip_forward_ifaces.append({TEMPLATE_KEY_IFACE: iface_name})
-            '''
-            # New:
             if iface_name is not None and not self.nacl_state.exists_in_pystache_list(TEMPLATE_KEY_IP_FORWARD_IFACES, TEMPLATE_KEY_IFACE, iface_name):
                 self.nacl_state.append_to_pystache_data_list(TEMPLATE_KEY_IP_FORWARD_IFACES, {
                     TEMPLATE_KEY_IFACE: iface_name
@@ -311,12 +290,6 @@ class Gateway(Typed):
 
             # Add iface_name to enable_ct_ifaces pystache list if it is not in the
             # list already
-            # Old:
-            '''
-            if iface_name is not None and not any(enable_ct_iface[TEMPLATE_KEY_IFACE] == iface_name for enable_ct_iface in enable_ct_ifaces):
-                enable_ct_ifaces.append({TEMPLATE_KEY_IFACE: iface_name})
-            '''
-            # New:
             if iface_name is not None and not self.nacl_state.exists_in_pystache_list(TEMPLATE_KEY_ENABLE_CT_IFACES, TEMPLATE_KEY_IFACE, iface_name):
                 self.nacl_state.append_to_pystache_data_list(TEMPLATE_KEY_ENABLE_CT_IFACES, {
                     TEMPLATE_KEY_IFACE: iface_name
@@ -349,15 +322,6 @@ class Gateway(Typed):
         # Create object containing key value pairs with the data we have collected
         # Append this object to the gateways list
         # Is to be sent to pystache renderer in handle_input function
-        # Old:
-        '''
-        gateways.append({
-            TEMPLATE_KEY_NAME: self.name,
-            TEMPLATE_KEY_ROUTES: routes,
-            GATEWAY_KEY_SEND_TIME_EXCEEDED: send_time_exceeded
-        })
-        '''
-        # New:
         self.nacl_state.append_to_pystache_data_list(TEMPLATE_KEY_GATEWAYS, {
             TEMPLATE_KEY_NAME: self.name,
             TEMPLATE_KEY_ROUTES: routes,
@@ -378,7 +342,6 @@ class Gateway(Typed):
             # Or:
             # self.res = resolve_value(LANGUAGE, ...)
 
-            # New:
             # Add self.pushes to pystache data:
             self.nacl_state.register_pystache_data_object(TEMPLATE_KEY_GATEWAY_PUSHES, self.pushes)
 
@@ -389,10 +352,6 @@ class Gateway(Typed):
     @staticmethod
     def final_registration(nacl_state):
         gateways_is_empty = nacl_state.pystache_list_is_empty(TEMPLATE_KEY_GATEWAYS)
-
-        # handle_input previously:
-        # nacl_state.register_pystache_data_object(TEMPLATE_KEY_ENABLE_CT, (len(nats) > 0 or len(filters) > 0 or len(gateways) > 0))
-        # nacl_state.register_pystache_data_object(TEMPLATE_KEY_HAS_GATEWAYS, (len(gateways) > 0))
         if not gateways_is_empty:
             nacl_state.register_pystache_data_object(TEMPLATE_KEY_ENABLE_CT, True)
             nacl_state.register_pystache_data_object(TEMPLATE_KEY_HAS_GATEWAYS, True)
@@ -407,7 +366,5 @@ def create_gateway_pystache_lists(nacl_state):
 
 def init(nacl_state):
     # print "Init gateway: Gateway"
-
     nacl_state.add_type_processor(TYPE_GATEWAY, Gateway, True)
-
     create_gateway_pystache_lists(nacl_state)
