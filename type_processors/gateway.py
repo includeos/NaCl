@@ -20,9 +20,10 @@ from __future__ import absolute_import
 # TODO later: Own mustache file as well for Gateway - then import into main mustache file if possible
 
 # TODO
-from NaCl import exit_NaCl, Typed, TRUE, FALSE, DOT, BASE_TYPE_FUNCTION, INCLUDEOS_ROUTER_OBJ_NAME, CPP
+from NaCl import exit_NaCl, Typed, CPP, DOT, BASE_TYPE_FUNCTION
 
-from shared import *
+# TODO
+from shared import * # INCLUDEOS_ROUTER_OBJ_NAME, TRUE, FALSE
 
 TYPE_GATEWAY = "gateway"
 

@@ -24,13 +24,32 @@ import sys
 import os
 import pystache
 
-from shared_constants import * # CPP
+# antlr4 -Dlanguage=Python2 NaCl.g4 -visitor
+
+# -------------------- Constants --------------------
+
 # Temporary:
 VALUE_TRANSPILER = "value_transpiler"
 
-# antlr4 -Dlanguage=Python2 NaCl.g4 -visitor
+# Language to transpile to
+CPP = "cpp"
+
+DOT = "."
+
+BASE_TYPE_FUNCTION 		= "function"
+BASE_TYPE_UNTYPED_INIT 	= "untyped_init"
+BASE_TYPE_TYPED_INIT 	= "typed_init"
+
+TCP 	= "tcp"
+UDP 	= "udp"
+ICMP 	= "icmp"
+CT 		= "ct"
+IP 		= "ip"
 
 # -------------------- Error handling --------------------
+
+def get_line_and_column(ctx):
+	return str(ctx.start.line) + ":" + str(ctx.start.column)
 
 def exit_NaCl(ctx, message):
 	sys.exit("line " + get_line_and_column(ctx) + " " + message)
