@@ -19,6 +19,8 @@ from __future__ import absolute_import
 
 from shared_constants import * # INCLUDEOS_CT_ENTRY_NULLPTR_CHECK
 
+from NaCl import exit_NaCl, exit_NaCl_internal_error
+
 from subtranspilers.value_transpiler import VALUE_TRANSPILER
 
 from type_processors.syslog import EMERG, ALERT, CRIT, ERR, WARNING, NOTICE, INFO, DEBUG, \
@@ -109,8 +111,7 @@ class Cpp_action_transpiler(Action_transpiler):
 			# Then the action name could be the name of a function
 			element = self.nacl_state.elements.get(name)
 			if element is None or element.base_type != BASE_TYPE_FUNCTION:
-				sys.exit("line " + get_line_and_column(action_ctx) + \
-					" Couldn't identify action or function name " + name)
+				exit_NaCl(action_ctx, "Couldn't identify action or function name " + name)
 			return self.transpile_function_call(name, parameters, type_t, subtype, action_ctx)
 
 		# If get here, name is the name of an action in self.actions
@@ -118,31 +119,29 @@ class Cpp_action_transpiler(Action_transpiler):
 		actions = self.legal_actions[type_t.lower()]
 
 		if name_lower not in actions:
-			sys.exit("line " + get_line_and_column(action_ctx) + " Error transpiling action " + name + \
-				": Legal actions for a function of type " + type_t + " are: " + ", ".join(actions))
+			exit_NaCl(action_ctx, "Error transpiling action " + name + ": Legal actions for a function of type " + \
+				type_t + " are: " + ", ".join(actions))
 
 		return self.actions[name_lower](parameters, subtype, action_ctx)
 
 	def transpile_function_call(self, name, parameter_ctx_list, type_t, subtype, action_ctx):
 		# This was the name of a function, and a function takes no parameters:
 		if len(parameter_ctx_list) > 0:
-			sys.exit("line " + get_line_and_column(action_ctx) + " A function call takes no parameters")
+			exit_NaCl(action_ctx, "A function call takes no parameters")
 
 		element = self.nacl_state.elements.get(name)
 		if element is None or element.base_type != BASE_TYPE_FUNCTION:
-			sys.exit("line " + get_line_and_column(action_ctx) + " No function with the name " + name + " exists")
+			exit_NaCl(action_ctx, "No function with the name " + name + " exists")
 
 		# element is a Function
 		
 		# A function of type Filter can only call functions of type Filter,
 		# a function of type Nat can only call functions of type Nat, etc.
 		if element.type_t.lower() != type_t.lower():
-			sys.exit("line " + get_line_and_column(action_ctx) + " Error transpiling call to " + \
-				name + ": A function of type " + type_t + " can only call functions of the same type")
+			exit_NaCl(action_ctx, "Error transpiling call to " + name + ": A function of type " + type_t + " can only call functions of the same type")
 
 		if element.subtype.lower() not in legal_nested_subtypes[subtype.lower()]:
-			sys.exit("line " + get_line_and_column(action_ctx) + " Cannot call a function of subtype " + \
-				element.subtype + " inside a function of subtype " + subtype)
+			exit_NaCl(action_ctx, "Cannot call a function of subtype " + element.subtype + " inside a function of subtype " + subtype)
 
 		# return e.process()
 		# Cannot call this and use the element's process method and res attribute because
@@ -153,14 +152,14 @@ class Cpp_action_transpiler(Action_transpiler):
 	def transpile_accept(self, parameter_ctx_list, subtype, action_ctx):
 		# This was the accept action, and this takes no parameters:
 		if len(parameter_ctx_list) > 0:
-			sys.exit("line " + get_line_and_column(action_ctx) + " An accept action takes no parameters")
+			exit_NaCl(action_ctx, "An accept action takes no parameters")
 
 		return INCLUDEOS_ACCEPT(subtype)
 
 	def transpile_drop(self, parameter_ctx_list, subtype, action_ctx):
 		# This was the drop action, and this takes no parameters:
 		if len(parameter_ctx_list) > 0:
-			sys.exit("line " + get_line_and_column(action_ctx) + " A drop action takes no parameters")
+			exit_NaCl(action_ctx, "A drop action takes no parameters")
 
 		return INCLUDEOS_DROP
 
@@ -178,7 +177,7 @@ class Cpp_action_transpiler(Action_transpiler):
 					elif t == TO_STRING:
 						content += self.nacl_state.transpile_value(p, subtype) + ".to_string()"
 					else:
-						sys.exit("line " + get_line_and_column(p) + " Internal error: std::cout conversion for " + t + " has not been implemented")
+						exit_NaCl(p, "Internal error: std::cout conversion for " + t + " has not been implemented")
 
 				if i < (len(parameter_ctx_list) - 1):
 					content += " << "
@@ -190,13 +189,13 @@ class Cpp_action_transpiler(Action_transpiler):
 		parameters_string = ""
 
 		if len(parameter_ctx_list) < 2:
-			sys.exit("line " + get_line_and_column(action_ctx) + " Too few arguments (syslog takes at least 2)")
+			exit_NaCl(action_ctx, "Too few arguments (syslog takes at least 2)")
 
 		severity_ctx = parameter_ctx_list[0]
 		severity = severity_ctx.getText().lower()
 
 		if severity_ctx.value_name() is None or severity not in self.syslog_severities:
-			sys.exit("line " + get_line_and_column(severity_ctx) + " Invalid syslog severity level. Valid severity levels are " + \
+			exit_NaCl(severity_ctx, "Invalid syslog severity level. Valid severity levels are " + \
 				", ".join(self.syslog_severities))
 
 		for i, p in enumerate(parameter_ctx_list):
@@ -213,14 +212,13 @@ class Cpp_action_transpiler(Action_transpiler):
 						main_string += "%s"
 						parameters_string += ", " + self.nacl_state.transpile_value(p, subtype) + ".to_string().c_str()"
 					else:
-						sys.exit("line " + get_line_and_column(p) + " Internal error: Syslog conversion for " + t + \
-							" has not been implemented")
+						exit_NaCl(p, "Internal error: Syslog conversion for " + t + " has not been implemented")
 
 		return "Syslog::syslog(" + self.syslog_severities[severity] + ", " + main_string + "\"" + parameters_string + ");\n"
 
 	def transpile_nat(self, type_nat, parameter_ctx_list, subtype, action_ctx):
 		if type_nat != SNAT and type_nat != DNAT:
-			sys.exit("line 1:0 Internal error in transpile_nat_cpp: Invalid NAT type " + type_nat)
+			exit_NaCl_internal_error("Internal error in transpile_nat_cpp: Invalid NAT type " + type_nat)
 
 		# pckt_name = self.nacl_state.subtranspilers[VALUE_TRANSPILER].get_pckt_name(subtype)
 
@@ -236,7 +234,7 @@ class Cpp_action_transpiler(Action_transpiler):
 			# parameters = pckt_name + ", " + INCLUDEOS_CT_ENTRY + ", {" + str(first) + ", " + str(second) + "}"
 			parameters = INCLUDEOS_DEREFERENCE_OP + IP_PCKT + ", " + INCLUDEOS_CT_ENTRY + ", {" + str(first) + ", " + str(second) + "}"
 		else:
-			sys.exit("line " + get_line_and_column(action_ctx) + " No arguments provided to " + type_nat)
+			exit_NaCl(action_ctx, "No arguments provided to " + type_nat)
 
 		return INCLUDEOS_NAT_OBJ_NAME + ARROW + type_nat + "(" + parameters + ");\n" + \
 			self.transpile_accept([], subtype, action_ctx)
@@ -264,7 +262,7 @@ class Function_transpiler(object):
 
 	def transpile(self, type_t, subtype, ctx, parent_subtype=""):
 		# Should be implemented by class that extends this class
-		exit_NaCl_internal_error("The class " + self.get_class_name() + " needs to override the method " + \
+		exit_NaCl_internal_error("Internal error: The class " + self.get_class_name() + " needs to override the method " + \
 			"transpile")
 
 # < Function_transpiler
@@ -349,7 +347,7 @@ class Cpp_function_transpiler(Function_transpiler):
 		# A rng can only consist of integers or ipv4_addrs
 
 		if len(resolved_rng_list) != 2:
-			sys.exit("line 1:0 Internal error: Resolved list should be a rng consisting of two values instead of " + \
+			exit_NaCl_internal_error("Internal error: Resolved list should be a rng consisting of two values instead of " + \
 				str(resolved_rng_list))
 
 		from_val 	= resolved_rng_list[0]
@@ -405,15 +403,13 @@ class Cpp_function_transpiler(Function_transpiler):
 		if not lhs_is_list and not rhs_is_list:
 			if INCLUDEOS_IP4_CIDR_CLASS in str(resolved_rhs):
 				if comparison_op.lower() != IN:
-					sys.exit("line " + get_line_and_column(comp_ctx.comparison_operator()) + \
-						" Invalid operator (" + comparison_op + "). Only the 'in' " + \
+					exit_NaCl(comp_ctx.comparison_operator(), "Invalid operator (" + comparison_op + "). Only the 'in' " + \
 						"operator is valid when comparing a property to a range, cidr, list or object")
 
 				result = str(resolved_rhs) + ".contains(" + str(resolved_lhs) + ")"
 			else:
 				if comparison_op.lower() == IN:
-					sys.exit("line " + get_line_and_column(comp_ctx.comparison_operator()) + \
-						" The 'in' operator can only be used when comparing a property to " + \
+					exit_NaCl(comp_ctx.comparison_operator(), "The 'in' operator can only be used when comparing a property to " + \
 						"a range, cidr, list or object")
 
 				result = str(resolved_lhs) + " " + comparison_op + " " + str(resolved_rhs)
@@ -426,15 +422,14 @@ class Cpp_function_transpiler(Function_transpiler):
 		# If any of the resolved sides is a list, the 'in' operator should have been used
 		# (rng, ip4_cidr, list_t, obj)
 		if comparison_op != IN:
-			sys.exit("line " + get_line_and_column(comp_ctx.comparison_operator()) + " Invalid operator (" + \
-				comparison_op + "). Only the 'in' operator is valid when comparing a value to a range, cidr, list or object")
+			exit_NaCl(comp_ctx.comparison_operator(), "Invalid operator (" + comparison_op + \
+				"). Only the 'in' operator is valid when comparing a value to a range, cidr, list or object")
 
 		# If the 'in' operator has been used, only the resolved_rhs should be a list, not
 		# the resolved_lhs
 		if lhs_is_list:
-			sys.exit("line " + get_line_and_column(comp_ctx.lhs().value()) + \
-				" The left hand side of a comparison can not resolve to a set of values, e.g. " + \
-				"a range, cidr, list or object")
+			exit_NaCl(comp_ctx.lhs().value(), "The left hand side of a comparison can not resolve to a set " + \
+				"of values, e.g. a range, cidr, list or object")
 
 		if rhs_is_list:
 			result = self.construct_comparisons_from_list(resolved_rhs, resolved_lhs)
@@ -531,7 +526,7 @@ class Cpp_function_transpiler(Function_transpiler):
 
 		if hasattr(cond, 'If') and cond.If() is not None:
 			if num_bodies < 1:
-				sys.exit("line " + get_line_and_column(cond) + " Invalid syntax")
+				exit_NaCl(cond, "Invalid syntax")
 
 			# If-body is always first (index 0)
 			content += cond.If().getText() + " " + self.transpile_bool_expr(type_t, subtype, cond) + \
@@ -539,7 +534,7 @@ class Cpp_function_transpiler(Function_transpiler):
 
 		if hasattr(cond, 'Else') and cond.Else() is not None:
 			if num_bodies < 2:
-				sys.exit("line " + get_line_and_column(cond) + " Invalid syntax")
+				exit_NaCl(cond, "Invalid syntax")
 
 			# Else-body is always second/last (index 1)
 			content += cond.Else().getText() + " {\n" + \
@@ -562,13 +557,13 @@ class Cpp_function_transpiler(Function_transpiler):
 
 				# Can only nest functions of the same type_t
 				if type_t.lower() != nested_type_t.lower():
-					sys.exit("line " + get_line_and_column(e.function().type_t()) + " You cannot create a function of type " + \
+					exit_NaCl(e.function().type_t(), "You cannot create a function of type " + \
 						nested_type_t + " inside a function of type " + type_t)
 
 				# If this is a function, we have to validate that the subtype is legal based on the subtype of
 				# the parent function
 				if nested_subtype.lower() not in legal_nested_subtypes[subtype.lower()]:
-					sys.exit("line " + get_line_and_column(e.function().subtype()) + " You cannot create a function of subtype " + \
+					exit_NaCl(e.function().subtype(), "You cannot create a function of subtype " + \
 						nested_subtype + " inside a function of subtype " + subtype)
 
 				content += self.transpile(nested_type_t, nested_subtype, e.function(), subtype)

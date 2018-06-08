@@ -26,7 +26,7 @@ import pystache
 
 from shared_constants import * # CPP
 # Temporary:
-from subtranspilers.value_transpiler import VALUE_TRANSPILER
+VALUE_TRANSPILER = "value_transpiler"
 
 # antlr4 -Dlanguage=Python2 NaCl.g4 -visitor
 
