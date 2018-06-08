@@ -17,10 +17,8 @@
 from __future__ import absolute_import
 # To avoid: <...>/NaCl/subtranspilers/value_transpiler.py:1: RuntimeWarning: Parent module '<...>/NaCl/subtranspilers' not found while handling absolute import
 
-# from shared_constants import *
-from shared import *
-
 from NaCl import exit_NaCl, exit_NaCl_internal_error, BASE_TYPE_UNTYPED_INIT, BASE_TYPE_TYPED_INIT, BASE_TYPE_FUNCTION
+from shared import *
 
 VALUE_TRANSPILER = "value_transpiler"
 

@@ -18,12 +18,8 @@ from __future__ import absolute_import
 # To avoid: <...>/NaCl/type_processors/function.py:1: RuntimeWarning: Parent module '<...>/NaCl/type_processors' not found while handling absolute import
 
 from NaCl import exit_NaCl, Element, CPP
-
 from subtranspilers.function_transpiler import FUNCTION_TRANSPILER, ACCEPT, DROP
-
-# TODO
 from shared import *
-# TYPE_NAT, TEMPLATE_KEY_IFACE_PUSHES, TEMPLATE_KEY_GATEWAY_PUSHES, TEMPLATE_KEY_ENABLE_CT, TEMPLATE_KEY_HAS_NATS
 
 TYPE_FILTER 		= "filter"
 TYPE_REWRITE 		= "rewrite"

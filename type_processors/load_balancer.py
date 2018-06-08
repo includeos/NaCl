@@ -20,8 +20,6 @@ from __future__ import absolute_import
 # TODO later: Own mustache file as well for Load_balancer - then import into main mustache file if possible
 
 from NaCl import exit_NaCl, Typed
-
-# TODO
 from shared import *
 # TCP, predefined_values_cpp
 

@@ -17,13 +17,9 @@
 from __future__ import absolute_import
 # To avoid: <...>/NaCl/subtranspilers/function_transpiler.py:1: RuntimeWarning: Parent module '<...>/NaCl/subtranspilers' not found while handling absolute import
 
-# from shared_constants import * # INCLUDEOS_CT_ENTRY_NULLPTR_CHECK
-from shared import *
-
 from NaCl import exit_NaCl, exit_NaCl_internal_error, BASE_TYPE_FUNCTION
-
+from shared import *
 from subtranspilers.value_transpiler import VALUE_TRANSPILER
-
 from type_processors.syslog import EMERG, ALERT, CRIT, ERR, WARNING, NOTICE, INFO, DEBUG, \
 	INCLUDEOS_SYSLOG_SEVERITY_EMERG, INCLUDEOS_SYSLOG_SEVERITY_ALERT, INCLUDEOS_SYSLOG_SEVERITY_CRIT, \
 	INCLUDEOS_SYSLOG_SEVERITY_ERR, INCLUDEOS_SYSLOG_SEVERITY_WARNING, INCLUDEOS_SYSLOG_SEVERITY_NOTICE, \
