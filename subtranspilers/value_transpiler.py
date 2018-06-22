@@ -22,7 +22,8 @@ from shared import *
 
 VALUE_TRANSPILER = "value_transpiler"
 
-# TODO: Move to another file (__init__.py?)
+# TODO: Move to another file (__init__.py or make value_transpiler into a folder
+# containing value_transpiler.py and cpp_value_transpiler.py?)
 # -------------------- Value_transpiler --------------------
 
 class Value_transpiler(object):
@@ -383,5 +384,5 @@ class Cpp_value_transpiler(Value_transpiler):
 # < Cpp_value_transpiler
 
 def init(nacl_state):
-    print "Init value_transpiler: Cpp_value_transpiler"
+    # print "Init value_transpiler: Cpp_value_transpiler"
     nacl_state.register_subtranspiler(VALUE_TRANSPILER, Cpp_value_transpiler(nacl_state.elements))

@@ -570,11 +570,11 @@ class NaClRecordingVisitor(NaClVisitor):
 if __name__ == "__main__":
 	nacl_state = NaCl_state(CPP)
 
-	print "Register all subtranspilers"
+	# print "Register all subtranspilers"
 	from subtranspilers import init as init_subtranspilers
 	init_subtranspilers(nacl_state)
 
-	print "Register all type processors"
+	# print "Register all type processors"
 	# The init function in type_processors/__init__.py will loop through all the modules (.py files)
 	# in the folder and will in turn call each module's init function:
 	from type_processors import init as init_type_processors

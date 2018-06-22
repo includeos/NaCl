@@ -49,7 +49,7 @@ class Function(Element):
         self.type_t 	= type_t
         self.subtype 	= subtype
 
-        self.handle_as_untyped = False # Probably not relevant at all (?), but in case
+        self.handle_as_untyped = False # Necessary?
 
     def transpile_function(self):
         return self.nacl_state.subtranspilers[FUNCTION_TRANSPILER].transpile(self.type_t, self.subtype, self.ctx)

@@ -41,6 +41,8 @@ TEMPLATE_KEY_ENABLE_CT = "enable_ct"
 TYPE_NAT = "nat"
 TEMPLATE_KEY_HAS_NATS = "has_nats"
 
+# ---------------------
+
 # Operators
 
 GREATER_THAN_OR_EQUAL 	= ">="
@@ -102,7 +104,7 @@ INCLUDEOS_UDP_PCKT_CLASS 	= "PacketUDP"
 INCLUDEOS_ICMP_PCKT_CLASS 	= "icmp4::Packet"
 INCLUDEOS_IP_PCKT_CLASS 	= "IP4::IP_packet"
 
-# TODO: Move into Cpp_value_transpiler?
+# TODO: Move into value_transpiler.py?
 cpp_pckt_classes = {
 	TCP: 	INCLUDEOS_TCP_PCKT_CLASS,
 	UDP: 	INCLUDEOS_UDP_PCKT_CLASS,
@@ -366,8 +368,7 @@ predefined_values_cpp = {
 	RELATED: 		INCLUDEOS_STATE_RELATED,
 	INVALID: 		INCLUDEOS_STATE_INVALID
 
-	# New: Moved into load_balancer.py:
-	# TCP Load balancer
+	# Moved into load_balancer.py:
 	# ROUND_ROBIN: 	INCLUDEOS_ROUND_ROBIN
 }
 

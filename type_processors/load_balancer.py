@@ -77,10 +77,8 @@ valid_lb_servers_algos = [
 ]
 
 INCLUDEOS_ROUND_ROBIN = ROUND_ROBIN
-# TODO: Register INCLUDEOS_ROUND_ROBIN in predefined_values_cpp dictionary in shared_constants.py
-# Key: ROUND_ROBIN
-# Value: INCLUDEOS_ROUND_ROBIN
-# For now:
+
+# Registering INCLUDEOS_ROUND_ROBIN in predefined_values_cpp dictionary in shared.py
 predefined_values_cpp[ROUND_ROBIN] = INCLUDEOS_ROUND_ROBIN
 
 # Load balancer layers

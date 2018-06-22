@@ -19,7 +19,7 @@ import sys
 import os
 
 # TODO: Class Sub_transpiler base class definition here?
-# class Sub_transpiler ? (Inherited by Cpp_value_transpiler and Cpp_function_transpiler f.ex.?)
+# (Inherited by Cpp_value_transpiler and Cpp_function_transpiler f.ex.)
 
 def init(nacl_state):
     # print "Init subtranspilers"

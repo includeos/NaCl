@@ -28,7 +28,7 @@ from type_processors.syslog import EMERG, ALERT, CRIT, ERR, WARNING, NOTICE, INF
 FUNCTION_TRANSPILER = "function_transpiler"
 
 TYPE_FILTER = "filter"
-TYPE_NAT 	= "nat" # TODO: Defined in type_processors/shared.py as well
+TYPE_NAT 	= "nat" # TODO: Defined in shared.py as well
 
 # NaCl verdicts/actions
 ACCEPT 	= 'accept'
@@ -38,7 +38,9 @@ SYSLOG 	= 'syslog'
 SNAT 	= 'snat'
 DNAT 	= 'dnat'
 
-# TODO: Move to another file (__init__.py?)
+# TODO: Move to another file (__init__.py or make function_transpiler into a folder
+# containing function_transpiler.py and cpp_function_transpiler.py? (or function_transpiler.py,
+# cpp_function_transpiler.py, action_transpiler.py and cpp_action_transpiler.py))
 # -------------------- Action_transpiler --------------------
 
 # Actions are only used in functions
@@ -570,5 +572,5 @@ class Cpp_function_transpiler(Function_transpiler):
 # < Cpp_function_transpiler
 
 def init(nacl_state):
-    print "Init function_transpiler: Cpp_function_transpiler"
+    # print "Init function_transpiler: Cpp_function_transpiler"
     nacl_state.register_subtranspiler(FUNCTION_TRANSPILER, Cpp_function_transpiler(nacl_state))
