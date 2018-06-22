@@ -71,7 +71,6 @@ class NaCl_exception(Exception):
 
 # -------------------- NaCl_state --------------------
 
-# Singleton?
 class NaCl_state(object):
 	def __init__(self, language):
 		# All elements (Iface, Filter, Port, etc.) that have been identified in the NaCl file
@@ -113,13 +112,7 @@ class NaCl_state(object):
 		self.language = language
 
 	def transpile_value(self, value_ctx, subtype=""):
-		# if self.language == CPP:
-		# TODO: When a type_processor or other module calls self.nacl_state.transpile_value, rather
-		# have it call self.nacl_state.subtranspilers[VALUE_TRANSPILER].transpile(value_ctx, subtype)?
 		return self.subtranspilers[VALUE_TRANSPILER].transpile(value_ctx, subtype)
-	# OR TODO:
-	# def transpile(self, transpiler_key, params):
-	#	return self.subtranspilers[transpiler_key].transpile(params)
 
 	def register_pystache_data_object(self, key, value):
 		self.pystache_data[key] = value
@@ -176,8 +169,6 @@ class NaCl_state(object):
 
 	# Add visited element to the elements dictionary
 	def save_element(self, base_type, ctx):
-		# print "save_element - content of nacl_type_processors: ", str(self.nacl_type_processors)
-
 		if base_type != BASE_TYPE_TYPED_INIT and base_type != BASE_TYPE_UNTYPED_INIT and base_type != BASE_TYPE_FUNCTION:
 			exit_NaCl(ctx, "NaCl elements of base type " + base_type + " are not handled")
 
@@ -297,14 +288,10 @@ class Element(object):
 				key 		= orig_key.lower()
 				pair_value 	= pair.value()
 
-				# TODO: Call validate_keys in subclass (throw exception with error message - call sys.exit here in catch)
-				# Some classes don't need to do anything
-				# Or validate_pair
 				try:
 					# The old solution only tested this for vlan and iface:
-					# So the other classes (are there other classes?) can have an empty validate_key implementation f.ex. (do nothing)
-					# That means, this class Element can have a dummy method called this that does nothing
-					self.validate_key(orig_key) # check if exists in predefined_iface_keys f.ex.
+					# Default (if method is not implemented in subclass): Do nothing
+					self.validate_key(orig_key) # check if key exists in predefined_iface_keys f.ex.
 				except NaCl_exception as e:
 					exit_NaCl(pair.key(), e.value)
 
@@ -394,9 +381,7 @@ class Element(object):
 					line_and_column = "1:0" if error_ctx is None else get_line_and_column(error_ctx)
 					exit_NaCl_custom_line_and_column(line_and_column, level_key + "." + key_list[1] + " does not exist")
 
-				# key_list.pop(0) # Remove first key (level_key) - has been found
-				# return self.get_dictionary_val(new_dict, key_list, error_ctx)
-				# We don't want to modify the input parameter
+				# We don't want to modify the input parameter (key_list), therefore key_list[1:] here:
 				return self.get_dictionary_val(new_dict, key_list[1:], error_ctx)
 
 	def validate_dictionary_key(self, key, parent_key, level, value_ctx):
@@ -430,9 +415,7 @@ class Element(object):
 
 		for key in dictionary:
 			if key == level_key:
-				# key_list.pop(0) # Remove first key (level_key) - has been found
-				# return self.add_dictionary_val(dictionary[key], key_list, value, level, level_key)
-				# We don't want to modify the input parameter
+				# We don't want to modify the input parameter (key_list), therefore key_list[1:] here:
 				return self.add_dictionary_val(dictionary[key], key_list[1:], value, level, level_key)
 
 	def process_obj(self, dictionary, ctx, level=1, parent_key=""):
@@ -459,8 +442,8 @@ class Element(object):
 			else:
 				# Recursion:
 				# Then we have an obj inside an obj
-				dictionary[key] = {} # creating new dictionary
-				# loop through the obj and fill the new dictionary
+				dictionary[key] = {} # Creating new dictionary
+				# Loop through the obj and fill the new dictionary
 				self.process_obj(dictionary[key], pair.value().obj(), (level + 1), key)
 
 # < Element
@@ -526,8 +509,6 @@ class Cpp_template(object):
 # Called after all the elements in the NaCl file have been visited and saved in the
 # nacl_state's elements dictionary
 def handle_input(nacl_state):
-	# print "handle_input - elements:", str(nacl_state.elements)
-
 	# Process / transpile / fill the pystache lists
 	function_elements = []
 	for _, e in nacl_state.elements.iteritems():
@@ -603,9 +584,11 @@ if __name__ == "__main__":
 	stream = CommonTokenStream(lexer)
 	parser = NaClParser(stream)
 	tree = parser.prog()
+
 	# Visit
 	visitor = NaClRecordingVisitor(nacl_state)
 	visitor.visit(tree)
+
 	# Process the visited elements that have been registered in the nacl_state's elements dictionary
 	handle_input(nacl_state)
 
