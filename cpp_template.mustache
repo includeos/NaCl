@@ -1,6 +1,6 @@
 // This file is a part of the IncludeOS unikernel - www.includeos.org
 //
-// Copyright 2017 IncludeOS AS, Oslo, Norway
+// Copyright 2017-2018 IncludeOS AS, Oslo, Norway
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -139,14 +139,12 @@ void register_plugin_nacl() {
 
 	custom_made_classes_from_nacl::{{title}} {{name}};
 	{{/nats}}
-	{{#pushes}}
+	{{#pushes_iface}}
 
-	{{^is_gateway_push}}
 	{{#function_names}}
 	{{name}}.ip_obj().{{chain}}_chain().chain.push_back({{function_name}});
 	{{/function_names}}
-	{{/is_gateway_push}}
-	{{/pushes}}
+	{{/pushes_iface}}
 	{{#has_gateways}}
 	{{#gateways}}
 
@@ -163,13 +161,11 @@ void register_plugin_nacl() {
 	// Set send_time_exceeded:
 	nacl_router_obj->send_time_exceeded = {{.}};
 	{{/send_time_exceeded}}
-	{{#pushes}}
-	{{#is_gateway_push}}
+	{{#pushes_gateway}}
 	{{#function_names}}
 	{{name}}->{{chain}}_chain.chain.push_back({{function_name}});
 	{{/function_names}}
-	{{/is_gateway_push}}
-	{{/pushes}}
+	{{/pushes_gateway}}
 	// Set ip forwarding on every iface mentioned in routing_table
 	{{#ip_forward_ifaces}}
 	{{iface}}.set_forward_delg(nacl_router_obj->forward_delg());

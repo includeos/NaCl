@@ -1,6 +1,6 @@
 # This file is a part of the IncludeOS unikernel - www.includeos.org
 #
-# Copyright 2017 IncludeOS AS, Oslo, Norway
+# Copyright 2017-2018 IncludeOS AS, Oslo, Norway
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,15 +14,34 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
+from NaCl import CPP, DOT, TCP, UDP, IP, ICMP, CT
 
-# Languages that NaCl can be transpiled to
+# Constants that need to be available for more than one type_processor
 
-CPP = "cpp"
+TEMPLATE_KEY_FUNCTION_NAME 	= "function_name"
+TEMPLATE_KEY_COMMA 			= "comma"
+TEMPLATE_KEY_IFACE 			= "iface"
+TEMPLATE_KEY_CHAIN 			= "chain"
+TEMPLATE_KEY_FUNCTION_NAMES = "function_names"
+TEMPLATE_KEY_NAME 			= "name"
+TEMPLATE_KEY_TITLE 			= "title"
 
-valid_languages = [
-	CPP
-]
+# Constants closely connected to the Iface type_processor:
+TYPE_IFACE = "iface"    # from type_processors.iface import TYPE_IFACE
+TEMPLATE_KEY_IFACE_PUSHES = "pushes_iface"
+TEMPLATE_KEY_ENABLE_CT_IFACES = "enable_ct_ifaces"
+
+# Constants closely connected to the Gateway type_processor:
+TEMPLATE_KEY_GATEWAY_PUSHES = "pushes_gateway"
+
+# Constants closely connected to the Conntrack type_processor:
+TEMPLATE_KEY_ENABLE_CT = "enable_ct"
+
+# Constants closely connected to the Function type_processor:
+TYPE_NAT = "nat"
+TEMPLATE_KEY_HAS_NATS = "has_nats"
+
+# ---------------------
 
 # Operators
 
@@ -41,7 +60,6 @@ AND = "and"
 OR 	= "or"
 
 ARROW 	= "->"
-DOT 	= "."
 
 PARENTHESIS_START 	= "("
 PARENTHESIS_END 	= ")"
@@ -56,250 +74,9 @@ IS_LIST = True
 TRUE 	= "true"
 FALSE 	= "false"
 
-# Available NaCl types
-TYPE_IFACE 			= "iface"
-TYPE_VLAN 			= "vlan"
-TYPE_GATEWAY 		= "gateway"
-TYPE_CONNTRACK 		= "conntrack"
-TYPE_LOAD_BALANCER 	= "load_balancer"
-TYPE_SYSLOG 		= "syslog"
-TYPE_FILTER 		= "filter"
-TYPE_REWRITE 		= "rewrite"
-TYPE_NAT 			= "nat"
-
-valid_nacl_types = [
-	TYPE_IFACE,
-	TYPE_VLAN,
-	TYPE_GATEWAY,
-	TYPE_CONNTRACK,
-	TYPE_LOAD_BALANCER,
-	TYPE_SYSLOG,
-	TYPE_FILTER,
-	TYPE_REWRITE,
-	TYPE_NAT
-]
-
-BASE_TYPE_FUNCTION 		= "function"
-BASE_TYPE_UNTYPED_INIT 	= "untyped_init"
-BASE_TYPE_TYPED_INIT 	= "typed_init"
-
-# ---- Iface keys ----
-
-IFACE_KEY_ADDRESS 		= "address"
-IFACE_KEY_NETMASK 		= "netmask"
-IFACE_KEY_GATEWAY		= "gateway"
-IFACE_KEY_DNS 			= "dns"
-IFACE_KEY_INDEX 		= "index"
-IFACE_KEY_VLAN 			= "vlan"
-IFACE_KEY_MASQUERADE 	= "masquerade"
-IFACE_KEY_CONFIG 		= "config"
-
-IFACE_KEY_PREROUTING 	= "prerouting"
-IFACE_KEY_INPUT 		= "input"
-IFACE_KEY_OUTPUT 		= "output"
-IFACE_KEY_POSTROUTING 	= "postrouting"
-
-chains = [
-	IFACE_KEY_PREROUTING,
-	IFACE_KEY_INPUT,
-	IFACE_KEY_OUTPUT,
-	IFACE_KEY_POSTROUTING
-]
-
-predefined_iface_keys = [
-	IFACE_KEY_ADDRESS,
-	IFACE_KEY_NETMASK,
-	IFACE_KEY_GATEWAY,
-	IFACE_KEY_DNS,
-	IFACE_KEY_INDEX,
-	IFACE_KEY_VLAN,
-	IFACE_KEY_MASQUERADE,
-	IFACE_KEY_CONFIG
-]
-predefined_iface_keys.extend(chains)
-
-DHCP_CONFIG 			= "dhcp"
-DHCP_FALLBACK_CONFIG 	= "dhcp-with-fallback"
-STATIC_CONFIG 			= "static"
-
-predefined_config_types = [
-	DHCP_CONFIG,
-	DHCP_FALLBACK_CONFIG,
-	STATIC_CONFIG
-]
-
-# ---- Vlan keys ----
-
-VLAN_KEY_ADDRESS 	= IFACE_KEY_ADDRESS
-VLAN_KEY_NETMASK 	= IFACE_KEY_NETMASK
-VLAN_KEY_GATEWAY 	= IFACE_KEY_GATEWAY
-VLAN_KEY_DNS 		= IFACE_KEY_DNS
-VLAN_KEY_INDEX 		= IFACE_KEY_INDEX
-
-predefined_vlan_keys = [
-	VLAN_KEY_ADDRESS,
-	VLAN_KEY_NETMASK,
-	VLAN_KEY_GATEWAY,
-	VLAN_KEY_INDEX
-]
-
-# ---- Gateway keys ----
-
-GATEWAY_KEY_SEND_TIME_EXCEEDED 	= "send_time_exceeded"
-GATEWAY_KEY_FORWARD 			= "forward"
-
-GATEWAY_KEY_HOST 	= "host"
-GATEWAY_KEY_NET 	= "net"
-GATEWAY_KEY_NETMASK = "netmask"
-GATEWAY_KEY_NEXTHOP = "nexthop"
-GATEWAY_KEY_IFACE 	= "iface"
-GATEWAY_KEY_COST 	= "cost"
-
-# Valid keys for Gateway routes
-predefined_gateway_route_keys = [
-	GATEWAY_KEY_HOST,
-	GATEWAY_KEY_NET,
-	GATEWAY_KEY_NETMASK,
-	GATEWAY_KEY_NEXTHOP,
-	GATEWAY_KEY_IFACE,
-	GATEWAY_KEY_COST
-]
-
-# Valid Gateway keys for members that are not objects (routes)
-predefined_gateway_keys = [
-	GATEWAY_KEY_SEND_TIME_EXCEEDED,
-	GATEWAY_KEY_FORWARD
-]
-
 # ---- General ----
 
 AUTO = "auto"
-
-TCP 	= "tcp"
-UDP 	= "udp"
-IP 		= "ip"
-ICMP 	= "icmp"
-CT 		= "ct"
-
-# ---- Conntrack keys ----
-
-CONNTRACK_KEY_LIMIT 	= "limit"
-CONNTRACK_KEY_RESERVE 	= "reserve"
-CONNTRACK_KEY_TIMEOUT 	= "timeout"
-
-predefined_conntrack_keys = [
-	CONNTRACK_KEY_LIMIT,
-	CONNTRACK_KEY_RESERVE,
-	CONNTRACK_KEY_TIMEOUT
-]
-
-CONNTRACK_TIMEOUT_KEY_ESTABLISHED = "established"
-CONNTRACK_TIMEOUT_KEY_UNCONFIRMED = "unconfirmed"
-CONNTRACK_TIMEOUT_KEY_CONFIRMED = "confirmed"
-
-predefined_conntrack_timeout_keys = [
-	CONNTRACK_TIMEOUT_KEY_ESTABLISHED,
-	CONNTRACK_TIMEOUT_KEY_UNCONFIRMED,
-	CONNTRACK_TIMEOUT_KEY_CONFIRMED
-]
-
-predefined_conntrack_timeout_inner_keys = [
-	TCP,
-	UDP,
-	ICMP
-]
-
-# ---- Load_balancer keys ----
-
-LB_KEY_LAYER = "layer"
-LB_KEY_CLIENTS = "clients"
-LB_KEY_SERVERS = "servers"
-
-predefined_lb_keys = [
-	LB_KEY_LAYER,
-	LB_KEY_CLIENTS,
-	LB_KEY_SERVERS
-]
-
-LB_KEY_IFACE = "iface"
-LB_KEY_PORT = "port"
-
-LB_CLIENTS_KEY_WAIT_QUEUE_LIMIT = "wait_queue_limit"
-LB_CLIENTS_KEY_SESSION_LIMIT = "session_limit"
-
-predefined_lb_clients_keys = [
-	LB_KEY_IFACE,
-	LB_KEY_PORT,
-	LB_CLIENTS_KEY_WAIT_QUEUE_LIMIT,
-	LB_CLIENTS_KEY_SESSION_LIMIT
-]
-
-LB_SERVERS_KEY_ALGORITHM = "algorithm"
-LB_SERVERS_KEY_POOL = "pool"
-
-predefined_lb_servers_keys = [
-	LB_KEY_IFACE,
-	LB_SERVERS_KEY_ALGORITHM,
-	LB_SERVERS_KEY_POOL
-]
-
-LB_NODE_KEY_ADDRESS = "address"
-
-predefined_lb_node_keys = [
-	LB_NODE_KEY_ADDRESS,
-	LB_KEY_PORT
-]
-
-# Load balancer algorithms
-# Note: Only round_robin is supported in microLB for now (the algo/algorithm field is ignored)
-ROUND_ROBIN = "round_robin"
-# FEWEST_CONNECTIONS = "fewest_connections"
-valid_lb_servers_algos = [
-	ROUND_ROBIN
-	# FEWEST_CONNECTIONS
-]
-
-INCLUDEOS_ROUND_ROBIN = ROUND_ROBIN
-
-# Load balancer layers
-
-valid_lb_layers = [
-	TCP
-]
-
-# ---- Syslog keys ----
-
-SYSLOG_KEY_ADDRESS 	= IFACE_KEY_ADDRESS
-SYSLOG_KEY_PORT 	= LB_KEY_PORT
-
-predefined_syslog_keys = [
-	SYSLOG_KEY_ADDRESS,
-	SYSLOG_KEY_PORT
-]
-
-# ---- Syslog severity levels ----
-
-EMERG = "emerg"
-ALERT = "alert"
-CRIT = "crit"
-ERR = "err"
-WARNING = "warning"
-NOTICE = "notice"
-INFO = "info"
-DEBUG = "debug"
-
-# ---- IncludeOS syslog severity levels
-
-INCLUDEOS_SYSLOG_SEVERITY_EMERG = "LOG_EMERG"
-INCLUDEOS_SYSLOG_SEVERITY_ALERT = "LOG_ALERT"
-INCLUDEOS_SYSLOG_SEVERITY_CRIT = "LOG_CRIT"
-INCLUDEOS_SYSLOG_SEVERITY_ERR = "LOG_ERR"
-INCLUDEOS_SYSLOG_SEVERITY_WARNING = "LOG_WARNING"
-INCLUDEOS_SYSLOG_SEVERITY_NOTICE = "LOG_NOTICE"
-INCLUDEOS_SYSLOG_SEVERITY_INFO = "LOG_INFO"
-INCLUDEOS_SYSLOG_SEVERITY_DEBUG = "LOG_DEBUG"
-
-# ---- General ----
 
 # Constants related to the log action (std::cout)
 TO_UNSIGNED = "TO_UNSIGNED"
@@ -327,6 +104,7 @@ INCLUDEOS_UDP_PCKT_CLASS 	= "PacketUDP"
 INCLUDEOS_ICMP_PCKT_CLASS 	= "icmp4::Packet"
 INCLUDEOS_IP_PCKT_CLASS 	= "IP4::IP_packet"
 
+# TODO: Move into value_transpiler.py?
 cpp_pckt_classes = {
 	TCP: 	INCLUDEOS_TCP_PCKT_CLASS,
 	UDP: 	INCLUDEOS_UDP_PCKT_CLASS,
@@ -342,21 +120,6 @@ INCLUDEOS_REFERENCE_OP = "&"
 # IncludeOS class names
 INCLUDEOS_IP4_ADDR_CLASS = "IP4::addr"
 INCLUDEOS_IP4_CIDR_CLASS = "ip4::Cidr"
-
-# NaCl verdicts/actions
-ACCEPT 	= 'accept'
-DROP 	= 'drop'
-LOG 	= 'log'
-SYSLOG 	= 'syslog'
-SNAT 	= 'snat'
-DNAT 	= 'dnat'
-
-valid_default_filter_verdicts = [
-	ACCEPT,
-	DROP
-]
-
-MASQUERADE = "masquerade"
 
 # IncludeOS (C++) Filter return values
 INCLUDEOS_VERDICT_TYPE = "Filter_verdict_type::"
@@ -522,13 +285,6 @@ INCLUDEOS_FLAG_CWR 	= TCP_FLAG_NS + "CWR"
 INCLUDEOS_FLAG_ECE 	= TCP_FLAG_NS + "ECE"
 INCLUDEOS_FLAG_NS 	= TCP_FLAG_NS + "NS"
 
-# All elements (Iface, Filter, Port, etc.) that have been identified in the NaCl file
-# (by the visitor) are placed here because each language template (f.ex. cpp_template.py)
-# needs to access the elements when resolving a variable name f.ex.
-# Dictionary where key is the name of the Element and the value is the Element object or
-# subtype of this
-elements = {}
-
 # Available/legal object types for given subtypes (tcp, udp, icmp, ip)
 legal_obj_types = {
 	TCP: 	[TCP, IP, CT],
@@ -557,6 +313,8 @@ INCLUDEOS_OIFNAME 	= "stack2.oifname()"
 INCLUDEOS_IIF 		= "stack.iif()"
 INCLUDEOS_IIFNAME 	= "stack.iifname()"
 
+# TODO: Move this dictionary into the NaCl_state class and implement register methods
+# so that the different modules can check in/register their values
 # Built-in/predefined constants that can be used as values in NaCl
 predefined_values_cpp = {
 
@@ -608,10 +366,10 @@ predefined_values_cpp = {
 	ESTABLISHED: 	INCLUDEOS_STATE_ESTABLISHED,
 	NEW: 			INCLUDEOS_STATE_NEW,
 	RELATED: 		INCLUDEOS_STATE_RELATED,
-	INVALID: 		INCLUDEOS_STATE_INVALID,
+	INVALID: 		INCLUDEOS_STATE_INVALID
 
-	# TCP Load balancer
-	ROUND_ROBIN: 	INCLUDEOS_ROUND_ROBIN
+	# Moved into load_balancer.py:
+	# ROUND_ROBIN: 	INCLUDEOS_ROUND_ROBIN
 }
 
 class Tcp:
@@ -865,6 +623,3 @@ proto_objects = {
 	ICMP: 	Icmp_obj,
 	CT: 	Ct_obj
 }
-
-def get_line_and_column(ctx):
-	return str(ctx.start.line) + ":" + str(ctx.start.column)
