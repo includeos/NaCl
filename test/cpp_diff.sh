@@ -24,6 +24,7 @@ declare -a examples=(
 	"nacl_one_liner"
 	"nat_and_gateway"
 	"syslog"
+	"timers"
 	"vlan"
 )
 
