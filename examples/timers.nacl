@@ -1,0 +1,31 @@
+Iface eth0 {
+    index: 0,
+    address: 10.0.0.45,
+    netmask: 255.255.255.0,
+    gateway: 10.0.0.1
+}
+
+Timer t1 {
+    interval: 25, // every 25 seconds
+    data: [
+        timestamp,
+        stack-sampling,
+        lb // Will be displayed if Load_balancer is defined
+    ]
+}
+
+Timer t2 {
+    interval: 45, // every 45 seconds
+    data: [
+        memory,
+        cpu
+    ]
+}
+
+Timer t3 {
+    interval: 120, // every second minute
+    data: [
+        stats,
+        timers
+    ]
+}

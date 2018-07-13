@@ -30,13 +30,101 @@
 #include <net/vlan>
 {{/has_vlans}}
 {{#has_load_balancers}}
-#include <os>
-#include <profile>
 #include <microLB>
-static void print_stats(int);
-#define STATS_PERIOD 30s
 {{/has_load_balancers}}
 #include <syslogd>
+{{#has_timers}}
+#include <timers>
+#include <uplink/uplink.hpp>
+#include <ctime>
+#include <profile>
+#include <os>
+
+using namespace std::chrono;
+
+// ---- Timer Timestamp ----
+
+static std::string now() {
+	auto  tnow = time(0);
+	auto* curtime = localtime(&tnow);
+
+	char buff[48];
+	int len = strftime(buff, sizeof(buff), "%c", curtime);
+	return std::string(buff, len);
+}
+
+//< Timer Timestamp
+
+// ---- Timer CPU ----
+
+template <int N, typename T>
+struct rolling_avg {
+	std::deque<T> values;
+
+	void push(T value) {
+		if (values.size() >= N) values.pop_front();
+		values.push_back(value);
+	}
+	double avg() const {
+		double ps = 0.0;
+		if (values.empty()) return ps;
+		for (auto v : values) ps += v;
+		return ps / values.size();
+	}
+};
+
+void print_cpu_usage() {
+	// CPU-usage statistics
+	static uint64_t last_total = 0, last_asleep = 0;
+	uint64_t tdiff = StackSampler::samples_total() - last_total;
+	last_total = StackSampler::samples_total();
+	uint64_t adiff = StackSampler::samples_asleep() - last_asleep;
+	last_asleep = StackSampler::samples_asleep();
+
+	if (tdiff > 0) {
+		double asleep = adiff / (double) tdiff;
+		static rolling_avg<5, double> asleep_avg;
+		asleep_avg.push(asleep);
+
+		/*
+		printf("CPU usage: %.2f%%  Idle: %.2f%%  Active: %ld Existing: %ld Free: %ld\n",
+			(1.0 - asleep) * 100.0, asleep * 100.0,
+			Timers::active(), Timers::existing(), Timers::free());
+		*/
+
+		INFO("NaCl Timer CPU", "Usage: %.2f%% Idle: %.2f%%", (1.0 - asleep) * 100.0, asleep * 100.0);
+	} else {
+		INFO("NaCl Timer CPU", "CPU usage unavailable due to lack of samples");
+	}
+}
+
+//< Timer CPU
+
+// ---- Timer Timers ----
+
+void print_timers_data() {
+	INFO("NaCl Timer Timers", "Active: %ld Existing: %ld Free: %ld", Timers::active(), Timers::existing(), Timers::free());
+}
+
+//< Timer Timers
+
+// ---- Timer Memory ----
+
+static void print_heap_info() {
+	static intptr_t last = 0;
+	// show information on heap status, to discover leaks etc.
+	auto heap_begin = OS::heap_begin();
+	auto heap_end   = OS::heap_end();
+	auto heap_usage = OS::heap_usage();
+	intptr_t heap_size = heap_end - heap_begin;
+	auto diff = heap_size - last;
+	INFO("NaCl Timer Memory", "Heap size %lu Kb Diff %ld (%ld Kb) Usage %lu kB",
+		heap_size / 1024, diff, diff / 1024, heap_usage / 1024);
+	last = (int32_t) heap_size;
+}
+
+//< Timer Memory
+{{/has_timers}}
 
 using namespace net;
 
@@ -59,6 +147,35 @@ std::unique_ptr<nat::NAPT> nacl_natty_obj;
 {{/has_nats}}
 {{#has_load_balancers}}
 static microLB::Balancer* nacl_lb_obj = nullptr;
+
+{{#has_timers}}
+// ---- Timer LB ----
+
+void print_lb_stats() {
+	static int64_t last = 0;
+	const auto& nodes = nacl_lb_obj->nodes;
+
+	auto totals = nodes.total_sessions();
+	int  growth = totals - last;  last = totals;
+
+	INFO("NaCl Timer LB", "");
+	printf("Total %ld (%+d) Sess %d Wait %d TO %d - Pool %d C.Att %d Err %d\n",
+		totals, growth, nodes.open_sessions(), nacl_lb_obj->wait_queue(),
+		nodes.timed_out_sessions(), nodes.pool_size(),
+		nodes.pool_connecting(), nacl_lb_obj->connect_throws());
+
+	// node information
+	int n = 0;
+	for (auto& node : nodes) {
+		printf("[%s %s P=%d C=%d]  ", node.address().to_string().c_str(),
+			(node.is_active() ? "ONL" : "OFF"), node.pool_size(), node.connection_attempts());
+		if (++n == 2) { n = 0; printf("\n"); }
+	}
+	if (n > 0) printf("\n");
+}
+
+//< Timer LB
+{{/has_timers}}
 {{/has_load_balancers}}
 {{#has_functions}}
 
@@ -249,10 +366,6 @@ void register_plugin_nacl() {
 	nacl_lb_obj->nodes.add_node({{servers_iface_name}}, socket_{{index}}, nacl_lb_obj->get_pool_signal());
 	{{/pool}}
 
-	// Load balancer statistics
-	Timers::periodic(1s, STATS_PERIOD, print_stats);
-	StackSampler::begin();
-
 	/*
 	Name: {{name}}
 	Layer: {{layer}}
@@ -273,102 +386,41 @@ void register_plugin_nacl() {
 	{{/load_balancers}}
 	*/
 	{{/has_load_balancers}}
+	{{#has_timers}}
+
+	StackSampler::begin();
+	auto& uplink = uplink::get();
+	{{#timers}}
+
+	Timers::periodic(1s, {{interval}}s, [{{#has_stats}}&uplink{{/has_stats}}](auto) {
+		{{#has_timestamp}}
+		INFO("NaCl Timer Timestamp", "%s", now().c_str());
+		{{/has_timestamp}}
+		{{#has_stats}}
+		INFO("NaCl Timer Stats", "Sending statistics over uplink");
+		uplink.send_stats();
+		{{/has_stats}}
+		{{#has_memory}}
+		print_heap_info();
+		{{/has_memory}}
+		{{#has_cpu}}
+		print_cpu_usage();
+		{{/has_cpu}}
+		{{#has_storage}}
+		{{/has_storage}}
+		{{#has_lb}}
+		{{#has_load_balancers}}
+		print_lb_stats();
+		{{/has_load_balancers}}
+		{{/has_lb}}
+		{{#has_stack_sampling}}
+		INFO("NaCl Timer Stack Sampling", "");
+		StackSampler::print(3);
+		{{/has_stack_sampling}}
+		{{#timer_has_timers}}
+		print_timers_data();
+		{{/timer_has_timers}}
+	});
+	{{/timers}}
+	{{/has_timers}}
 }
-{{#has_load_balancers}}
-
-/// statistics ///
-#include <timers>
-#include <ctime>
-using namespace std::chrono;
-
-static std::string now()
-{
-  auto  tnow = time(0);
-  auto* curtime = localtime(&tnow);
-
-  char buff[48];
-  int len = strftime(buff, sizeof(buff), "%c", curtime);
-  return std::string(buff, len);
-}
-
-static void print_heap_info()
-{
-  static intptr_t last = 0;
-  // show information on heap status, to discover leaks etc.
-  auto heap_begin = OS::heap_begin();
-  auto heap_end   = OS::heap_end();
-  auto heap_usage = OS::heap_usage();
-  intptr_t heap_size = heap_end - heap_begin;
-  auto diff = heap_size - last;
-  printf("Heap size %lu Kb  diff %ld (%ld Kb)  usage  %lu kB\n",
-        heap_size / 1024, diff, diff / 1024, heap_usage / 1024);
-  last = (int32_t) heap_size;
-}
-
-template <int N, typename T>
-struct rolling_avg {
-  std::deque<T> values;
-
-  void push(T value) {
-    if (values.size() >= N) values.pop_front();
-    values.push_back(value);
-  }
-  double avg() const {
-    double ps = 0.0;
-    if (values.empty()) return ps;
-    for (auto v : values) ps += v;
-    return ps / values.size();
-  }
-};
-
-void print_stats(int)
-{
-  static int64_t last = 0;
-  const auto& nodes = nacl_lb_obj->nodes;
-
-  auto totals = nodes.total_sessions();
-  int  growth = totals - last;  last = totals;
-
-  printf("*** [%s] ***\n", now().c_str());
-  printf("Total %ld (%+d) Sess %d Wait %d TO %d - Pool %d C.Att %d Err %d\n",
-         totals, growth, nodes.open_sessions(), nacl_lb_obj->wait_queue(),
-         nodes.timed_out_sessions(), nodes.pool_size(),
-         nodes.pool_connecting(), nacl_lb_obj->connect_throws());
-
-  // node information
-  int n = 0;
-  for (auto& node : nodes) {
-    printf("[%s %s P=%d C=%d]  ", node.address().to_string().c_str(),
-        (node.is_active() ? "ONL" : "OFF"),
-        node.pool_size(), node.connection_attempts());
-    if (++n == 2) { n = 0; printf("\n"); }
-  }
-  if (n > 0) printf("\n");
-
-  // CPU-usage statistics
-  static uint64_t last_total = 0, last_asleep = 0;
-  uint64_t tdiff = StackSampler::samples_total() - last_total;
-  last_total = StackSampler::samples_total();
-  uint64_t adiff = StackSampler::samples_asleep() - last_asleep;
-  last_asleep = StackSampler::samples_asleep();
-
-  if (tdiff > 0)
-  {
-    double asleep = adiff / (double) tdiff;
-    static rolling_avg<5, double> asleep_avg;
-    asleep_avg.push(asleep);
-
-    printf("CPU usage: %.2f%%  Idle: %.2f%%  Active: %ld Existing: %ld Free: %ld\n",
-          (1.0 - asleep) * 100.0, asleep * 100.0,
-          Timers::active(), Timers::existing(), Timers::free());
-  }
-  else {
-    printf("CPU usage unavailable due to lack of samples\n");
-  }
-
-  // heap statistics
-  print_heap_info();
-  // stack sampling
-  StackSampler::print(3);
-}
-{{/has_load_balancers}}
