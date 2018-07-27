@@ -426,16 +426,6 @@ class Element(object):
 				# We don't want to modify the input parameter (key_list), therefore key_list[1:] here:
 				return self.add_dictionary_val(dictionary[key], key_list[1:], value, level, level_key)
 
-	# Should be overridden in subclass
-	def validate_dictionary_key(self, key, parent_key, level, value_ctx):
-		exit_NaCl(value_ctx, "Internal error: The class " + self.get_class_name() + " needs to override the method " + \
-			"validate_dictionary_key")
-
-	# Should be overridden in subclass
-	def resolve_dictionary_value(self, dictionary, key, value_ctx):
-		exit_NaCl(value_ctx, "Internal error: The class " + self.get_class_name() + " needs to override the method " + \
-			"resolve_dictionary_value")
-
 	def process_obj(self, dictionary, ctx, level=1, parent_key=""):
 		# Could be either Untyped, Load_balancer, Conntrack or Syslog
 		# Level only relevant for Load_balancer, Conntrack and Syslog
@@ -463,6 +453,16 @@ class Element(object):
 				dictionary[key] = {} # Creating new dictionary
 				# Loop through the obj and fill the new dictionary
 				self.process_obj(dictionary[key], pair.value().obj(), (level + 1), key)
+
+	# Should be overridden in subclass
+	def validate_dictionary_key(self, key, parent_key, level, value_ctx):
+		exit_NaCl(value_ctx, "Internal error: The class " + self.get_class_name() + " needs to override the method " + \
+			"validate_dictionary_key")
+
+	# Should be overridden in subclass
+	def resolve_dictionary_value(self, dictionary, key, value_ctx):
+		exit_NaCl(value_ctx, "Internal error: The class " + self.get_class_name() + " needs to override the method " + \
+			"resolve_dictionary_value")
 
 # < Element
 
