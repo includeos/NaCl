@@ -236,7 +236,7 @@ class Element(object):
 
 	# Can be overridden in subclass
 	# Called from the handle_input function right before rendering, after the NaCl file has been processed
-    # Register the last data here that can not be registered before this (set has-values f.ex. like
+	# Register the last data here that can not be registered before this (set has-values f.ex. like
 	# has_nats, has_vlans, has_load_balancers)
 	@staticmethod
 	def final_registration(nacl_state):
@@ -274,7 +274,7 @@ class Element(object):
 	# The first method that is called in every standard type_processor's process method
 	# (not in function, which is special and don't use the self.members dictionary)
 	# Adding to self.members (dictionary)
-	# Rename?: process_object?
+	# Rename to process_object f.ex.
 	def process_ctx(self):
 		# Handle the Element's value ctx object: Fill self.members dictionary
 		# Note: Gateway has its own process_ctx method
@@ -298,7 +298,7 @@ class Element(object):
 				pair_value 	= pair.value()
 
 				try:
-					# TODO - make handle_as_untyped the only option - then this method will be redundant: Vlan and Iface
+					# TODO: Make handle_as_untyped the only option - then this method will be redundant: Vlan and Iface
 					# are the only classes that (need to) call this method
 					# The old solution only tested this for vlan and iface:
 					# Default (if method is not implemented in subclass): Do nothing
@@ -306,7 +306,7 @@ class Element(object):
 				except NaCl_exception as e:
 					exit_NaCl(pair.key(), e.value)
 
-				# TODO: Can be removed later? Checked in self.add_member-method
+				# TODO: Can probably be removed later. Checked in self.add_member-method
 				if self.members.get(key) is not None:
 					exit_NaCl(pair.key(), class_name + " member " + key + " has already been set")
 
@@ -328,8 +328,6 @@ class Element(object):
 	def process_assignments(self):
 		# Loop through elements that are assignments
 		# Find assignments (f.ex. x.y: <value> or x.y.z: <value>) that refers to this Element
-
-		class_name = self.get_class_name()
 
 		# Handle assignments in the order of number of name parts to facilitate that you can have two assignments
 		# where one is creating a member with an object as a value, while the other adds another element (key and value)
