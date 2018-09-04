@@ -246,7 +246,7 @@ void register_plugin_nacl() {
 	Syslog::set_facility(std::make_unique<Syslog_udp>());
 	// Syslog (setting IP and port for the syslog messages)
 	Syslog::settings( {{address}}, {{port}} );
-	INFO("NaCl", "Setting up syslog. If sent over UDP, syslog messages are sent to IP %s and port %d", Syslog::ip().str().c_str(), Syslog::port());
+	INFO("NaCl", "Setting up syslog. If sent over UDP, syslog messages are sent to IP %s and port %d", Syslog::ip().to_string().c_str(), Syslog::port());
 	{{/syslogs}}
 
 	{{#filters}}
