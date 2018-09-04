@@ -234,6 +234,10 @@ class Element(object):
 		# Fill members dictionary if this is a top element with a value of type obj
 		self.members = {}
 
+	# Can be overridden in subclass
+	# Called from the handle_input function right before rendering, after the NaCl file has been processed
+	# Register the last data here that can not be registered before this (set has-values f.ex. like
+	# has_nats, has_vlans, has_load_balancers)
 	@staticmethod
 	def final_registration(nacl_state):
 		pass
@@ -246,13 +250,14 @@ class Element(object):
 	def get_class_name(self):
 		return self.__class__.__name__
 
-	# This is only implemented in the Vlan and Iface classes
+	# TODO - make handle_as_untyped the only option - then this method will be redundant: Vlan and Iface
+	# This is ONLY implemented in the Vlan and Iface classes
 	# Every other class does nothing here
 	# If not valid - throw exception
 	def validate_key(self, key):
 		pass
 
-	# Can be overrided by subclasses
+	# Can be overridden in subclass
 	# Iface is special here and should override the method
 	def add_member(self, key, value):
 		if self.members.get(key) is None:
@@ -260,13 +265,16 @@ class Element(object):
 		else:
 			raise NaCl_exception(self.get_class_name() + " member " + key + " has already been set")
 
-	# def add_value_name(self, value_ctx):
-	#	raise NaCl_exception()
+	# This is a special case, where we create a Typed element in NaCl (meaning the element is of a NaCl type,
+	# f.ex. Iface) and the value of the element is NOT an object ({}). Example: 'Iface eth0 dhcp'
+	# (type is Iface and value is dhcp)
 	def add_not_obj_value(self, value_ctx):
 		raise NaCl_exception(self.get_class_name() + " has to contain key value pairs")
 
-	# Or maybe really process_object (or other name...)
-	# Adding to self.members
+	# The first method that is called in every standard type_processor's process method
+	# (not in function, which is special and don't use the self.members dictionary)
+	# Adding to self.members (dictionary)
+	# Rename to process_object f.ex.
 	def process_ctx(self):
 		# Handle the Element's value ctx object: Fill self.members dictionary
 		# Note: Gateway has its own process_ctx method
@@ -281,6 +289,7 @@ class Element(object):
 			self.process_obj(self.members, value.obj())
 			return
 
+		# TODO: This approach should NOT be an option - Gateway, Vlan and Iface should be updated to handle_as_untyped
 		# Everything else but Load_balancer, Conntrack and Syslog (meaning Gateway, Vlan and Iface):
 		if value.obj() is not None:
 			for pair in value.obj().key_value_list().key_value_pair():
@@ -289,13 +298,15 @@ class Element(object):
 				pair_value 	= pair.value()
 
 				try:
+					# TODO: Make handle_as_untyped the only option - then this method will be redundant: Vlan and Iface
+					# are the only classes that (need to) call this method
 					# The old solution only tested this for vlan and iface:
 					# Default (if method is not implemented in subclass): Do nothing
 					self.validate_key(orig_key) # check if key exists in predefined_iface_keys f.ex.
 				except NaCl_exception as e:
 					exit_NaCl(pair.key(), e.value)
 
-				# TODO: Can be removed later? Checked in self.add_member-method
+				# TODO: Can probably be removed later. Checked in self.add_member-method
 				if self.members.get(key) is not None:
 					exit_NaCl(pair.key(), class_name + " member " + key + " has already been set")
 
@@ -317,8 +328,6 @@ class Element(object):
 	def process_assignments(self):
 		# Loop through elements that are assignments
 		# Find assignments (f.ex. x.y: <value> or x.y.z: <value>) that refers to this Element
-
-		class_name = self.get_class_name()
 
 		# Handle assignments in the order of number of name parts to facilitate that you can have two assignments
 		# where one is creating a member with an object as a value, while the other adds another element (key and value)
@@ -363,6 +372,8 @@ class Element(object):
 		self.process() # Make sure this element has been processed (self.res is not None)
 		return self.get_dictionary_val(self.members, key_list, error_ctx)
 
+	# Get a specific value from the given dictionary (at top level the dictionary input is normally self.members)
+	# based on the given key_list (could f.ex. be lb.clients.iface)
 	def get_dictionary_val(self, dictionary, key_list, error_ctx):
 		level_key = key_list[0]
 
@@ -384,14 +395,8 @@ class Element(object):
 				# We don't want to modify the input parameter (key_list), therefore key_list[1:] here:
 				return self.get_dictionary_val(new_dict, key_list[1:], error_ctx)
 
-	def validate_dictionary_key(self, key, parent_key, level, value_ctx):
-		exit_NaCl(value_ctx, "Internal error: The class " + self.get_class_name() + " needs to override the method " + \
-			"validate_dictionary_key")
-
-	def resolve_dictionary_value(self, dictionary, key, value_ctx):
-		exit_NaCl(value_ctx, "Internal error: The class " + self.get_class_name() + " needs to override the method " + \
-			"resolve_dictionary_value")
-
+	# Add a specific value (ctx) to the given dictionary (at top level the dictionary input is normally self.members)
+	# The key_list (f.ex. lb.clients.iface) indicates where in the dictionary the new value should be put
 	def add_dictionary_val(self, dictionary, key_list, value, level=1, parent_key=""):
 		level_key = key_list[0] if self.handle_as_untyped else key_list[0].lower()
 
@@ -403,16 +408,17 @@ class Element(object):
 				return self.process_obj(dictionary[level_key], value.obj(), (level + 1), level_key)
 			else:
 				if self.handle_as_untyped:
-					# self.validate_and_resolve_dictionary_val(dictionary, level_key, parent_key, level, value)
 					self.validate_dictionary_key(level_key, parent_key, level, value)
 					self.resolve_dictionary_value(dictionary, level_key, value)
 				else:
 					dictionary[level_key] = self.nacl_state.transpile_value(value)
 				return
 
+		# Error
 		if level_key not in dictionary:
 			exit_NaCl(value, "Trying to add to a member (" + level_key + ") that doesn't exist")
 
+		# Recursion
 		for key in dictionary:
 			if key == level_key:
 				# We don't want to modify the input parameter (key_list), therefore key_list[1:] here:
@@ -445,6 +451,16 @@ class Element(object):
 				dictionary[key] = {} # Creating new dictionary
 				# Loop through the obj and fill the new dictionary
 				self.process_obj(dictionary[key], pair.value().obj(), (level + 1), key)
+
+	# Should be overridden in subclass
+	def validate_dictionary_key(self, key, parent_key, level, value_ctx):
+		exit_NaCl(value_ctx, "Internal error: The class " + self.get_class_name() + " needs to override the method " + \
+			"validate_dictionary_key")
+
+	# Should be overridden in subclass
+	def resolve_dictionary_value(self, dictionary, key, value_ctx):
+		exit_NaCl(value_ctx, "Internal error: The class " + self.get_class_name() + " needs to override the method " + \
+			"resolve_dictionary_value")
 
 # < Element
 

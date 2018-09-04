@@ -127,11 +127,6 @@ class Conntrack(Typed):
 		# Add found value
 		dictionary[key] = self.nacl_state.transpile_value(value)
 
-	# Overriding
-	# def validate_and_resolve_dictionary_val(self, dictionary, level_key, parent_key, level, value):
-	#    self.validate_conntrack_key(level_key, parent_key, level, value)
-	#    self.resolve_conntrack_value(dictionary, level_key, value)
-
 	# Main processing method
 	def process(self):
 		if self.res is None:

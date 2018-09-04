@@ -302,11 +302,6 @@ class Load_balancer(Typed):
         # Add found value
         dictionary[key] = found_element_value
 
-    # Overriding
-    # def validate_and_resolve_dictionary_val(self, dictionary, level_key, parent_key, level, value):
-    #	self.validate_lb_key(level_key, parent_key, level, value)
-    #	self.resolve_lb_value(dictionary, level_key, value)
-
     def process(self):
         if self.res is None:
             # Then process
