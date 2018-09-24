@@ -33,7 +33,7 @@ IFACE_KEY_NETMASK 		= "netmask"
 IFACE_KEY_GATEWAY		= "gateway"
 IFACE_KEY_DNS 			= "dns"
 IFACE_KEY_INDEX 		= "index"
-IFACE_KEY_VLAN 			= "vlan"
+# IFACE_KEY_VLAN 		= "vlan" 	# Moved to shared.py
 IFACE_KEY_MASQUERADE 	= "masquerade"
 IFACE_KEY_CONFIG 		= "config"
 

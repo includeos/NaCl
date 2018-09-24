@@ -23,6 +23,9 @@ from shared import *
 
 TYPE_GATEWAY = "gateway"
 
+IFACE_IS_VLAN = "is_vlan"
+IFACE_IS_NOT_VLAN = "is_not_vlan"
+
 # ---- Gateway keys ----
 
 GATEWAY_KEY_SEND_TIME_EXCEEDED 	= "send_time_exceeded"
@@ -269,6 +272,7 @@ class Gateway(Typed):
         routes = []
         index = 0
         num_routes = len(self.members)
+        iface_type_in_gateway = "" # collect the iface type (whether the iface is a vlan or not) of all ifaces in the gateway routes
 
         for _, route in self.members.iteritems():
             if GATEWAY_KEY_NETMASK not in route or \
@@ -277,9 +281,23 @@ class Gateway(Typed):
                 exit_NaCl(route.get("ctx"), "A Gateway route must specify " + GATEWAY_KEY_IFACE + ", " + \
                     GATEWAY_KEY_NETMASK + " and either " + GATEWAY_KEY_NET + " or " + GATEWAY_KEY_HOST)
 
+            iface_name = route.get(GATEWAY_KEY_IFACE)
+
+            # Verify that all routes contain ifaces of the same type (either vlan or not vlan)
+            iface_element = self.nacl_state.elements.get(iface_name)
+            # Make sure the Iface element has been processed before checking the vlan member
+            iface_element.process()
+            if iface_element.members.get(IFACE_KEY_VLAN) is None:
+                if iface_type_in_gateway != "" and iface_type_in_gateway == IFACE_IS_VLAN:
+                    exit_NaCl(self.ctx, "All iface members in a Gateway's routes must be of the same type (either only Ifaces with the vlan member set or only regular Ifaces)")
+                iface_type_in_gateway = IFACE_IS_NOT_VLAN
+            else:
+                if iface_type_in_gateway != "" and iface_type_in_gateway == IFACE_IS_NOT_VLAN:
+                    exit_NaCl(self.ctx, "All iface members in a Gateway's routes must be of the same type (either only Ifaces with the vlan member set or only regular Ifaces)")
+                iface_type_in_gateway = IFACE_IS_VLAN
+
             # Add iface_name to ip_forward_ifaces pystache list if it is not in the
             # list already
-            iface_name = route.get(GATEWAY_KEY_IFACE)
             if iface_name is not None and not self.nacl_state.exists_in_pystache_list(TEMPLATE_KEY_IP_FORWARD_IFACES, TEMPLATE_KEY_IFACE, iface_name):
                 self.nacl_state.append_to_pystache_data_list(TEMPLATE_KEY_IP_FORWARD_IFACES, {
                     TEMPLATE_KEY_IFACE: iface_name
