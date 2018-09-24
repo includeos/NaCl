@@ -67,10 +67,8 @@ return {nullptr, Filter_verdict_type::DROP};
 void register_plugin_nacl() {
 	INFO("NaCl", "Registering NaCl plugin");
 
-	// vlan vlan1
-	Super_stack::inet().create(VLAN_manager::get(0).add(hw::Devices::nic(0), 13), 0, 13);
-	auto& vlan1 = Super_stack::get(0, 13);
-	vlan1.network_config(IP4::addr{20,20,20,10}, IP4::addr{255,255,255,0}, 0);
+	auto& eth0 = Super_stack::get(0);
+	eth0.network_config(IP4::addr{10,0,0,45}, IP4::addr{255,255,255,0}, IP4::addr{10,0,0,1}, IP4::addr{8,8,8,8});
 	auto& eth1 = Super_stack::get(1);
 	eth1.negotiate_dhcp(10.0, [&eth1] (bool timedout) {
 		if (timedout) {
@@ -79,15 +77,17 @@ void register_plugin_nacl() {
 		}
 		INFO("NaCl plugin interface eth1", "IP address updated: %s", eth1.ip_addr().str().c_str());
 	});
-	auto& eth0 = Super_stack::get(0);
-	eth0.network_config(IP4::addr{10,0,0,45}, IP4::addr{255,255,255,0}, IP4::addr{10,0,0,1}, IP4::addr{8,8,8,8});
+	// vlan vlan1
+	Super_stack::inet().create(VLAN_manager::get(0).add(hw::Devices::nic(0), 13), 0, 13);
+	auto& vlan1 = Super_stack::get(0, 13);
+	vlan1.network_config(IP4::addr{20,20,20,10}, IP4::addr{255,255,255,0}, 0);
 
 	custom_made_classes_from_nacl::Another_Filter another_filter;
 	custom_made_classes_from_nacl::Eth0_Filter eth0_filter;
 
-	eth1.ip_obj().input_chain().chain.push_back(another_filter);
-
 	eth0.ip_obj().prerouting_chain().chain.push_back(eth0_filter);
+
+	eth1.ip_obj().input_chain().chain.push_back(another_filter);
 
 	// Router
 

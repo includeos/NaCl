@@ -570,8 +570,6 @@ void register_plugin_nacl() {
 	eth1.network_config(IP4::addr{10,0,0,80}, IP4::addr{255,255,255,0}, IP4::addr{10,0,0,1});
 	auto& eth0 = Super_stack::get(4);
 	eth0.network_config(IP4::addr{10,0,0,40}, IP4::addr{255,255,255,0}, IP4::addr{10,0,0,1}, IP4::addr{8,8,8,8});
-	auto& eth_test_2 = Super_stack::get(1);
-	eth_test_2.network_config(IP4::addr{10,0,0,99}, IP4::addr{255,255,255,0}, IP4::addr{10,0,0,1}, IP4::addr{10,10,10,10});
 	auto& eth2 = Super_stack::get(6);
 	eth2.negotiate_dhcp(10.0, [&eth2] (bool timedout) {
 		if (timedout) {
@@ -580,6 +578,8 @@ void register_plugin_nacl() {
 		}
 		INFO("NaCl plugin interface eth2", "IP address updated: %s", eth2.ip_addr().str().c_str());
 	});
+	auto& eth_test_2 = Super_stack::get(1);
+	eth_test_2.network_config(IP4::addr{10,0,0,99}, IP4::addr{255,255,255,0}, IP4::addr{10,0,0,1}, IP4::addr{10,10,10,10});
 	auto& eth_test_1 = Super_stack::get(0);
 	eth_test_1.network_config(IP4::addr{10,0,0,130}, IP4::addr{255,255,255,0}, IP4::addr{10,0,0,1}, IP4::addr{9,9,9,9});
 
