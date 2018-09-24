@@ -17,8 +17,6 @@
 from __future__ import absolute_import
 # To avoid: <...>/NaCl/type_processors/gateway.py:1: RuntimeWarning: Parent module '<...>/NaCl/type_processors' not found while handling absolute import
 
-# TODO later: Own mustache file as well for Gateway - then import into main mustache file if possible
-
 from NaCl import exit_NaCl, Typed, CPP, DOT, BASE_TYPE_FUNCTION
 from shared import *
 # INCLUDEOS_ROUTER_OBJ_NAME, TRUE, FALSE
