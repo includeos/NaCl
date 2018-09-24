@@ -8,7 +8,6 @@ Iface eth0 {
 	input: 			my_filter,
 	output: 		my_filter,
 	postrouting:	my_filter,
-	vlan: 			my_vlan,
 	masquerade: 	true
 }
 
@@ -25,21 +24,29 @@ eth1.prerouting: 	my_filter
 eth1.input: 		my_filter
 eth1.output: 		my_filter
 eth1.postrouting: 	my_filter
-eth1.vlan:			[ my_vlan, my_other_vlan ]
 eth1.masquerade: 	true
 
 Filter::IP my_filter {
 	accept
 }
 
-Vlan my_vlan {
-	index: 10,
+Iface my_vlan0 {
+	index: 0,
+	vlan: 10,
 	address: 10.10.10.10,
 	netmask: 255.255.255.0
 }
 
-Vlan my_other_vlan {
-	index: 20,
+Iface my_vlan1 {
+	index: 1,
+	vlan: 10,
+	address: 10.10.10.10,
+	netmask: 255.255.255.0
+}
+
+Iface my_other_vlan {
+	index: 1,
+	vlan: 20,
 	address: 10.20.10.10,
 	netmask: 255.255.255.0
 }

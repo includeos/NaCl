@@ -21,7 +21,8 @@
 #include <net/super_stack.hpp>
 #include <net/ip4/cidr.hpp>
 #include <net/nat/napt.hpp>
-#include <net/vlan>
+#include <net/vlan_manager.hpp>
+#include <hw/devices.hpp>
 #include <syslogd>
 
 using namespace net;
@@ -55,6 +56,18 @@ return {std::move(pckt), Filter_verdict_type::ACCEPT};
 void register_plugin_nacl() {
 	INFO("NaCl", "Registering NaCl plugin");
 
+	// vlan my_other_vlan
+	Super_stack::inet().create(VLAN_manager::get(1).add(hw::Devices::nic(1), 20), 1, 20);
+	auto& my_other_vlan = Super_stack::get(1, 20);
+	my_other_vlan.network_config(IP4::addr{10,20,10,10}, IP4::addr{255,255,255,0}, 0);
+	// vlan my_vlan0
+	Super_stack::inet().create(VLAN_manager::get(0).add(hw::Devices::nic(0), 10), 0, 10);
+	auto& my_vlan0 = Super_stack::get(0, 10);
+	my_vlan0.network_config(IP4::addr{10,10,10,10}, IP4::addr{255,255,255,0}, 0);
+	// vlan my_vlan1
+	Super_stack::inet().create(VLAN_manager::get(1).add(hw::Devices::nic(1), 10), 1, 10);
+	auto& my_vlan1 = Super_stack::get(1, 10);
+	my_vlan1.network_config(IP4::addr{10,10,10,10}, IP4::addr{255,255,255,0}, 0);
 	auto& eth1 = Super_stack::get(1);
 	eth1.negotiate_dhcp(10.0, [&eth1] (bool timedout) {
 		if (timedout) {
@@ -64,19 +77,6 @@ void register_plugin_nacl() {
 	});
 	auto& eth0 = Super_stack::get(0);
 	eth0.network_config(IP4::addr{10,0,0,45}, IP4::addr{255,255,255,0}, IP4::addr{10,0,0,1}, IP4::addr{8,8,8,8});
-
-	// For each iface:
-	auto& eth1_nic = eth1.nic();
-	auto& eth1_manager = VLAN_manager::get(1);
-	// For each vlan connected to this iface:
-	Super_stack::inet().create(eth1_manager.add(eth1_nic, 10), 1, 10).network_config(IP4::addr{10,10,10,10}, IP4::addr{255,255,255,0}, IP4::addr{10,0,0,1});
-	Super_stack::inet().create(eth1_manager.add(eth1_nic, 20), 1, 20).network_config(IP4::addr{10,20,10,10}, IP4::addr{255,255,255,0}, IP4::addr{10,0,0,1});
-
-	// For each iface:
-	auto& eth0_nic = eth0.nic();
-	auto& eth0_manager = VLAN_manager::get(0);
-	// For each vlan connected to this iface:
-	Super_stack::inet().create(eth0_manager.add(eth0_nic, 10), 0, 10).network_config(IP4::addr{10,10,10,10}, IP4::addr{255,255,255,0}, IP4::addr{10,0,0,1});
 
 	custom_made_classes_from_nacl::My_Filter my_filter;
 

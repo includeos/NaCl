@@ -209,11 +209,11 @@ void register_plugin_nacl() {
 	INFO("NaCl", "Registering NaCl plugin");
 
 	{{#ifaces}}
-	// {{name}}
 	{{^is_vlan}}
 	auto& {{name}} = Super_stack::get({{{index}}});
 	{{/is_vlan}}
 	{{#is_vlan}}
+	// vlan {{name}}
 	Super_stack::inet().create(VLAN_manager::get({{{index}}}).add(hw::Devices::nic({{{index}}}), {{{vlan}}}), {{{index}}}, {{{vlan}}});
 	auto& {{name}} = Super_stack::get({{{index}}}, {{{vlan}}});
 	{{/is_vlan}}
