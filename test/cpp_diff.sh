@@ -26,6 +26,7 @@ declare -a examples=(
 	"syslog"
 	"timers"
 	"vlan_routing"
+	"vlan_with_mac"
 	"vlan"
 )
 
