@@ -1,34 +1,34 @@
 Iface eth0 {
-	index: 0,
-	address: 10.0.0.45,
-	netmask: 255.255.255.0,
-	gateway: 10.0.0.1,
+    index: 0,
+    address: 10.0.0.45,
+    netmask: 255.255.255.0,
+    gateway: 10.0.0.1,
     send_queue_limit: 1000,
     buffer_limit: 1000
 }
 
 Iface eth1 {
-	index: 1,
-	config: dhcp-with-fallback,
+    index: 1,
+    config: dhcp-with-fallback,
     address: 10.0.0.55,
-	netmask: 255.255.255.0,
-	gateway: 10.0.0.1,
+    netmask: 255.255.255.0,
+    gateway: 10.0.0.1,
     send_queue_limit: 1000
 }
 
 Iface eth2 {
-	index: 2,
+    index: 2,
     address: 10.0.0.65,
-	netmask: 255.255.255.0,
-	gateway: 10.0.0.1,
+    netmask: 255.255.255.0,
+    gateway: 10.0.0.1,
     buffer_limit: 1000
 }
 
 Iface eth3 {
-	index: 3,
+    index: 3,
     address: 10.0.0.75,
-	netmask: 255.255.255.0,
-	gateway: 10.0.0.1
+    netmask: 255.255.255.0,
+    gateway: 10.0.0.1
 }
 
 Iface vlan1 {
