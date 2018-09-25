@@ -28,6 +28,7 @@ TEMPLATE_KEY_TITLE 			= "title"
 
 # Constants closely connected to the Iface type_processor:
 TYPE_IFACE = "iface"    # from type_processors.iface import TYPE_IFACE
+IFACE_KEY_VLAN = "vlan" # from type_processors.iface import IFACE_KEY_VLAN
 TEMPLATE_KEY_IFACE_PUSHES = "pushes_iface"
 TEMPLATE_KEY_ENABLE_CT_IFACES = "enable_ct_ifaces"
 

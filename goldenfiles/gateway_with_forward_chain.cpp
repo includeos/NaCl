@@ -90,10 +90,10 @@ return {std::move(pckt), Filter_verdict_type::ACCEPT};
 void register_plugin_nacl() {
 	INFO("NaCl", "Registering NaCl plugin");
 
-	auto& eth1 = Super_stack::get(1);
-	eth1.network_config(IP4::addr{10,10,10,50}, IP4::addr{255,255,255,0}, 0);
 	auto& eth0 = Super_stack::get(0);
 	eth0.network_config(IP4::addr{10,0,0,45}, IP4::addr{255,255,255,0}, 0);
+	auto& eth1 = Super_stack::get(1);
+	eth1.network_config(IP4::addr{10,10,10,50}, IP4::addr{255,255,255,0}, 0);
 
 	custom_made_classes_from_nacl::Gw_Second_Forwarding_Filter gw_second_forwarding_filter;
 	custom_made_classes_from_nacl::Gw_First_Forwarding_Filter gw_first_forwarding_filter;

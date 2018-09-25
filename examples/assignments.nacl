@@ -8,8 +8,6 @@ Iface eth0 {
 	index: 0
 }
 
-eth0.vlan: vlan1
-
 eth0.address: 10.0.0.45
 eth0.gateway: 10.0.0.1
 eth0.prerouting: eth0_filter
@@ -51,8 +49,9 @@ Gateway gw {
 	}
 }
 
-Vlan vlan1 {
-	index: 13
+Iface vlan1 {
+	index: 0,
+	vlan: 13
 }
 
 Conntrack my_ct {

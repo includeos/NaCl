@@ -20,7 +20,8 @@
 #include <net/inet>
 #include <net/super_stack.hpp>
 #include <net/ip4/cidr.hpp>
-#include <net/vlan>
+#include <net/vlan_manager.hpp>
+#include <hw/devices.hpp>
 #include <syslogd>
 
 using namespace net;
@@ -36,50 +37,55 @@ namespace nacl {
 void register_plugin_nacl() {
 	INFO("NaCl", "Registering NaCl plugin");
 
-	auto& eth4 = Super_stack::get(4);
-	eth4.network_config(IP4::addr{10,200,100,100}, IP4::addr{255,255,255,0}, IP4::addr{100,200,100,1});
+	// vlan vlan2_eth4
+	Super_stack::inet().create(VLAN_manager::get(4).add(hw::Devices::nic(4), 63), 4, 63);
+	auto& vlan2_eth4 = Super_stack::get(4, 63);
+	vlan2_eth4.network_config(IP4::addr{10,200,100,3}, IP4::addr{255,255,255,0}, 0);
+	// vlan vlan2_eth3
+	Super_stack::inet().create(VLAN_manager::get(3).add(hw::Devices::nic(3), 23), 3, 23);
+	auto& vlan2_eth3 = Super_stack::get(3, 23);
+	vlan2_eth3.network_config(IP4::addr{10,100,0,20}, IP4::addr{255,255,255,0}, 0);
+	// vlan vlan2_eth2
+	Super_stack::inet().create(VLAN_manager::get(2).add(hw::Devices::nic(2), 23), 2, 23);
+	auto& vlan2_eth2 = Super_stack::get(2, 23);
+	vlan2_eth2.network_config(IP4::addr{10,100,0,20}, IP4::addr{255,255,255,0}, 0);
+	// vlan vlan1_eth4
+	Super_stack::inet().create(VLAN_manager::get(4).add(hw::Devices::nic(4), 62), 4, 62);
+	auto& vlan1_eth4 = Super_stack::get(4, 62);
+	vlan1_eth4.network_config(IP4::addr{10,200,100,2}, IP4::addr{255,255,255,0}, 0);
 	auto& eth3 = Super_stack::get(3);
 	eth3.network_config(IP4::addr{10,100,100,100}, IP4::addr{255,255,255,0}, IP4::addr{100,100,100,1});
+	// vlan no1
+	Super_stack::inet().create(VLAN_manager::get(0).add(hw::Devices::nic(0), 2), 0, 2);
+	auto& no1 = Super_stack::get(0, 2);
+	no1.network_config(IP4::addr{10,60,0,10}, IP4::addr{255,255,255,0}, 0);
+	// vlan vlan1_eth2
+	Super_stack::inet().create(VLAN_manager::get(2).add(hw::Devices::nic(2), 22), 2, 22);
+	auto& vlan1_eth2 = Super_stack::get(2, 22);
+	vlan1_eth2.network_config(IP4::addr{10,100,0,10}, IP4::addr{255,255,255,0}, 0);
+	// vlan no2
+	Super_stack::inet().create(VLAN_manager::get(1).add(hw::Devices::nic(1), 13), 1, 13);
+	auto& no2 = Super_stack::get(1, 13);
+	no2.network_config(IP4::addr{10,50,0,20}, IP4::addr{255,255,255,0}, 0);
+	// vlan no3
+	Super_stack::inet().create(VLAN_manager::get(1).add(hw::Devices::nic(1), 24), 1, 24);
+	auto& no3 = Super_stack::get(1, 24);
+	no3.network_config(IP4::addr{10,60,0,20}, IP4::addr{255,255,255,0}, 0);
+	// vlan vlan1_eth3
+	Super_stack::inet().create(VLAN_manager::get(3).add(hw::Devices::nic(3), 24), 3, 24);
+	auto& vlan1_eth3 = Super_stack::get(3, 24);
+	vlan1_eth3.network_config(IP4::addr{10,100,0,10}, IP4::addr{255,255,255,0}, 0);
+	auto& eth4 = Super_stack::get(4);
+	eth4.network_config(IP4::addr{10,200,100,100}, IP4::addr{255,255,255,0}, IP4::addr{100,200,100,1});
+	// vlan no0
+	Super_stack::inet().create(VLAN_manager::get(0).add(hw::Devices::nic(0), 5), 0, 5);
+	auto& no0 = Super_stack::get(0, 5);
+	no0.network_config(IP4::addr{10,50,0,10}, IP4::addr{255,255,255,0}, 0);
 	auto& eth2 = Super_stack::get(2);
 	eth2.network_config(IP4::addr{10,10,10,50}, IP4::addr{255,255,255,0}, IP4::addr{10,10,10,1});
 	auto& eth1 = Super_stack::get(1);
 	eth1.network_config(IP4::addr{10,0,10,45}, IP4::addr{255,255,255,0}, IP4::addr{10,0,10,1});
 	auto& eth0 = Super_stack::get(0);
 	eth0.network_config(IP4::addr{10,0,0,30}, IP4::addr{255,255,255,0}, IP4::addr{10,0,0,1});
-
-	// For each iface:
-	auto& eth4_nic = eth4.nic();
-	auto& eth4_manager = VLAN_manager::get(4);
-	// For each vlan connected to this iface:
-	Super_stack::inet().create(eth4_manager.add(eth4_nic, 62), 4, 62).network_config(IP4::addr{10,200,100,2}, IP4::addr{255,255,255,0}, IP4::addr{100,200,100,1});
-	Super_stack::inet().create(eth4_manager.add(eth4_nic, 63), 4, 63).network_config(IP4::addr{10,200,100,3}, IP4::addr{255,255,255,0}, IP4::addr{100,200,100,1});
-
-	// For each iface:
-	auto& eth3_nic = eth3.nic();
-	auto& eth3_manager = VLAN_manager::get(3);
-	// For each vlan connected to this iface:
-	Super_stack::inet().create(eth3_manager.add(eth3_nic, 22), 3, 22).network_config(IP4::addr{10,100,0,10}, IP4::addr{255,255,255,0}, IP4::addr{100,100,100,1});
-	Super_stack::inet().create(eth3_manager.add(eth3_nic, 23), 3, 23).network_config(IP4::addr{10,100,0,20}, IP4::addr{255,255,255,0}, IP4::addr{100,100,100,1});
-
-	// For each iface:
-	auto& eth2_nic = eth2.nic();
-	auto& eth2_manager = VLAN_manager::get(2);
-	// For each vlan connected to this iface:
-	Super_stack::inet().create(eth2_manager.add(eth2_nic, 22), 2, 22).network_config(IP4::addr{10,100,0,10}, IP4::addr{255,255,255,0}, IP4::addr{10,10,10,1});
-	Super_stack::inet().create(eth2_manager.add(eth2_nic, 23), 2, 23).network_config(IP4::addr{10,100,0,20}, IP4::addr{255,255,255,0}, IP4::addr{10,10,10,1});
-
-	// For each iface:
-	auto& eth1_nic = eth1.nic();
-	auto& eth1_manager = VLAN_manager::get(1);
-	// For each vlan connected to this iface:
-	Super_stack::inet().create(eth1_manager.add(eth1_nic, 13), 1, 13).network_config(IP4::addr{10,50,0,20}, IP4::addr{255,255,255,0}, IP4::addr{10,0,10,1});
-	Super_stack::inet().create(eth1_manager.add(eth1_nic, 24), 1, 24).network_config(IP4::addr{10,60,0,20}, IP4::addr{255,255,255,0}, IP4::addr{10,0,10,1});
-
-	// For each iface:
-	auto& eth0_nic = eth0.nic();
-	auto& eth0_manager = VLAN_manager::get(0);
-	// For each vlan connected to this iface:
-	Super_stack::inet().create(eth0_manager.add(eth0_nic, 5), 0, 5).network_config(IP4::addr{10,50,0,10}, IP4::addr{255,255,255,0}, IP4::addr{10,0,0,1});
-	Super_stack::inet().create(eth0_manager.add(eth0_nic, 2), 0, 2).network_config(IP4::addr{10,60,0,10}, IP4::addr{255,255,255,0}, IP4::addr{10,0,0,1});
 
 }
