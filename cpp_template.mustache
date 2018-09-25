@@ -214,8 +214,15 @@ void register_plugin_nacl() {
 	{{/is_vlan}}
 	{{#is_vlan}}
 	// vlan {{name}}
+	{{#vlan_index_is_mac_string}}
+	int index_{{name}} = hw::Devices::nic_index(MAC::Addr({{{index}}}));
+	Super_stack::inet().create(VLAN_manager::get(index_{{name}}).add(hw::Devices::nic(index_{{name}}), {{{vlan}}}), index_{{name}}, {{{vlan}}});
+	auto& {{name}} = Super_stack::get(index_{{name}}, {{{vlan}}});
+	{{/vlan_index_is_mac_string}}
+	{{^vlan_index_is_mac_string}}
 	Super_stack::inet().create(VLAN_manager::get({{{index}}}).add(hw::Devices::nic({{{index}}}), {{{vlan}}}), {{{index}}}, {{{vlan}}});
 	auto& {{name}} = Super_stack::get({{{index}}}, {{{vlan}}});
+	{{/vlan_index_is_mac_string}}
 	{{/is_vlan}}
 	{{#config_is_static}}
 	{{name}}.network_config({{address}}, {{netmask}}{{#gateway}}, {{.}}{{/gateway}}{{^gateway}}, 0{{/gateway}}{{#dns}}, {{.}}{{/dns}});
