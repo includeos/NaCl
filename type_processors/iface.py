@@ -36,6 +36,8 @@ IFACE_KEY_INDEX 		= "index"
 # IFACE_KEY_VLAN 		= "vlan" 	# Moved to shared.py
 IFACE_KEY_MASQUERADE 	= "masquerade"
 IFACE_KEY_CONFIG 		= "config"
+IFACE_KEY_SEND_QUEUE_LIMIT = "send_queue_limit"
+IFACE_KEY_BUFFER_LIMIT = "buffer_limit"
 
 IFACE_KEY_PREROUTING 	= "prerouting"
 IFACE_KEY_INPUT 		= "input"
@@ -57,7 +59,9 @@ PREDEFINED_IFACE_KEYS = [
 	IFACE_KEY_INDEX,
 	IFACE_KEY_VLAN,
 	IFACE_KEY_MASQUERADE,
-	IFACE_KEY_CONFIG
+	IFACE_KEY_CONFIG,
+	IFACE_KEY_SEND_QUEUE_LIMIT,
+	IFACE_KEY_BUFFER_LIMIT
 ]
 PREDEFINED_IFACE_KEYS.extend(CHAIN_NAMES)
 
@@ -95,6 +99,8 @@ TEMPLATE_KEY_NETMASK 					= "netmask"
 TEMPLATE_KEY_GATEWAY 					= "gateway"
 TEMPLATE_KEY_DNS 						= "dns"
 TEMPLATE_KEY_VLAN 						= "vlan"
+TEMPLATE_KEY_SEND_QUEUE_LIMIT 			= "send_queue_limit"
+TEMPLATE_KEY_BUFFER_LIMIT 				= "buffer_limit"
 
 TEMPLATE_KEY_IFACE_INDEX 				= "iface_index"
 
@@ -300,7 +306,9 @@ class Iface(Typed):
 			TEMPLATE_KEY_ADDRESS: 	self.members.get(IFACE_KEY_ADDRESS),
 			TEMPLATE_KEY_NETMASK:	self.members.get(IFACE_KEY_NETMASK),
 			TEMPLATE_KEY_GATEWAY: 	self.members.get(IFACE_KEY_GATEWAY),
-			TEMPLATE_KEY_DNS: 		self.members.get(IFACE_KEY_DNS)
+			TEMPLATE_KEY_DNS: 		self.members.get(IFACE_KEY_DNS),
+			TEMPLATE_KEY_SEND_QUEUE_LIMIT: self.members.get(IFACE_KEY_SEND_QUEUE_LIMIT),
+			TEMPLATE_KEY_BUFFER_LIMIT: self.members.get(IFACE_KEY_BUFFER_LIMIT)
 		})
 
 	def enable_ct(self):
