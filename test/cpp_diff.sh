@@ -14,6 +14,7 @@ declare -a examples=(
 	"functions"
 	"gateway_with_forward_chain"
 	"gateway_with_send_time_exceeded"
+	"iface_with_limits"
 	"iface"
 	"lb"
 	"lb_assignment_functionality"

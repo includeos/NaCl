@@ -237,6 +237,12 @@ void register_plugin_nacl() {
 		}
 	});
 	{{/config_is_dhcp_fallback}}
+	{{#send_queue_limit}}
+	{{name}}.nic().set_sendq_limit({{{send_queue_limit}}});
+	{{/send_queue_limit}}
+	{{#buffer_limit}}
+	{{name}}.nic().set_buffer_limit({{{buffer_limit}}});
+	{{/buffer_limit}}
 	{{/ifaces}}
 	{{#syslogs}}
 
