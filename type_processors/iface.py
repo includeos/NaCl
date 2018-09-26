@@ -88,6 +88,7 @@ TEMPLATE_KEY_HAS_AUTO_NATTING_IFACES 	= "has_auto_natting_ifaces"
 TEMPLATE_KEY_HAS_VLANS 					= "has_vlans"
 TEMPLATE_KEY_HAS_MASQUERADES 			= "has_masquerades"
 TEMPLATE_KEY_IS_VLAN 					= "is_vlan"
+TEMPLATE_KEY_VLAN_INDEX_IS_MAC_STRING 	= "vlan_index_is_mac_string"
 
 TEMPLATE_KEY_CONFIG_IS_DHCP 			= "config_is_dhcp"
 TEMPLATE_KEY_CONFIG_IS_DHCP_FALLBACK 	= "config_is_dhcp_fallback"
@@ -105,6 +106,15 @@ TEMPLATE_KEY_BUFFER_LIMIT 				= "buffer_limit"
 TEMPLATE_KEY_IFACE_INDEX 				= "iface_index"
 
 TEMPLATE_KEY_VLAN_IFACES 				= "vlan_ifaces"
+
+# Helper function
+
+def is_int(input):
+	try:
+		int(input)
+	except ValueError:
+		return False
+	return True
 
 # -------------------- Iface --------------------
 
@@ -280,11 +290,18 @@ class Iface(Typed):
 
 		# Is this Iface a vlan or not
 		is_vlan = False
+		vlan_index_is_mac_string = False
 		if self.members.get(IFACE_KEY_VLAN) is not None:
 			is_vlan = True
 
+			# Set vlan_index_is_mac_string to True if the index is a string
+			# and not a number (but only necessary for an Iface that is a vlan)
+			index = self.members.get(IFACE_KEY_INDEX)
+			if not is_int(index):
+				vlan_index_is_mac_string = True
+
 			# Also add this Iface to the pystache data list TEMPLATE_KEY_VLAN_IFACES to be able to find
-			# out (in final_registration) whether to #include <net/vlan> or not in mustache
+			# out (in final_registration) whether to #include relevant headers or not in mustache
 			self.nacl_state.append_to_pystache_data_list(TEMPLATE_KEY_VLAN_IFACES, {
 				TEMPLATE_KEY_IFACE: self.name,
 			})
@@ -295,6 +312,7 @@ class Iface(Typed):
 		self.nacl_state.append_to_pystache_data_list(TEMPLATE_KEY_IFACES, {
 			TEMPLATE_KEY_NAME: 		self.name,
 			TEMPLATE_KEY_TITLE: 	self.name.title(),
+			TEMPLATE_KEY_VLAN_INDEX_IS_MAC_STRING: vlan_index_is_mac_string,
 			TEMPLATE_KEY_INDEX: 	self.members.get(IFACE_KEY_INDEX),
 			TEMPLATE_KEY_IS_VLAN: 	is_vlan,
 			TEMPLATE_KEY_VLAN: 		self.members.get(IFACE_KEY_VLAN),

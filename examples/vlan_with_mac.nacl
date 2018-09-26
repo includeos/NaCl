@@ -1,0 +1,44 @@
+Iface eth0 {
+    index: "c0:01:0a:00:00:1c",
+    address: 10.0.0.40,
+    netmask: 255.255.255.0
+}
+
+Iface eth1 {
+    index: "c0:01:0a:00:00:2d",
+    address: 10.0.0.41,
+    netmask: 255.255.255.0
+}
+
+Iface vlan1 {
+    index: "c0:01:0a:00:00:2d", // eth1
+    vlan: 2,
+    address: 10.100.0.50,
+    netmask: 255.255.255.0
+}
+
+Iface vlan2 {
+    index: "c0:01:0a:00:00:3e",
+    vlan: 2,
+    address: 10.100.1.50,
+    netmask: 255.255.255.0
+}
+
+Gateway gw [
+    {
+        net: 10.100.0.0,
+        netmask: 255.255.255.0,
+        iface: vlan1
+    },
+    {
+        net: 10.100.1.0,
+        netmask: 255.255.255.0,
+        iface: vlan2
+    },
+    {
+        net: 0.0.0.0,
+        netmask: 0.0.0.0,
+        iface: vlan1,
+        nexthop: 10.100.0.1
+    }
+]
