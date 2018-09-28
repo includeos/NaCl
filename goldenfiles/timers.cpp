@@ -97,17 +97,15 @@ void print_timers_data() {
 
 // ---- Timer Memory ----
 
-static void print_heap_info() {
-	static intptr_t last = 0;
-	// show information on heap status, to discover leaks etc.
-	auto heap_begin = OS::heap_begin();
-	auto heap_end   = OS::heap_end();
-	auto heap_usage = OS::heap_usage();
-	intptr_t heap_size = heap_end - heap_begin;
-	auto diff = heap_size - last;
-	INFO("NaCl Timer Memory", "Heap size %lu Kb Diff %ld (%ld Kb) Usage %lu kB",
-		heap_size / 1024, diff, diff / 1024, heap_usage / 1024);
-	last = (int32_t) heap_size;
+static void print_mem_usage() {
+	using namespace util;
+	auto mem_max = OS::memory_end();
+	auto total_memuse = OS::total_memuse();
+	auto heap_alloc = OS::heap_usage();
+
+	INFO("NaCl Timer Memory", "Total memory: %s, in use %0.1f%% (%s heap allocated)",
+		Byte_r(mem_max).to_string().c_str(),
+		(double(total_memuse) / mem_max) * 100, Byte_r(heap_alloc).to_string().c_str());
 }
 
 //< Timer Memory
@@ -139,7 +137,7 @@ void register_plugin_nacl() {
 	});
 
 	Timers::periodic(1s, 45s, [](auto) {
-		print_heap_info();
+		print_mem_usage();
 		print_cpu_usage();
 	});
 
