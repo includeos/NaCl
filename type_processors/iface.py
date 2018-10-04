@@ -200,18 +200,28 @@ class Iface(Typed):
 		if config is not None and (config.value_name() is None or config.value_name().getText().lower() not in PREDEFINED_CONFIG_TYPES):
 			exit_NaCl(config, "Invalid config value " + config.getText())
 
-		if (config is None or config.value_name().getText().lower() != DHCP_CONFIG) and \
-			(self.members.get(IFACE_KEY_ADDRESS) is None or \
+		vlan = self.members.get(IFACE_KEY_VLAN)
+		# If this is a vlan, require a network configuration:
+		if vlan is not None:
+			if (config is None or config.value_name().getText().lower() != DHCP_CONFIG) and \
+				(self.members.get(IFACE_KEY_ADDRESS) is None or \
 				self.members.get(IFACE_KEY_NETMASK) is None):
-			exit_NaCl(self.ctx.value(), "The members " + IFACE_KEY_ADDRESS + " and " + IFACE_KEY_NETMASK + \
-				" must be set for every Iface if the Iface configuration hasn't been set to " + DHCP_CONFIG)
-		elif config is not None and config.value_name().getText().lower() == DHCP_CONFIG and \
-			(self.members.get(IFACE_KEY_ADDRESS) is not None or \
+				exit_NaCl(self.ctx.value(), "The members " + IFACE_KEY_ADDRESS + " and " + IFACE_KEY_NETMASK + \
+					" must be set for every Iface if the Iface configuration hasn't been set to " + DHCP_CONFIG)
+			elif config is not None and config.value_name().getText().lower() == DHCP_CONFIG and \
+				(self.members.get(IFACE_KEY_ADDRESS) is not None or \
 				self.members.get(IFACE_KEY_NETMASK) is not None or \
 				self.members.get(IFACE_KEY_GATEWAY) is not None or \
 				self.members.get(IFACE_KEY_DNS) is not None):
-			exit_NaCl(config.value_name(), "An Iface with config set to dhcp should not specify " + IFACE_KEY_ADDRESS + \
-				", " + IFACE_KEY_NETMASK + ", " + IFACE_KEY_GATEWAY + " or " + IFACE_KEY_DNS)
+				exit_NaCl(config.value_name(), "An Iface with config set to dhcp should not specify " + IFACE_KEY_ADDRESS + \
+					", " + IFACE_KEY_NETMASK + ", " + IFACE_KEY_GATEWAY + " or " + IFACE_KEY_DNS)
+
+			# It is not allowed (yet) to set buffer_limit or send_queue_limit on a vlan
+			if self.members.get(IFACE_KEY_BUFFER_LIMIT) is not None or self.members.get(IFACE_KEY_SEND_QUEUE_LIMIT) is not None:
+				exit_NaCl(self.ctx.value(), "The members send_queue_limit and buffer_limit can not be set on an Iface that is a vlan")
+
+		# Else we allow an Iface (not vlan) to be configured without network
+		# (f.ex. if the user wants to set buffer_limit or send_queue_limit on an Iface without having to configure it)
 
 	def process_members(self):
 		# Loop through self.members and transpile the values

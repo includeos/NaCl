@@ -41,8 +41,6 @@ void register_plugin_nacl() {
 	Super_stack::inet().create(VLAN_manager::get(4).add(hw::Devices::nic(4), 1), 4, 1);
 	auto& vlan1 = Super_stack::get(4, 1);
 	vlan1.network_config(IP4::addr{10,0,10,10}, IP4::addr{255,255,255,0}, 0);
-	vlan1.nic().set_sendq_limit(1000);
-	vlan1.nic().set_buffer_limit(1000);
 	auto& eth3 = Super_stack::get(3);
 	eth3.network_config(IP4::addr{10,0,0,75}, IP4::addr{255,255,255,0}, IP4::addr{10,0,0,1});
 	auto& eth2 = Super_stack::get(2);
