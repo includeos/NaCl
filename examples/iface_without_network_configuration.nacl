@@ -1,0 +1,19 @@
+Iface eth0 {
+    index: 0,
+    buffer_limit: 100,
+    send_queue_limit: 100
+}
+
+Iface vlan1 {
+    index: 0,
+    vlan: 10,
+    address: 10.0.0.45,
+    netmask: 255.255.255.0
+}
+
+Iface vlan2 {
+    index: 0,
+    vlan: 11,
+    address: 10.0.0.46,
+    netmask: 255.255.255.0
+}
