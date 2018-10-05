@@ -223,7 +223,9 @@ void register_plugin_nacl() {
 	{{/vlan_index_is_mac_string}}
 	{{/is_vlan}}
 	{{#config_is_static}}
+	{{#address}}
 	{{name}}.network_config({{address}}, {{netmask}}{{#gateway}}, {{.}}{{/gateway}}{{^gateway}}, 0{{/gateway}}{{#dns}}, {{.}}{{/dns}});
+	{{/address}}
 	{{/config_is_static}}
 	{{#config_is_dhcp}}
 	{{name}}.negotiate_dhcp(10.0, [&{{name}}] (bool timedout) {

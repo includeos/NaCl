@@ -35,7 +35,5 @@ Iface vlan1 {
     index: 4,
     vlan: 1,
     address: 10.0.10.10,
-    netmask: 255.255.255.0,
-    send_queue_limit: 1000,
-    buffer_limit: 1000
+    netmask: 255.255.255.0
 }

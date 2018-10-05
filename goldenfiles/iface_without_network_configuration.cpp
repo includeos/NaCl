@@ -38,25 +38,15 @@ void register_plugin_nacl() {
 	INFO("NaCl", "Registering NaCl plugin");
 
 	// vlan vlan1
-	Super_stack::inet().create(VLAN_manager::get(4).add(hw::Devices::nic(4), 1), 4, 1);
-	auto& vlan1 = Super_stack::get(4, 1);
-	vlan1.network_config(IP4::addr{10,0,10,10}, IP4::addr{255,255,255,0}, 0);
-	auto& eth3 = Super_stack::get(3);
-	eth3.network_config(IP4::addr{10,0,0,75}, IP4::addr{255,255,255,0}, IP4::addr{10,0,0,1});
-	auto& eth2 = Super_stack::get(2);
-	eth2.network_config(IP4::addr{10,0,0,65}, IP4::addr{255,255,255,0}, IP4::addr{10,0,0,1});
-	eth2.nic().set_buffer_limit(1000);
-	auto& eth1 = Super_stack::get(1);
-	eth1.negotiate_dhcp(10.0, [&eth1] (bool timedout) {
-		if (timedout) {
-			INFO("NaCl plugin interface eth1", "DHCP timeout (%s) - falling back to static configuration", eth1.ifname().c_str());
-			eth1.network_config(IP4::addr{10,0,0,55}, IP4::addr{255,255,255,0}, IP4::addr{10,0,0,1});
-		}
-	});
-	eth1.nic().set_sendq_limit(1000);
+	Super_stack::inet().create(VLAN_manager::get(0).add(hw::Devices::nic(0), 10), 0, 10);
+	auto& vlan1 = Super_stack::get(0, 10);
+	vlan1.network_config(IP4::addr{10,0,0,45}, IP4::addr{255,255,255,0}, 0);
+	// vlan vlan2
+	Super_stack::inet().create(VLAN_manager::get(0).add(hw::Devices::nic(0), 11), 0, 11);
+	auto& vlan2 = Super_stack::get(0, 11);
+	vlan2.network_config(IP4::addr{10,0,0,46}, IP4::addr{255,255,255,0}, 0);
 	auto& eth0 = Super_stack::get(0);
-	eth0.network_config(IP4::addr{10,0,0,45}, IP4::addr{255,255,255,0}, IP4::addr{10,0,0,1});
-	eth0.nic().set_sendq_limit(1000);
-	eth0.nic().set_buffer_limit(1000);
+	eth0.nic().set_sendq_limit(100);
+	eth0.nic().set_buffer_limit(100);
 
 }
