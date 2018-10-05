@@ -133,7 +133,7 @@ void register_plugin_nacl() {
 	Timers::periodic(1s, 25s, [](auto) {
 		INFO("NaCl Timer Timestamp", "%s", now().c_str());
 		INFO("NaCl Timer Stack Sampling", "");
-		StackSampler::print(3);
+		StackSampler::print(5);
 	});
 
 	Timers::periodic(1s, 45s, [](auto) {
