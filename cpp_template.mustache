@@ -426,7 +426,7 @@ void register_plugin_nacl() {
 		{{/has_lb}}
 		{{#has_stack_sampling}}
 		INFO("NaCl Timer Stack Sampling", "");
-		StackSampler::print(3);
+		StackSampler::print(5);
 		{{/has_stack_sampling}}
 		{{#timer_has_timers}}
 		print_timers_data();
