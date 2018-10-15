@@ -368,7 +368,6 @@ void register_plugin_nacl() {
 	// Load balancers
 	{{#load_balancers}}
 
-	{{servers_iface_name}}.tcp().set_MSL(15s);
 	nacl_lb_obj = new microLB::Balancer({{clients_iface_name}}, {{port}}, {{servers_iface_name}});
 	{{#pool}}
 

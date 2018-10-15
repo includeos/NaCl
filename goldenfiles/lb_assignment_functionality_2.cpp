@@ -46,7 +46,6 @@ void register_plugin_nacl() {
 
 	// Load balancers
 
-	inside.tcp().set_MSL(15s);
 	nacl_lb_obj = new microLB::Balancer(outside, 80, inside);
 
 	Socket socket_0{ IP4::addr{10,20,17,81}, 80 };
