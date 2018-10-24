@@ -19,6 +19,7 @@
 #include <iostream>
 #include <net/interfaces>
 #include <net/ip4/cidr.hpp>
+#include <net/tcp/tcp_conntrack.hpp>
 #include <syslogd>
 
 using namespace net;

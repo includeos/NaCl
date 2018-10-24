@@ -32,6 +32,11 @@
 {{#has_load_balancers}}
 #include <microLB>
 {{/has_load_balancers}}
+{{#conntracks}}
+{{#stateful}}
+#include <net/tcp/tcp_conntrack.hpp>
+{{/stateful}}
+{{/conntracks}}
 #include <syslogd>
 {{#has_timers}}
 #include <timers>
