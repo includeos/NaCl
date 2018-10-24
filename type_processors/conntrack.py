@@ -18,7 +18,7 @@ from __future__ import absolute_import
 # To avoid: <...>/NaCl/type_processors/conntrack.py:1: RuntimeWarning: Parent module '<...>/NaCl/type_processors' not found while handling absolute import
 
 from NaCl import exit_NaCl, NaCl_exception, Typed
-from shared import TEMPLATE_KEY_NAME, TCP, UDP, ICMP
+from shared import TEMPLATE_KEY_NAME, TCP, UDP, ICMP, TRUE
 
 # -------------------- CONSTANTS Conntrack --------------------
 
@@ -26,13 +26,15 @@ TYPE_CONNTRACK = "conntrack"
 
 # ---- Conntrack keys ----
 
-CONNTRACK_KEY_LIMIT     = "limit"
-CONNTRACK_KEY_RESERVE   = "reserve"
-CONNTRACK_KEY_TIMEOUT   = "timeout"
+CONNTRACK_KEY_LIMIT         = "limit"
+CONNTRACK_KEY_RESERVE       = "reserve"
+CONNTRACK_KEY_STATEFUL_TCP  = "stateful_tcp"
+CONNTRACK_KEY_TIMEOUT       = "timeout"
 
 PREDEFINED_CONNTRACK_KEYS = [
     CONNTRACK_KEY_LIMIT,
     CONNTRACK_KEY_RESERVE,
+    CONNTRACK_KEY_STATEFUL_TCP,
     CONNTRACK_KEY_TIMEOUT
 ]
 
@@ -56,6 +58,9 @@ PREDEFINED_CONNTRACK_TIMEOUT_INNER_KEYS = [
 
 TEMPLATE_KEY_CONNTRACKS = "conntracks"
 
+TEMPLATE_KEY_CONNTRACK_LIMIT        = CONNTRACK_KEY_LIMIT
+TEMPLATE_KEY_CONNTRACK_RESERVE      = CONNTRACK_KEY_RESERVE
+TEMPLATE_KEY_CONNTRACK_STATEFUL     = "stateful"
 TEMPLATE_KEY_CONNTRACK_TIMEOUTS     = "timeouts"
 TEMPLATE_KEY_CONNTRACK_TYPE         = "type"
 
@@ -92,10 +97,16 @@ class Conntrack(Typed):
                     ICMP: icmp_timeout
                 })
 
+        stateful = False
+        stateful_tcp = self.members.get(CONNTRACK_KEY_STATEFUL_TCP)
+        if stateful_tcp is not None and stateful_tcp == TRUE:
+            stateful = True
+
         self.nacl_state.append_to_pystache_data_list(TEMPLATE_KEY_CONNTRACKS, {
             TEMPLATE_KEY_NAME:                  self.name,
-            CONNTRACK_KEY_LIMIT:                self.members.get(CONNTRACK_KEY_LIMIT),
-            CONNTRACK_KEY_RESERVE:              self.members.get(CONNTRACK_KEY_RESERVE),
+            TEMPLATE_KEY_CONNTRACK_LIMIT:       self.members.get(CONNTRACK_KEY_LIMIT),
+            TEMPLATE_KEY_CONNTRACK_RESERVE:     self.members.get(CONNTRACK_KEY_RESERVE),
+            TEMPLATE_KEY_CONNTRACK_STATEFUL:    stateful,
             TEMPLATE_KEY_CONNTRACK_TIMEOUTS:    timeouts
         })
 

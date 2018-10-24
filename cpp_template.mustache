@@ -305,6 +305,9 @@ void register_plugin_nacl() {
 
 	nacl_ct_obj = std::make_shared<Conntrack>();
 	{{#conntracks}}
+	{{#stateful}}
+	nacl_ct_obj->tcp_in = tcp::tcp4_conntrack;
+	{{/stateful}}
 	{{#limit}}nacl_ct_obj->maximum_entries = {{.}};{{/limit}}
 	{{#reserve}}nacl_ct_obj->reserve({{.}});{{/reserve}}
 	{{#timeouts}}
