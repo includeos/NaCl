@@ -21,7 +21,6 @@
 #include <net/ip4/cidr.hpp>
 #include <net/router.hpp>
 #include <net/vlan_manager.hpp>
-#include <hw/devices.hpp>
 #include <syslogd>
 
 using namespace net;
@@ -29,8 +28,8 @@ using namespace net;
 namespace nacl {
   class Filter {
   public:
-    virtual Filter_verdict<IP4> operator()(IP4::IP_packet_ptr pckt, Inet& stack, Conntrack::Entry_ptr ct_entry) = 0;
-    virtual ~Filter() {}
+	virtual Filter_verdict<IP4> operator()(IP4::IP_packet_ptr pckt, Inet& stack, Conntrack::Entry_ptr ct_entry) = 0;
+	virtual ~Filter() {}
   };
 }
 
@@ -77,7 +76,7 @@ void register_plugin_nacl() {
 		INFO("NaCl plugin interface eth1", "IP address updated: %s", eth1.ip_addr().str().c_str());
 	});
 	// vlan vlan1
-	Interfaces::create(VLAN_manager::get(0).add(hw::Devices::nic(0), 13), 0, 13);
+	Interfaces::create(VLAN_manager::get(0).add(Interfaces::get_nic(0), 13), 0, 13);
 	auto& vlan1 = Interfaces::get(0, 13);
 	vlan1.network_config(IP4::addr{20,20,20,10}, IP4::addr{255,255,255,0}, 0);
 
