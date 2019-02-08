@@ -20,7 +20,6 @@
 #include <net/interfaces>
 #include <net/ip4/cidr.hpp>
 #include <net/vlan_manager.hpp>
-#include <hw/devices.hpp>
 #include <syslogd>
 
 using namespace net;
@@ -28,8 +27,8 @@ using namespace net;
 namespace nacl {
   class Filter {
   public:
-    virtual Filter_verdict<IP4> operator()(IP4::IP_packet_ptr pckt, Inet& stack, Conntrack::Entry_ptr ct_entry) = 0;
-    virtual ~Filter() {}
+	virtual Filter_verdict<IP4> operator()(IP4::IP_packet_ptr pckt, Inet& stack, Conntrack::Entry_ptr ct_entry) = 0;
+	virtual ~Filter() {}
   };
 }
 
@@ -37,47 +36,47 @@ void register_plugin_nacl() {
 	INFO("NaCl", "Registering NaCl plugin");
 
 	// vlan vlan2_eth4
-	Interfaces::create(VLAN_manager::get(4).add(hw::Devices::nic(4), 63), 4, 63);
+	Interfaces::create(VLAN_manager::get(4).add(Interfaces::get_nic(4), 63), 4, 63);
 	auto& vlan2_eth4 = Interfaces::get(4, 63);
 	vlan2_eth4.network_config(IP4::addr{10,200,100,3}, IP4::addr{255,255,255,0}, 0);
 	// vlan vlan2_eth3
-	Interfaces::create(VLAN_manager::get(3).add(hw::Devices::nic(3), 23), 3, 23);
+	Interfaces::create(VLAN_manager::get(3).add(Interfaces::get_nic(3), 23), 3, 23);
 	auto& vlan2_eth3 = Interfaces::get(3, 23);
 	vlan2_eth3.network_config(IP4::addr{10,100,0,20}, IP4::addr{255,255,255,0}, 0);
 	// vlan vlan2_eth2
-	Interfaces::create(VLAN_manager::get(2).add(hw::Devices::nic(2), 23), 2, 23);
+	Interfaces::create(VLAN_manager::get(2).add(Interfaces::get_nic(2), 23), 2, 23);
 	auto& vlan2_eth2 = Interfaces::get(2, 23);
 	vlan2_eth2.network_config(IP4::addr{10,100,0,20}, IP4::addr{255,255,255,0}, 0);
 	// vlan vlan1_eth4
-	Interfaces::create(VLAN_manager::get(4).add(hw::Devices::nic(4), 62), 4, 62);
+	Interfaces::create(VLAN_manager::get(4).add(Interfaces::get_nic(4), 62), 4, 62);
 	auto& vlan1_eth4 = Interfaces::get(4, 62);
 	vlan1_eth4.network_config(IP4::addr{10,200,100,2}, IP4::addr{255,255,255,0}, 0);
 	auto& eth3 = Interfaces::get(3);
 	eth3.network_config(IP4::addr{10,100,100,100}, IP4::addr{255,255,255,0}, IP4::addr{100,100,100,1});
 	// vlan no1
-	Interfaces::create(VLAN_manager::get(0).add(hw::Devices::nic(0), 2), 0, 2);
+	Interfaces::create(VLAN_manager::get(0).add(Interfaces::get_nic(0), 2), 0, 2);
 	auto& no1 = Interfaces::get(0, 2);
 	no1.network_config(IP4::addr{10,60,0,10}, IP4::addr{255,255,255,0}, 0);
 	// vlan vlan1_eth2
-	Interfaces::create(VLAN_manager::get(2).add(hw::Devices::nic(2), 22), 2, 22);
+	Interfaces::create(VLAN_manager::get(2).add(Interfaces::get_nic(2), 22), 2, 22);
 	auto& vlan1_eth2 = Interfaces::get(2, 22);
 	vlan1_eth2.network_config(IP4::addr{10,100,0,10}, IP4::addr{255,255,255,0}, 0);
 	// vlan no2
-	Interfaces::create(VLAN_manager::get(1).add(hw::Devices::nic(1), 13), 1, 13);
+	Interfaces::create(VLAN_manager::get(1).add(Interfaces::get_nic(1), 13), 1, 13);
 	auto& no2 = Interfaces::get(1, 13);
 	no2.network_config(IP4::addr{10,50,0,20}, IP4::addr{255,255,255,0}, 0);
 	// vlan no3
-	Interfaces::create(VLAN_manager::get(1).add(hw::Devices::nic(1), 24), 1, 24);
+	Interfaces::create(VLAN_manager::get(1).add(Interfaces::get_nic(1), 24), 1, 24);
 	auto& no3 = Interfaces::get(1, 24);
 	no3.network_config(IP4::addr{10,60,0,20}, IP4::addr{255,255,255,0}, 0);
 	// vlan vlan1_eth3
-	Interfaces::create(VLAN_manager::get(3).add(hw::Devices::nic(3), 24), 3, 24);
+	Interfaces::create(VLAN_manager::get(3).add(Interfaces::get_nic(3), 24), 3, 24);
 	auto& vlan1_eth3 = Interfaces::get(3, 24);
 	vlan1_eth3.network_config(IP4::addr{10,100,0,10}, IP4::addr{255,255,255,0}, 0);
 	auto& eth4 = Interfaces::get(4);
 	eth4.network_config(IP4::addr{10,200,100,100}, IP4::addr{255,255,255,0}, IP4::addr{100,200,100,1});
 	// vlan no0
-	Interfaces::create(VLAN_manager::get(0).add(hw::Devices::nic(0), 5), 0, 5);
+	Interfaces::create(VLAN_manager::get(0).add(Interfaces::get_nic(0), 5), 0, 5);
 	auto& no0 = Interfaces::get(0, 5);
 	no0.network_config(IP4::addr{10,50,0,10}, IP4::addr{255,255,255,0}, 0);
 	auto& eth2 = Interfaces::get(2);

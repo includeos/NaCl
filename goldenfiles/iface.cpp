@@ -21,7 +21,6 @@
 #include <net/ip4/cidr.hpp>
 #include <net/nat/napt.hpp>
 #include <net/vlan_manager.hpp>
-#include <hw/devices.hpp>
 #include <syslogd>
 
 using namespace net;
@@ -29,8 +28,8 @@ using namespace net;
 namespace nacl {
   class Filter {
   public:
-    virtual Filter_verdict<IP4> operator()(IP4::IP_packet_ptr pckt, Inet& stack, Conntrack::Entry_ptr ct_entry) = 0;
-    virtual ~Filter() {}
+	virtual Filter_verdict<IP4> operator()(IP4::IP_packet_ptr pckt, Inet& stack, Conntrack::Entry_ptr ct_entry) = 0;
+	virtual ~Filter() {}
   };
 }
 
@@ -56,15 +55,15 @@ void register_plugin_nacl() {
 	INFO("NaCl", "Registering NaCl plugin");
 
 	// vlan my_other_vlan
-	Interfaces::create(VLAN_manager::get(1).add(hw::Devices::nic(1), 20), 1, 20);
+	Interfaces::create(VLAN_manager::get(1).add(Interfaces::get_nic(1), 20), 1, 20);
 	auto& my_other_vlan = Interfaces::get(1, 20);
 	my_other_vlan.network_config(IP4::addr{10,20,10,10}, IP4::addr{255,255,255,0}, 0);
 	// vlan my_vlan0
-	Interfaces::create(VLAN_manager::get(0).add(hw::Devices::nic(0), 10), 0, 10);
+	Interfaces::create(VLAN_manager::get(0).add(Interfaces::get_nic(0), 10), 0, 10);
 	auto& my_vlan0 = Interfaces::get(0, 10);
 	my_vlan0.network_config(IP4::addr{10,10,10,10}, IP4::addr{255,255,255,0}, 0);
 	// vlan my_vlan1
-	Interfaces::create(VLAN_manager::get(1).add(hw::Devices::nic(1), 10), 1, 10);
+	Interfaces::create(VLAN_manager::get(1).add(Interfaces::get_nic(1), 10), 1, 10);
 	auto& my_vlan1 = Interfaces::get(1, 10);
 	my_vlan1.network_config(IP4::addr{10,10,10,10}, IP4::addr{255,255,255,0}, 0);
 	auto& eth1 = Interfaces::get(1);
