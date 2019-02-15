@@ -586,7 +586,7 @@ class NaClRecordingVisitor(NaClVisitor):
 class NaClErrorListener(ErrorListener):
 	def syntaxError(self, recognizer, offendingSymbol, line, column, msg, e):
 		# stop execution on syntax error
-		sys.exit()
+		sys.exit(1)
 
 # Code to be executed when NaCl.py is run directly, but not when imported:
 if __name__ == "__main__":
