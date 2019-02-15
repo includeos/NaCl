@@ -17,6 +17,7 @@
 # limitations under the License.
 
 from antlr4 import *
+from antlr4.error.ErrorListener import ErrorListener
 from NaClLexer import *
 from NaClParser import *
 from NaClVisitor import *
@@ -582,6 +583,11 @@ class NaClRecordingVisitor(NaClVisitor):
 	def visitFunction(self, ctx):
 		self.nacl_state.save_element(BASE_TYPE_FUNCTION, ctx)
 
+class NaClErrorListener(ErrorListener):
+	def syntaxError(self, recognizer, offendingSymbol, line, column, msg, e):
+		# stop execution on syntax error
+		sys.exit()
+
 # Code to be executed when NaCl.py is run directly, but not when imported:
 if __name__ == "__main__":
 	nacl_state = NaCl_state(CPP)
@@ -597,8 +603,10 @@ if __name__ == "__main__":
 	init_type_processors(nacl_state)
 
 	lexer = NaClLexer(StdinStream())
+	lexer.addErrorListener(NaClErrorListener())
 	stream = CommonTokenStream(lexer)
 	parser = NaClParser(stream)
+	parser.addErrorListener(NaClErrorListener())
 	tree = parser.prog()
 
 	# Visit
