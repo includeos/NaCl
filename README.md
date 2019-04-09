@@ -14,7 +14,11 @@ Documentation: http://includeos.readthedocs.io/en/latest/NaCl.html
 8. `antlr4 NaCl.g4 && javac NaCl*.java`
 9. `cat examples/nacl.nacl | grun NaCl prog -gui`
 
-### Creating NaCl conan package
+### NaCl Packages
+
+The latest packages for NaCl can be found on [Bintray](https://bintray.com/includeos/includeos/NaCl%3Aincludeos)
+
+#### Creating NaCl conan package
 
 The [conanfile.py](conanfile.py) contains the recipe for building a conan package.
 
@@ -31,6 +35,8 @@ To upload the package:
 ```
   conan upload --all -r includeos NaCl/<version>@includeos/<channel>
 ```
+
+> **Note:** To get the NaCl package into editable mode for development checkout [editable_packages](https://docs.conan.io/en/latest/developing_packages/editable_packages.html)
 
 Packages are uploaded to two channels:
 - `latest`: the latest upload
