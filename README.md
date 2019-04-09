@@ -13,3 +13,22 @@ Documentation: http://includeos.readthedocs.io/en/latest/NaCl.html
 7. For testing, using the `grun` program (alias really) is nice. This requires that you generate the java lexer / parser
 8. `antlr4 NaCl.g4 && javac NaCl*.java`
 9. `cat examples/nacl.nacl | grun NaCl prog -gui`
+
+### Creating NaCl conan package
+
+The [conanfile.py](conanfile.py) contains the recipe for building a conan package.
+
+You can set up your remotes and profiles from [conan_config](https://github.com/includeos/conan_config)
+
+To build the NaCl package:
+
+```
+  conan create <path to NaCl repo> includeos/latest -pr <profile name>
+```
+
+To upload the package:
+
+```
+  conan upload --all -r includeos NaCl/<version>@includeos/latest
+```
+> **Note:** For more information checkout the [Jenkinsfile](Jenkinsfile)
