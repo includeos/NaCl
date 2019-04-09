@@ -29,6 +29,11 @@ To build the NaCl package:
 To upload the package:
 
 ```
-  conan upload --all -r includeos NaCl/<version>@includeos/latest
+  conan upload --all -r includeos NaCl/<version>@includeos/<channel>
 ```
+
+Packages are uploaded to two channels:
+- `latest`: the latest upload
+- `stable`: the last stable upload
+
 > **Note:** For more information checkout the [Jenkinsfile](Jenkinsfile)
