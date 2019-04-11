@@ -98,13 +98,15 @@ void print_timers_data() {
 
 static void print_mem_usage() {
 	using namespace util;
-	auto mem_max = OS::memory_end();
-	auto total_memuse = OS::total_memuse();
-	auto heap_alloc = OS::heap_usage();
+	static auto mem_max = os::total_memuse();
+	auto total_memuse = os::total_memuse();
 
-	INFO("NaCl Timer Memory", "Total memory: %s, in use %0.1f%% (%s heap allocated)",
+	INFO("NaCl Timer Memory", "Total memory: %s, in use %0.1f%%",
 		Byte_r(mem_max).to_string().c_str(),
-		(double(total_memuse) / mem_max) * 100, Byte_r(heap_alloc).to_string().c_str());
+		(double(total_memuse) / mem_max) * 100);
+
+	if(total_memuse < mem_max)
+		mem_max = total_memuse;
 }
 
 //< Timer Memory
@@ -114,8 +116,8 @@ using namespace net;
 namespace nacl {
   class Filter {
   public:
-    virtual Filter_verdict<IP4> operator()(IP4::IP_packet_ptr pckt, Inet& stack, Conntrack::Entry_ptr ct_entry) = 0;
-    virtual ~Filter() {}
+	virtual Filter_verdict<IP4> operator()(IP4::IP_packet_ptr pckt, Inet& stack, Conntrack::Entry_ptr ct_entry) = 0;
+	virtual ~Filter() {}
   };
 }
 

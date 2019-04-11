@@ -1,3 +1,4 @@
+import os
 from conans import ConanFile, python_requires
 
 conan_tools = python_requires("conan-tools/[>=1.0.0]@includeos/stable")
@@ -16,15 +17,12 @@ class NaClConan(ConanFile):
         "revision" : "auto"
     }
 
-    default_user="includeos"
-    default_channel="test"
-
     def build(self):
         #you need antlr4 installed to do this
         self.run("antlr4 -Dlanguage=Python2 NaCl.g4 -visitor")
 
     def package(self):
-        name='NaCl'
+        name='bin'
         self.copy('*',dst=name+"/subtranspilers",src="subtranspilers")
         self.copy('*',dst=name+"/type_processors",src="type_processors")
         self.copy('*.py',dst=name,src=".")
@@ -34,6 +32,9 @@ class NaClConan(ConanFile):
 
     def package_id(self):
         self.info.header_only()
+
+    def package_info(self):
+        self.env_info.path.append(os.path.join(self.package_folder, "bin"))
 
     def deploy(self):
         self.copy("*",dst="NaCl",src="NaCl")
